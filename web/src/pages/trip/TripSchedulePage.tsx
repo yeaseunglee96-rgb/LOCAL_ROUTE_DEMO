@@ -31,7 +31,7 @@ export function TripSchedulePage() {
         </div>
         <div className="service-heading-actions">
           {canEdit && <button type="button" className="secondary-btn" onClick={editConditions}>여행 조건 수정</button>}
-          <button type="button" className="primary-btn" onClick={() => void regenerate()} disabled={regenerating || !canEdit}>{regenerating ? "계산 중…" : "일정 다시 계산"}</button>
+          <button type="button" className="primary-btn" onClick={() => void regenerate()} disabled={regenerating || !canEdit}>{regenerating ? "계산 중…" : "일정 재생성"}</button>
         </div>
       </header>
 

@@ -47,6 +47,9 @@ export function TopSummaryBar({ itinerary, onEdit, onRegenerate, regenerating, c
             {canEdit && <button type="button" className="edit-btn" onClick={onEdit} title={en ? "Edit trip settings" : "여행 조건 수정"} aria-label={en ? "Edit trip settings" : "여행 조건 수정"}>
               {en ? "Edit" : "수정"}
             </button>}
+            {canEdit && <button type="button" className="edit-btn" onClick={onRegenerate} disabled={regenerating} title={en ? "Re-optimize with the same settings" : "동일 조건으로 재최적화"} aria-label={en ? "Regenerate itinerary" : "일정 재생성"}>
+              {regenerating ? (en ? "Regenerating..." : "재생성 중...") : (en ? "Regenerate" : "일정 재생성")}
+            </button>}
           </h1>
           <div className="trip-tags">
             <span className="tag-chip-sm">
@@ -56,13 +59,7 @@ export function TopSummaryBar({ itinerary, onEdit, onRegenerate, regenerating, c
             <span className="tag-chip-sm">{en ? ({ RELAXED: "Relaxed", NORMAL: "Normal", PACKED: "Packed" }[trip.pace]) : PACE_LABEL[trip.pace]}</span>
           </div>
         </div>
-        {canEdit ? <button type="button" className="regenerate-btn" onClick={onRegenerate} disabled={regenerating}>
-          <span>
-            {regenerating ? (en ? "Recalculating..." : "다시 계산 중...") : (en ? "Regenerate" : "일정 다시 계산")}
-            <br />
-            <small>{en ? "Re-optimize with the same settings" : "동일 조건으로 재최적화"}</small>
-          </span>
-        </button> : <span className="viewer-badge">{en ? "View only" : "열람 전용"}</span>}
+        {!canEdit && <span className="viewer-badge">{en ? "View only" : "열람 전용"}</span>}
       </div>
 
       <div className="stat-pills">

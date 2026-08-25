@@ -19,6 +19,9 @@ const TAGS = [
   ["nightview", "야경"],
   ["hidden_local", "숨은 로컬 명소"], ["landmark", "대표 관광지"],
 ] as const;
+const TAG_LABEL_EN: Record<string, string> = { food: "Food", cafe: "Cafe", nature: "Nature", photo: "Photo", history: "History", culture: "Culture", experience: "Activity", shopping: "Shopping", activity: "Action", nightview: "Nightview", hidden_local: "Hidden Local", landmark: "Landmark" };
+const TAG_LABEL_KO: Record<string, string> = Object.fromEntries(TAGS.map(([slug, label]) => [slug, label]));
+function tagLabel(slug: string, language: "KO" | "EN") { return language === "EN" ? TAG_LABEL_EN[slug] ?? slug : TAG_LABEL_KO[slug] ?? slug; }
 const MODES: { value: RecommendationMode; title: string; description: string }[] = [
   { value: "ESSENTIAL", title: "관광 필수 코스", description: "대표 명소와 접근성을 우선해요." },
   { value: "LOCAL", title: "현지인 코스", description: "로컬 점수와 숨은 장소를 더 중요하게 봐요." },
@@ -219,10 +222,9 @@ export function TripFormPage({ onSubmit, submitting, errorMessage, placeCount, i
           <div className="field" style={{ marginTop: "24px" }}>
             <span>{language === "EN" ? `Trip Tags · ${selectedTags.length} selected` : `여행 취향 · ${selectedTags.length}개 선택`}</span>
             <div className="tag-grid">
-              {TAGS.map(([slug, label]) => {
+              {TAGS.map(([slug]) => {
                 const selected = selectedTags.includes(slug);
-                const labelEn: Record<string, string> = { food: "Food", cafe: "Cafe", nature: "Nature", photo: "Photo", history: "History", culture: "Culture", experience: "Activity", shopping: "Shopping", activity: "Action", nightview: "Nightview", hidden_local: "Hidden Local", landmark: "Landmark" };
-                return <button type="button" aria-pressed={selected} key={slug} className={`tag-chip ${selected ? "selected" : ""}`} onClick={() => setSelectedTags((prev) => selected ? prev.filter((tag) => tag !== slug) : [...prev, slug])}>{selected && <span aria-hidden="true">✓ </span>}{language === "EN" ? labelEn[slug] ?? label : label}</button>;
+                return <button type="button" aria-pressed={selected} key={slug} className={`tag-chip ${selected ? "selected" : ""}`} onClick={() => setSelectedTags((prev) => selected ? prev.filter((tag) => tag !== slug) : [...prev, slug])}>{selected && <span aria-hidden="true">✓ </span>}{tagLabel(slug, language)}</button>;
               })}
             </div>
           </div>
@@ -246,7 +248,7 @@ export function TripFormPage({ onSubmit, submitting, errorMessage, placeCount, i
           <dl className="confirm-list">
             <div><dt>{language === "EN" ? "Daily Hours" : "여행 시간대"}</dt><dd>{dayStart}–{dayEnd}</dd></div>
             <div><dt>{language === "EN" ? "Travel Pace" : "여행 스타일"}</dt><dd>{language === "EN" ? ({ RELAXED: "Relaxed", NORMAL: "Normal", PACKED: "Packed" }[pace]) : ({ RELAXED: "여유롭게", NORMAL: "균형 있게", PACKED: "알차게" }[pace])}</dd></div>
-            <div><dt>{language === "EN" ? "Selected Tags" : "선택 취향"}</dt><dd>{selectedTags.length ? selectedTags.join(", ") : "Default"}</dd></div>
+            <div><dt>{language === "EN" ? "Selected Tags" : "선택 취향"}</dt><dd>{selectedTags.length ? selectedTags.map((slug) => tagLabel(slug, language)).join(", ") : (language === "EN" ? "Default" : "기본값")}</dd></div>
           </dl>
         </section>}
 
@@ -254,7 +256,7 @@ export function TripFormPage({ onSubmit, submitting, errorMessage, placeCount, i
         <div className="form-actions">
           {step > 0 && <button type="button" className="secondary-btn" onClick={() => setStep((value) => value - 1)}>{language === "EN" ? "Back" : "이전"}</button>}
           <button type="submit" className="primary-btn" disabled={submitting || !canContinue}>
-            {step === STEPS.length - 1 ? (submitting ? (language === "EN" ? "Calculating..." : "계산 중…") : (language === "EN" ? "Generate Itinerary" : "조건 기반 일정 계산")) : (language === "EN" ? "Next" : "다음")}
+            {step === STEPS.length - 1 ? (submitting ? (language === "EN" ? "Calculating..." : "계산 중…") : (language === "EN" ? "Generate Itinerary" : "일정 생성")) : (language === "EN" ? "Next" : "다음")}
           </button>
         </div>
       </form>
