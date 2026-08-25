@@ -191,7 +191,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 @media(max-width:640px){.dashboard-shell .sidebar{display:grid;grid-template-columns:auto 1fr}.sidebar-nav{grid-template-columns:repeat(3,minmax(0,1fr))}.sidebar-card.stat-card{display:none}.brand-name{display:none}.dashboard-shell .nav-item{font-size:10px;padding:9px 6px}.dashboard-shell .nav-item small{display:none}}
 
 /* Multi-view travel home inspired by the supplied mobile travel references. */
-.service-view{display:grid;gap:22px;animation:serviceViewIn .24s ease-out both}
+.service-view{display:grid;gap:22px;animation:serviceViewIn .24s ease-out backwards}
 @keyframes serviceViewIn{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
 .service-heading{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;padding:18px 4px 8px}
 .service-heading h1{margin:7px 0 8px;font-size:clamp(28px,3.5vw,42px);line-height:1.12;letter-spacing:-.045em;color:#232234}

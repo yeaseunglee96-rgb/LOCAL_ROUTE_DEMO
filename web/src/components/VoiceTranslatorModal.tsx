@@ -38,6 +38,7 @@ export function VoiceTranslatorModal({ isOpen, onClose, language = "KO" }: Props
   const [listeningSpeaker, setListeningSpeaker] = useState<"TOURIST" | "LOCAL" | null>(null);
   const [transcriptInput, setTranscriptInput] = useState("");
   const recognitionRef = useRef<any>(null);
+  const transcriptRef = useRef("");
 
   useEffect(() => {
     if (isOpen && messages.length === 0) {
@@ -86,19 +87,22 @@ export function VoiceTranslatorModal({ isOpen, onClose, language = "KO" }: Props
 
       recognition.onstart = () => {
         setListeningSpeaker(speaker);
+        transcriptRef.current = "";
         setTranscriptInput("");
       };
 
       recognition.onresult = (event: any) => {
         const current = event.resultIndex;
         const transcript = event.results[current][0].transcript;
+        transcriptRef.current = transcript;
         setTranscriptInput(transcript);
       };
 
       recognition.onend = () => {
         setListeningSpeaker(null);
-        if (transcriptInput.trim()) {
-          sendVoiceMessage(speaker, transcriptInput);
+        const finalTranscript = transcriptRef.current;
+        if (finalTranscript.trim()) {
+          sendVoiceMessage(speaker, finalTranscript);
         }
       };
 

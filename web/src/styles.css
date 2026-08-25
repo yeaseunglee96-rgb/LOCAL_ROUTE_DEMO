@@ -2022,6 +2022,33 @@ button {
   background: #eff6ff;
 }
 
+/* Shared header for Menu Translator / Voice Translator modals */
+.menu-translator-modal .modal-header,
+.voice-translator-modal .modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.menu-translator-modal .modal-header h2,
+.voice-translator-modal .modal-header h2 {
+  margin: 6px 0 4px;
+  font-size: 20px;
+  font-weight: 800;
+  color: #0f172a;
+}
+.menu-translator-modal .modal-header p,
+.voice-translator-modal .modal-header p {
+  margin: 0;
+  font-size: 13px;
+  color: #64748b;
+}
+.menu-translator-modal .close-btn,
+.voice-translator-modal .close-btn {
+  flex-shrink: 0;
+}
+
 /* Dialect Modal */
 .dialect-modal {
   background: #ffffff;
