@@ -119,13 +119,41 @@ export async function getEmbeddedRoute(lat1: number, lng1: number, lat2: number,
   const fallback = fallbackEstimate(lat1, lng1, lat2, lng2, mode === "CAR");
   const busMinutes = Math.max(12, Math.round(fallback.distanceM / 1000 / 18 * 60) + 8);
   const subwayMinutes = Math.max(15, Math.round(fallback.distanceM / 1000 / 32 * 60) + 12);
+
+  // Try to get a real road path first for transit/car fallback paths
+  let fallbackPath: [number, number][] = [[lng1, lat1], [lng2, lat2]];
+  if (apiKey) {
+    try {
+      const response = await fetch(`${KAKAO_MOBILITY_URL}?origin=${lng1},${lat1}&destination=${lng2},${lat2}`, { headers: { Authorization: `KakaoAK ${apiKey}` }, signal: AbortSignal.timeout(3000) });
+      if (response.ok) {
+        const data = await response.json() as any;
+        const route = data?.routes?.[0];
+        if (route && route.result_code === 0) {
+          const pathPoints: [number, number][] = (route.sections ?? []).flatMap((section: any) => (section.roads ?? []).flatMap((road: any) => {
+            const vertices = road.vertexes ?? []; const points: [number, number][] = [];
+            for (let index = 0; index < vertices.length; index += 2) points.push([vertices[index], vertices[index + 1]]);
+            return points;
+          }));
+          if (pathPoints.length) fallbackPath = pathPoints;
+        }
+      }
+    } catch {
+      // Ignore and use simulated fallback path
+    }
+  }
+
+  // If we couldn't get a real API road path, use coordinate-based simulated path
+  if (fallbackPath.length <= 2) {
+    fallbackPath = getRealisticFallbackPath(lat1, lng1, lat2, lng2);
+  }
+
   const fallbackAlternatives: TransitAlternative[] = mode === "TRANSIT"
-    ? getFallbackAlternatives(lat1, lng1, lat2, lng2, fallback.distanceM, busMinutes, subwayMinutes)
+    ? getFallbackAlternatives(lat1, lng1, lat2, lng2, fallback.distanceM, busMinutes, subwayMinutes, fallbackPath)
     : [];
   const fallbackResult: EmbeddedRoute = {
     mode, distanceM: fallback.distanceM, durationMin: mode === "TRANSIT" ? Math.max(8, Math.round(fallback.durationMin * .55)) : fallback.durationMin,
     fare: null, transfers: null, steps: [{ guidance: mode === "TRANSIT" ? "대중교통 경로 데이터를 확인할 수 없어 예상 시간으로 표시합니다." : "자동차 경로 데이터를 확인할 수 없어 예상 시간으로 표시합니다.", durationMin: fallback.durationMin, distanceM: fallback.distanceM, vehicle: null }],
-    path: [[lng1, lat1], [lng2, lat2]], isEstimate: true, source: "ESTIMATE", alternatives: fallbackAlternatives,
+    path: fallbackPath, isEstimate: true, source: "ESTIMATE", alternatives: fallbackAlternatives,
   };
   if (!apiKey) return fallbackResult;
 
@@ -241,7 +269,8 @@ function getFallbackAlternatives(
   lat2: number, lng2: number,
   distanceM: number,
   busMinutes: number,
-  subwayMinutes: number
+  subwayMinutes: number,
+  path: [number, number][]
 ): TransitAlternative[] {
   const getRegion = (lat: number, lng: number) => {
     if (lat < 35.10 && lng < 129.09) return "YEONGDO";
@@ -404,7 +433,7 @@ function getFallbackAlternatives(
       durationMin: busMinutes,
       fare: 1550,
       transfers: busTransfers,
-      path: [[lng1, lat1], [lng2, lat2]],
+      path: path,
       isEstimate: true,
       steps: busSteps
     },
@@ -415,9 +444,56 @@ function getFallbackAlternatives(
       durationMin: subwayMinutes,
       fare: 1650,
       transfers: subwayTransfers,
-      path: [[lng1, lat1], [lng2, lat2]],
+      path: path,
       isEstimate: true,
       steps: subwaySteps
     }
   ];
+}
+
+function getRealisticFallbackPath(
+  lat1: number, lng1: number,
+  lat2: number, lng2: number
+): [number, number][] {
+  const getRegion = (lat: number, lng: number) => {
+    if (lat < 35.10 && lng < 129.09) return "YEONGDO";
+    if (lat >= 35.10 && lat < 35.14 && lng < 129.09) return "BUSAN_STATION";
+    if (lat >= 35.14 && lat < 35.16 && lng >= 129.09 && lng < 129.14) return "GWANGALLI";
+    if (lat >= 35.15 && lng >= 129.14) return "HAEUNDAE";
+    return "OTHER";
+  };
+
+  const r1 = getRegion(lat1, lng1);
+  const r2 = getRegion(lat2, lng2);
+
+  const startPoint: [number, number] = [lng1, lat1];
+  const endPoint: [number, number] = [lng2, lat2];
+
+  let intermediates: [number, number][] = [];
+
+  if ((r1 === "BUSAN_STATION" && r2 === "YEONGDO") || (r1 === "YEONGDO" && r2 === "BUSAN_STATION")) {
+    intermediates = [[129.037, 35.095], [129.037, 35.098], [129.041, 35.111]];
+  }
+  else if ((r1 === "BUSAN_STATION" && r2 === "GWANGALLI") || (r1 === "GWANGALLI" && r2 === "BUSAN_STATION")) {
+    intermediates = [[129.068, 35.135], [129.090, 35.137]];
+  }
+  else if ((r1 === "YEONGDO" && r2 === "GWANGALLI") || (r1 === "GWANGALLI" && r2 === "YEONGDO")) {
+    intermediates = [[129.065, 35.093], [129.071, 35.104], [129.083, 35.111], [129.098, 35.127], [129.112, 35.136]];
+  }
+  else if ((r1 === "GWANGALLI" && r2 === "HAEUNDAE") || (r1 === "HAEUNDAE" && r2 === "GWANGALLI")) {
+    intermediates = [[129.124, 35.150], [129.138, 35.156], [129.150, 35.163]];
+  }
+  else if ((r1 === "BUSAN_STATION" && r2 === "HAEUNDAE") || (r1 === "HAEUNDAE" && r2 === "BUSAN_STATION")) {
+    intermediates = [[129.068, 35.135], [129.090, 35.137], [129.124, 35.150], [129.138, 35.156], [129.150, 35.163]];
+  }
+  else if ((r1 === "YEONGDO" && r2 === "HAEUNDAE") || (r1 === "HAEUNDAE" && r2 === "YEONGDO")) {
+    intermediates = [[129.065, 35.093], [129.071, 35.104], [129.083, 35.111], [129.098, 35.127], [129.112, 35.136], [129.124, 35.150], [129.138, 35.156], [129.150, 35.163]];
+  }
+
+  // Reverse intermediates if heading from south/west to north/east
+  if (lat1 > lat2 || (lat1 === lat2 && lng1 > lng2)) {
+    intermediates = [...intermediates].reverse();
+  }
+
+  return [startPoint, ...intermediates, endPoint];
 }
