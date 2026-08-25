@@ -64,8 +64,8 @@ export function ItemCard({ item, pinned, busy, onTogglePin, onExclude, onReplace
       </div>}
       <p className="recommend-reason"><strong>{en ? "Why recommended" : "추천 근거"}</strong>{reason}</p>
       <div className="capability-row">
-        {item.hasEnglishMenu && <span>{en ? "English menu" : "영어 메뉴"}</span>}
-        {item.foreignCardPayment && <span>{en ? "International cards" : "해외카드"}</span>}
+        {item.hasEnglishMenu && <span>{en ? "English Menu" : "영어 메뉴"}</span>}
+        {item.foreignCardPayment && <span>{en ? "International Cards" : "해외카드"}</span>}
         {item.soloFriendly && <span className="badge-blue">{en ? "Solo Friendly" : "혼밥 가능"}</span>}
         {item.takeoutAvailable && <span className="badge-amber">{en ? "Takeout Available" : "포장 가능"}</span>}
       </div>
@@ -79,7 +79,7 @@ export function ItemCard({ item, pinned, busy, onTogglePin, onExclude, onReplace
           🗣️ {en ? "Speak Korean" : "한국어 말하기"}
         </button>
         <button type="button" onClick={(e) => { e.stopPropagation(); setExpanded((value) => !value); }} aria-expanded={expanded}>{en ? (expanded ? "Hide Details" : "Evidence & Policy") : (expanded ? "정보 접기" : "근거·정책 보기")}</button>
-        <button type="button" onClick={(event) => { event.stopPropagation(); onSelect?.(item); window.setTimeout(() => document.getElementById("route-map")?.scrollIntoView({ behavior: "smooth", block: "center" }), 0); }}>{en ? "Route on map" : "지도에서 경로 보기"}</button>
+        <button type="button" onClick={(event) => { event.stopPropagation(); onSelect?.(item); window.setTimeout(() => document.getElementById("route-map")?.scrollIntoView({ behavior: "smooth", block: "center" }), 0); }}>{en ? "Route on Map" : "지도에서 경로 보기"}</button>
         {onTogglePin && <button type="button" disabled={busy} onClick={(e) => { e.stopPropagation(); onTogglePin(item); }}>{pinned ? (en ? "Unpin" : "고정 해제") : (en ? "Pin Place" : "장소 고정")}</button>}
         {onReplace && <button type="button" disabled={busy || pinned} onClick={(e) => { e.stopPropagation(); onReplace(item); }}>{en ? "Replace Place" : "비슷한 장소로 교체"}</button>}
         {onExclude && <button type="button" className="danger-action" disabled={busy || pinned} onClick={(e) => { e.stopPropagation(); onExclude(item); }}>{en ? "Exclude & Recalculate" : "제외 후 재계산"}</button>}

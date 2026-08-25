@@ -349,7 +349,7 @@ function materializeOptimizedDay(
       closeTime: place.closeTime,
       plannedArrival: formatMinToTime(arrivals[index]),
       stayMinutes: place.recommendedStayMin,
-      estCost: estimatePlaceCost(place.priceTier, opts.partySize),
+      estCost: estimatePlaceCost(place, opts.partySize),
       travelMinToNext: null,
       distanceToNextM: null,
       travelIsEstimate: true,

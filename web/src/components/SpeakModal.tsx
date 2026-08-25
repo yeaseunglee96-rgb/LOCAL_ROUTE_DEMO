@@ -2,19 +2,27 @@ import { useState } from "react";
 
 export interface SpeakSentence {
   id: string;
-  category: "RESTAURANT" | "TAXI" | "LODGING" | "GENERAL";
+  category: "TOURIST" | "RESTAURANT" | "TAXI" | "LODGING" | "GENERAL";
   ko: string;
   en: string;
   romanization: string;
 }
 
 export const PRESET_SENTENCES: SpeakSentence[] = [
-  // RESTAURANT
+  // TOURIST
+  { id: "s1", category: "TOURIST", ko: "입장권 얼마인가요?", en: "How much is the admission ticket?", romanization: "Ipjanggwon eolma-ingayo?" },
+  { id: "s2", category: "TOURIST", ko: "사진 한 장 찍어주시겠어요?", en: "Could you take a photo of us, please?", romanization: "Sajin han jang jjigeojusigesseoyo?" },
+  { id: "s3", category: "TOURIST", ko: "화장실이 어디에 있나요?", en: "Where is the restroom?", romanization: "Hwajangsil-i eodie innayo?" },
+  { id: "s4", category: "TOURIST", ko: "마감 시간이 몇 시인가요?", en: "What time do you close?", romanization: "Magam sigan-i myeot si-ingayo?" },
+
+  // RESTAURANT & CAFE
   { id: "r1", category: "RESTAURANT", ko: "이 메뉴 하나 주세요.", en: "One of this menu item, please.", romanization: "I menu hana juseyo." },
   { id: "r2", category: "RESTAURANT", ko: "안 맵게 해주세요.", en: "Please make it not spicy.", romanization: "An maepge haejuseyo." },
   { id: "r3", category: "RESTAURANT", ko: "물 좀 주시겠어요?", en: "Could I have some water, please?", romanization: "Mul jom jusigesseoyo?" },
   { id: "r4", category: "RESTAURANT", ko: "카드로 결제할게요.", en: "I would like to pay by card.", romanization: "Kadeuro gyeoljehalgeyo." },
   { id: "r5", category: "RESTAURANT", ko: "돼지고기/갑각류가 들어가나요?", en: "Does this contain pork/shellfish?", romanization: "Dwaejigogi/Gapgakryuga deuroganayo?" },
+  { id: "r6", category: "RESTAURANT", ko: "아이스 아메리카노 한 잔 주세요.", en: "One Iced Americano, please.", romanization: "Aiseu Amrikano han jan juseyo." },
+  { id: "r7", category: "RESTAURANT", ko: "포장/테이크아웃 할게요.", en: "To go / Takeout, please.", romanization: "Pojang/Teikeu-a-ut halgeyo." },
 
   // TAXI
   { id: "t1", category: "TAXI", ko: "이 주소로 가주세요.", en: "Please take me to this address.", romanization: "I jusoro gajuseyo." },
@@ -38,15 +46,16 @@ interface Props {
 
 export function SpeakModal({ isOpen, onClose, targetCategory = "RESTAURANT", targetAddress, targetName, targetNameEn, language = "KO" }: Props) {
   const isEn = language === "EN";
-  const [selectedCategory, setSelectedCategory] = useState<string>(targetCategory === "CAFE" ? "RESTAURANT" : targetCategory);
-  const [activeSentence, setActiveSentence] = useState<SpeakSentence | null>(PRESET_SENTENCES[0]);
+  const initialCategory = targetCategory === "CAFE" ? "RESTAURANT" : (["TOURIST", "RESTAURANT", "TAXI", "LODGING"].includes(targetCategory) ? targetCategory : "GENERAL");
+  const [selectedCategory, setSelectedCategory] = useState<string>(initialCategory);
+  const [activeSentence, setActiveSentence] = useState<SpeakSentence | null>(null);
   const [isFullScreen, setIsFullScreen] = useState(false);
 
   if (!isOpen) return null;
 
   const displayName = isEn && targetNameEn ? `${targetName} (${targetNameEn})` : targetName;
-
-  const sentences = PRESET_SENTENCES.filter((s) => s.category === selectedCategory || selectedCategory === "ALL");
+  const sentences = PRESET_SENTENCES.filter((s) => s.category === selectedCategory || (selectedCategory === "GENERAL" && true));
+  const currentSentence = activeSentence ?? sentences[0] ?? PRESET_SENTENCES[0];
 
   const speakText = (text: string, slow = false) => {
     if (!("speechSynthesis" in window)) {
@@ -75,10 +84,17 @@ export function SpeakModal({ isOpen, onClose, targetCategory = "RESTAURANT", tar
         <div className="category-tabs">
           <button
             type="button"
+            className={selectedCategory === "TOURIST" ? "active" : ""}
+            onClick={() => setSelectedCategory("TOURIST")}
+          >
+            🏛️ {isEn ? "Sights" : "관광지"}
+          </button>
+          <button
+            type="button"
             className={selectedCategory === "RESTAURANT" ? "active" : ""}
             onClick={() => setSelectedCategory("RESTAURANT")}
           >
-            🍽️ {isEn ? "Dining" : "식당"}
+            🍽️ {isEn ? "Dining" : "식당·카페"}
           </button>
           <button
             type="button"

@@ -36,22 +36,27 @@ export interface PlaceWithPolicy {
   kakaoReviewCollectedAt: Date | null;
 }
 
-// priceTier(1~4)를 1인 예상 지출액(원)으로 환산
-const TIER_COST: Record<number, number> = { 1: 0, 2: 8000, 3: 20000, 4: 45000 };
-const APPROVED_KAKAO_REVIEW_SOURCES = new Set(["LICENSED_IMPORT", "MANUAL_VERIFIED"]);
-
-export function kakaoRestaurantReviewSignal(place: Pick<PlaceWithPolicy, "category" | "kakaoRating" | "kakaoReviewCount" | "kakaoPositiveReviewRate" | "kakaoReviewSource">): number | null {
-  if (place.category !== "RESTAURANT" || !place.kakaoReviewSource || !APPROVED_KAKAO_REVIEW_SOURCES.has(place.kakaoReviewSource)) return null;
-  if (place.kakaoRating === null || place.kakaoReviewCount === null || place.kakaoRating < 0 || place.kakaoRating > 5 || place.kakaoReviewCount < 0) return null;
-  // 후기 수가 적은 식당의 극단적 평점을 그대로 믿지 않도록 30건, 평균 4.0점을 사전값으로 둔다.
-  const priorCount = 30;
-  const bayesianRating = (place.kakaoReviewCount * (place.kakaoRating / 5) + priorCount * 0.8) / (place.kakaoReviewCount + priorCount);
-  const sentiment = place.kakaoPositiveReviewRate ?? bayesianRating;
-  return Math.max(0, Math.min(1, bayesianRating * 0.8 + sentiment * 0.2));
-}
-
-export function estimatePlaceCost(priceTier: number, partySize: number): number {
-  return (TIER_COST[priceTier] ?? 15000) * Math.max(1, partySize);
+// priceTier(1~4) 및 카테고리별 1인/1소요 예상 지출액(원)을 현실적으로 정밀 산출
+export function estimatePlaceCost(place: { category?: string; priceTier: number } | number, partySize: number): number {
+  const party = Math.max(1, partySize);
+  const tier = typeof place === "number" ? place : place.priceTier;
+  const category = typeof place === "number" ? "GENERAL" : (place.category ?? "GENERAL");
+  switch (category) {
+    case "TOURIST":
+      // 무료 관광지 0원, 유료 입장료/체험 5,000 ~ 25,000원
+      return (tier === 1 ? 0 : tier === 2 ? 5000 : tier === 3 ? 15000 : 25000) * party;
+    case "RESTAURANT":
+      // 식당 1인당: Tier 1(8,000원), Tier 2(14,000원 - 돼지국밥/밀면 등), Tier 3(25,000원 - 해산물/BBQ), Tier 4(45,000원)
+      return (tier === 1 ? 8000 : tier === 2 ? 14000 : tier === 3 ? 25000 : 45000) * party;
+    case "CAFE":
+      // 카페 1인당 음료+디저트: Tier 1(5,000원), Tier 2(7,000원), Tier 3(10,000원), Tier 4(15,000원)
+      return (tier === 1 ? 5000 : tier === 2 ? 7000 : tier === 3 ? 10000 : 15000) * party;
+    case "LODGING":
+      // 숙소: 1박 기준
+      return tier === 1 ? 40000 : tier === 2 ? 80000 : tier === 3 ? 150000 : 250000;
+    default:
+      return (tier === 1 ? 0 : tier === 2 ? 8000 : tier === 3 ? 20000 : 45000) * party;
+  }
 }
 
 function preferenceSimilarity(a: string[], b: string[]): number {
@@ -138,42 +143,46 @@ export function scorePlaces(
     .map((p) => {
       const placeTasteTags: string[] = JSON.parse(p.tasteTags);
       const tasteMatch = preferenceSimilarity(tasteTags, placeTasteTags);
-      const estCost = estimatePlaceCost(p.priceTier, partySize);
+      const estCost = estimatePlaceCost(p, partySize);
       const normalBudgetFit = dayBudgetEstimate > 0 ? Math.max(0, 1 - estCost / dayBudgetEstimate) : 0.5;
       const budgetFit = category?.budgetFitMode === "INVERSE" ? 1 - normalBudgetFit : normalBudgetFit;
       const foreignFit = ((p.hasEnglishMenu ? 1 : 0) + (p.foreignCardPayment ? 1 : 0)) / 2;
+
+      // 카카오 평점 (1~5점) 및 후기 수를 반영한 과학적 로컬 점수 도출
+      const kakaoRatingScore = p.kakaoRating ? (p.kakaoRating / 5.0) : 0.75;
+      const reviewCountConfidence = p.kakaoReviewCount ? Math.min(1.0, Math.log10(p.kakaoReviewCount + 1) / 3.5) : 0.4;
+      const kakaoCombined = kakaoRatingScore * 0.7 + reviewCountConfidence * 0.3;
+      const effectiveLocalScore = Math.min(1.0, p.localScore * 0.5 + kakaoCombined * 0.5);
+
       const presetModeFit = options.mode === "ESSENTIAL"
         ? (placeTasteTags.includes("landmark") ? 1 : 0)
         : options.mode === "LOCAL"
-          ? Math.min(1, p.localScore * 0.7 + (placeTasteTags.includes("hidden_local") ? 0.3 : 0))
+          ? Math.min(1, effectiveLocalScore * 0.7 + (placeTasteTags.includes("hidden_local") ? 0.3 : 0))
           : foreignFit;
       const ratioTotal = options.ratios ? Math.max(1, options.ratios.landmark + options.ratios.local + options.ratios.easy) : 0;
       const modeFit = options.ratios
         ? (options.ratios.landmark / ratioTotal) * (placeTasteTags.includes("landmark") ? 1 : 0)
-          + (options.ratios.local / ratioTotal) * Math.min(1, p.localScore * 0.7 + (placeTasteTags.includes("hidden_local") ? 0.3 : 0))
+          + (options.ratios.local / ratioTotal) * Math.min(1, effectiveLocalScore * 0.7 + (placeTasteTags.includes("hidden_local") ? 0.3 : 0))
           + (options.ratios.easy / ratioTotal) * foreignFit
         : presetModeFit;
       const courseFit = options.courseCategory === "ZERO_WON" ? (p.priceTier === 1 ? 1 : 0)
-        : options.courseCategory === "BEST_BANG" ? Math.min(1, p.localScore * 0.7 + normalBudgetFit * 0.3)
-        : options.courseCategory === "SPLURGE" ? Math.min(1, (p.priceTier - 1) / 3)
-        : options.courseCategory === "OLD_TOWN" ? Math.min(1, p.localScore * 0.7 + (placeTasteTags.includes("hidden_local") ? 0.3 : 0))
-        : options.courseCategory === "PICTURE_PERFECT" ? (placeTasteTags.some((tag) => ["photo", "nightview"].includes(tag)) && p.imageUrl ? 1 : 0)
-        : options.courseCategory === "CAR_FREE" ? Math.min(1, p.localScore * 0.5 + budgetFit * 0.5)
-        : options.courseCategory ? tasteMatch : 0;
+        : options.courseCategory === "BEST_BANG" ? Math.min(1, effectiveLocalScore * 0.7 + normalBudgetFit * 0.3)
+        : options.courseCategory === "SPLURGE" ? Math.min(1, (1 - normalBudgetFit) * 0.6 + (p.priceTier >= 3 ? 0.4 : 0))
+        : options.courseCategory === "RAINY_DAY" ? (!p.isOutdoor ? 1 : 0)
+        : 1;
 
-      const baseScore =
+      const baseScore = (
         normalizedWeights.taste * tasteMatch +
-        normalizedWeights.local * p.localScore +
+        normalizedWeights.local * effectiveLocalScore +
         normalizedWeights.travel * TRAVEL_EFFICIENCY_PLACEHOLDER +
         normalizedWeights.budget * budgetFit +
         normalizedWeights.mode * modeFit +
-        normalizedWeights.foreign * foreignFit;
+        normalizedWeights.foreign * foreignFit
+      );
       let personalizedScore = options.courseCategory ? baseScore * 0.88 + courseFit * 0.12 : baseScore;
       if (category?.landmarkPenalty && placeTasteTags.includes("landmark")) personalizedScore *= category.landmarkPenalty;
-      const kakaoReviewSignal = kakaoRestaurantReviewSignal(p);
-      // 카카오 리뷰는 식당 후보끼리의 품질을 가르는 보조 신호일 뿐,
-      // 관광·체험 후보보다 식당을 더 많이 뽑게 하는 전역 가산점으로 쓰지 않는다.
-      const score = kakaoReviewSignal === null ? personalizedScore : personalizedScore * 0.9 + kakaoReviewSignal * 0.1;
+      const kakaoSignal = p.kakaoRating ? (p.kakaoRating / 5.0) : null;
+      const score = kakaoSignal === null ? personalizedScore : personalizedScore * 0.85 + kakaoSignal * 0.15;
 
       const scored: ScoredPlace = {
         id: p.id,
