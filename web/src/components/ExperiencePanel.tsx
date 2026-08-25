@@ -29,7 +29,7 @@ export function ExperiencePanel({ itinerary, canEdit = true }: { itinerary: Itin
 
   const renderShops = () => <div className="discovery-content" role="region" aria-label="기념품샵 목록">
     {shops.length === 0 && <p className="discovery-empty">출발지 주변에서 확인된 기념품샵이 없습니다.</p>}
-    {shops.map((shop) => <article className="discovery-card souvenir-card" key={shop.id}><div className="discovery-shop-distance"><strong>{(shop.distanceM / 1000).toFixed(1)}</strong><span>km</span></div><div className="discovery-card-copy"><span className="discovery-type">LOCAL SOUVENIR</span><h3>{shop.nameKo}</h3><p>{shop.items.join(" · ")}</p><small>{shop.address}<br />운영 {shop.openTime}–{shop.closeTime}</small></div></article>)}
+    {shops.map((shop) => <article className="discovery-card souvenir-card" key={shop.id}>{shop.imageUrl ? <img src={shop.imageUrl} alt={`${shop.nameKo} 이미지`} /> : <div className="discovery-art" aria-hidden="true"><span>SOUVENIR</span></div>}<div className="discovery-card-copy"><span className="discovery-type">LOCAL SOUVENIR</span><h3>{shop.nameKo}</h3><p>{shop.items.join(" · ")}</p><small>{shop.address}<br />운영 {shop.openTime}–{shop.closeTime}</small></div></article>)}
   </div>;
 
   return <section className="experience-panel discovery-panel" aria-label="축제 야시장 전통시장 기념품샵">

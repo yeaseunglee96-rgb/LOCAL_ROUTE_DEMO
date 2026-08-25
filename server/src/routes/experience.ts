@@ -69,7 +69,7 @@ experienceRouter.get("/shops/souvenir", async (req, res, next) => {
       .filter((place) => place.distanceM <= radius)
       .sort((a, b) => (b.localScore - a.localScore) || (a.distanceM - b.distanceM));
     await recordEvent({ eventType: "souvenir_layer_viewed", entityType: "map_area", entityId: `${lat.toFixed(2)}:${lng.toFixed(2)}`, payload: { count: shops.length, radius } });
-    res.json(shops.map((place) => ({ id: place.id, nameKo: place.nameKo, nameEn: place.nameEn, address: place.address, lat: place.lat, lng: place.lng, distanceM: Math.round(place.distanceM), items: JSON.parse(place.souvenirItems), openTime: place.openTime, closeTime: place.closeTime, cardPayment: place.foreignCardPayment, foreignAssistance: place.foreignAssistance, localScore: place.localScore, rankingBasis: "LOCAL_SCORE_AND_DISTANCE", sponsored: false })));
+    res.json(shops.map((place) => ({ id: place.id, nameKo: place.nameKo, nameEn: place.nameEn, address: place.address, lat: place.lat, lng: place.lng, distanceM: Math.round(place.distanceM), items: JSON.parse(place.souvenirItems), openTime: place.openTime, closeTime: place.closeTime, cardPayment: place.foreignCardPayment, foreignAssistance: place.foreignAssistance, localScore: place.localScore, imageUrl: place.imageUrl, rankingBasis: "LOCAL_SCORE_AND_DISTANCE", sponsored: false })));
   } catch (error) { next(error); }
 });
 
