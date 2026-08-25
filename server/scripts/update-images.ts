@@ -3,13 +3,13 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log("Starting database image updates for souvenir shops and festivals...");
+  console.log("Starting database image updates for souvenir shops and festivals with VisitBusan URLs...");
 
   const updates = [
     {
       contentId: "DEMO-SOUVENIR-1",
       nameKo: "부산역 동백상회",
-      imageUrl: "http://tong.visitkorea.or.kr/cms2/website/10/1131210.jpg" // Traditional fans/crafts
+      imageUrl: "https://www.visitbusan.net/uploadImgs/files/cntnts/20230630173529259" // Official Dongbaek Shop photo
     },
     {
       contentId: "DEMO-SOUVENIR-2",
@@ -19,7 +19,7 @@ async function main() {
     {
       contentId: "DEMO-SOUVENIR-3",
       nameKo: "광안리 부산기념품점",
-      imageUrl: "http://tong.visitkorea.or.kr/cms2/website/18/1131218.jpg" // Trinkets, keyrings, magnets
+      imageUrl: "https://www.visitbusan.net/uploadImgs/files/cntnts/20230704095406026" // Official Gwangalli Souvenir Shop photo ("여가~거가! 광안리")
     },
     {
       contentId: "DEMO-FESTIVAL-1",

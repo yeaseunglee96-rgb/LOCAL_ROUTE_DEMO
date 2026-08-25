@@ -118,11 +118,11 @@ async function main() {
     
     // Check if it's one of the demo places we manually curated
     if (place.nameKo === "부산역 동백상회") {
-      imageUrl = "http://tong.visitkorea.or.kr/cms2/website/10/1131210.jpg";
+      imageUrl = "https://www.visitbusan.net/uploadImgs/files/cntnts/20230630173529259";
     } else if (place.nameKo === "영도 로컬 기프트숍") {
       imageUrl = "http://tong.visitkorea.or.kr/cms2/website/12/1131212.jpg";
     } else if (place.nameKo === "광안리 부산기념품점") {
-      imageUrl = "http://tong.visitkorea.or.kr/cms2/website/18/1131218.jpg";
+      imageUrl = "https://www.visitbusan.net/uploadImgs/files/cntnts/20230704095406026";
     } else if (place.nameKo === "부산바다축제") {
       imageUrl = "http://tong.visitkorea.or.kr/cms2/website/04/1046404.jpg";
     } else if (place.nameKo === "영도다리축제") {
