@@ -3,7 +3,7 @@ import { Outlet, useLocation, useNavigate, useParams, useSearchParams } from "re
 import { DashboardShell } from "../../components/DashboardShell";
 import { getAlternatives, getCollaboration, getItinerary, generateItinerary, reoptimizeDay, reorderDay, undoItineraryChange } from "../../api/client";
 import type { ItineraryItemOutput, ItineraryOutput, PlaceAlternative } from "../../types";
-import { setUiLanguage } from "../../i18n";
+import { getUiLanguage, setUiLanguage, subscribeUiLanguage } from "../../i18n";
 import { useAppShell } from "../../routes/AppShell";
 import { TAB_TO_PATH, paths, tabFromPathname } from "../../routes/paths";
 import { TripContext } from "./TripContext";
@@ -36,8 +36,13 @@ export function TripLayout() {
   const [pendingReplace, setPendingReplace] = useState<ItineraryItemOutput | null>(null);
   const [alternatives, setAlternatives] = useState<PlaceAlternative[]>([]);
   const [myRole, setMyRole] = useState<string>("VIEWER");
+  const [uiLang, setUiLang] = useState<"KO" | "EN">(getUiLanguage());
 
   const mode = searchParams.get("mode") ?? undefined;
+
+  useEffect(() => {
+    return subscribeUiLanguage((lang: "KO" | "EN") => setUiLang(lang));
+  }, []);
 
   useEffect(() => {
     if (!tripId) return;
@@ -148,7 +153,7 @@ export function TripLayout() {
         hasCar: itinerary.trip.hasCar,
         pinnedPlaceIds,
         busy: regenerating || !canEdit,
-        language: itinerary.trip.language,
+        language: uiLang,
         onTogglePin: (item) => void togglePin(item),
         onExclude: setPendingExclude,
         onReplace: (item) => void requestReplace(item),
@@ -156,7 +161,7 @@ export function TripLayout() {
         onReorder: reorder,
       },
     };
-  }, [itinerary, tripId, placeCount, regenerating, canEdit, myRole, pinnedPlaceIds, excludedPlaceIds, selectedPlaceId, partialReoptimize, navigate, refresh]);
+  }, [itinerary, tripId, placeCount, regenerating, canEdit, myRole, pinnedPlaceIds, excludedPlaceIds, selectedPlaceId, partialReoptimize, navigate, refresh, uiLang]);
 
   if (loadError) {
     return (
@@ -193,7 +198,7 @@ export function TripLayout() {
     <TripContext.Provider value={value}>
       <DashboardShell
         placeCount={placeCount}
-        language={value.itinerary.trip.language}
+        language={uiLang}
         activeTab={activeTab}
         onTabChange={(tab) => { navigate(TAB_TO_PATH[tab](tripId)); window.scrollTo({ top: 0, behavior: "smooth" }); }}
       >
