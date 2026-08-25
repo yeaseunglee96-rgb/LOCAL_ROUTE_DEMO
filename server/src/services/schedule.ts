@@ -142,8 +142,10 @@ export async function buildItinerary(
     dayBuckets[target].push(place);
   }
 
+  // 사용자가 고른 취향(tasteTags) 및 먹고 싶은 음식(desiredFoods) 가산점이 반영된 최고 점수 순으로 후보를 정렬
+  pool.sort((a, b) => b.score - a.score);
+
   // 각 날짜에 사용자의 취향 점수가 높은 관광·체험 앵커와 식사 후보를 먼저 확보한다.
-  // 이후에 가까운 장소를 붙여도 식당 밀집 지역만으로 하루가 채워지지 않게 한다.
   const assignCategoryAnchors = (category: string) => {
     for (let d = 0; d < numDays; d++) {
       if (dayBuckets[d].some((place) => place.category === category)) continue;

@@ -78,6 +78,7 @@ export interface ScoreOptions {
   dietType?: string;
   needsOnlineReservation?: boolean;
   courseCategory?: string | null;
+  desiredFoods?: string[];
 }
 
 function passesCourseCategoryProxy(place: PlaceWithPolicy, courseCategory: string | null | undefined): boolean {
@@ -98,9 +99,8 @@ function passesCourseCategoryProxy(place: PlaceWithPolicy, courseCategory: strin
 }
 
 /**
- * 15.1장 규칙기반 추천 점수(단순화 버전).
- * travelEfficiency는 군집화 이전 단계라 상수 placeholder를 사용하고,
- * 실제 동선 순서는 schedule.ts의 최근접 이웃 로직이 별도로 담당한다.
+ * 15.1장 규칙기반 추천 점수.
+ * 사용자의 취향(tasteTags), 코스 카테고리, 먹고 싶은 한국 음식(desiredFoods) 및 모드(ESSENTIAL / LOCAL)를 강력 반영한다.
  */
 export function scorePlaces(
   places: PlaceWithPolicy[],
@@ -111,18 +111,20 @@ export function scorePlaces(
   options: ScoreOptions
 ): ScoredPlace[] {
   const TRAVEL_EFFICIENCY_PLACEHOLDER = 0.5;
-  // v2 13/15장: 이동 편의성 및 외국인 편의 비중 반영
+  // 사용자의 취향(taste)과 모드(mode) 반영 비율 대폭 상향
   const weights = {
-    ESSENTIAL: { taste: 0.2, local: 0.15, travel: 0.25, budget: 0.15, mode: 0.15, foreign: 0.1 },
-    LOCAL: { taste: 0.25, local: 0.35, travel: 0.15, budget: 0.1, mode: 0.1, foreign: 0.05 },
-    EASY: { taste: 0.15, local: 0.15, travel: 0.3, budget: 0.05, mode: 0.1, foreign: 0.25 },
+    ESSENTIAL: { taste: 0.45, local: 0.15, travel: 0.15, budget: 0.1, mode: 0.2, foreign: 0.05 },
+    LOCAL: { taste: 0.45, local: 0.3, travel: 0.1, budget: 0.05, mode: 0.2, foreign: 0.05 },
+    EASY: { taste: 0.35, local: 0.15, travel: 0.25, budget: 0.05, mode: 0.1, foreign: 0.1 },
   }[options.mode];
   const category = findCourseCategory(options.courseCategory);
   const multipliers = category?.weightMultipliers ?? {};
   const weighted = {
-    taste: weights.taste * (multipliers.tasteMatch ?? 1), local: weights.local * (multipliers.localScore ?? 1),
+    taste: weights.taste * (multipliers.tasteMatch ?? 1),
+    local: weights.local * (multipliers.localScore ?? 1),
     travel: weights.travel * (multipliers.travelEfficiency ?? 1),
-    budget: weights.budget * (multipliers.budgetFit ?? 1), mode: weights.mode,
+    budget: weights.budget * (multipliers.budgetFit ?? 1),
+    mode: weights.mode,
     foreign: weights.foreign * (multipliers.foreignerEase ?? 1),
   };
   const weightTotal = Object.values(weighted).reduce((sum, value) => sum + value, 0) || 1;
@@ -147,6 +149,19 @@ export function scorePlaces(
       const normalBudgetFit = dayBudgetEstimate > 0 ? Math.max(0, 1 - estCost / dayBudgetEstimate) : 0.5;
       const budgetFit = category?.budgetFitMode === "INVERSE" ? 1 - normalBudgetFit : normalBudgetFit;
       const foreignFit = ((p.hasEnglishMenu ? 1 : 0) + (p.foreignCardPayment ? 1 : 0)) / 2;
+
+      // 먹고 싶은 한국 음식(desiredFoods) 선택 반영
+      let desiredFoodMatchBonus = 0;
+      let matchedFoodName = "";
+      if (options.desiredFoods && options.desiredFoods.length > 0 && p.category === "RESTAURANT") {
+        for (const food of options.desiredFoods) {
+          if (p.nameKo.includes(food) || placeTasteTags.includes(food) || p.address.includes(food)) {
+            desiredFoodMatchBonus = 3.0; // 선택한 음식을 파는 식당에 압도적 가산점 부과
+            matchedFoodName = food;
+            break;
+          }
+        }
+      }
 
       // 카카오 평점 (1~5점) 및 후기 수를 반영한 과학적 로컬 점수 도출
       const kakaoRatingScore = p.kakaoRating ? (p.kakaoRating / 5.0) : 0.75;
@@ -182,8 +197,16 @@ export function scorePlaces(
       let personalizedScore = options.courseCategory ? baseScore * 0.88 + courseFit * 0.12 : baseScore;
       if (category?.landmarkPenalty && placeTasteTags.includes("landmark")) personalizedScore *= category.landmarkPenalty;
       const kakaoSignal = p.kakaoRating ? (p.kakaoRating / 5.0) : null;
-      const score = kakaoSignal === null ? personalizedScore : personalizedScore * 0.85 + kakaoSignal * 0.15;
+      const score = (kakaoSignal === null ? personalizedScore : personalizedScore * 0.85 + kakaoSignal * 0.15) + desiredFoodMatchBonus;
 
+      const reasons: string[] = [];
+      if (matchedFoodName) reasons.push(`선택한 음식: ${matchedFoodName}`);
+      if (tasteMatch > 0) reasons.push("선택 취향 일치");
+      if (placeTasteTags.includes("landmark")) reasons.push("대표 관광지");
+      if (placeTasteTags.includes("hidden_local")) reasons.push("현지인 추천 숨은 명소");
+      if (p.kakaoRating && p.kakaoReviewCount) {
+        reasons.push(`카카오 평점 ${p.kakaoRating.toFixed(1)} · 후기 ${p.kakaoReviewCount.toLocaleString()}개`);
+      }
       const scored: ScoredPlace = {
         id: p.id,
         nameKo: p.nameKo,

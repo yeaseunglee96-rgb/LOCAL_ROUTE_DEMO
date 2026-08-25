@@ -66,6 +66,7 @@ export async function generateItineraryForTrip(
     ratios,
     allergies: JSON.parse(pref.allergies), dietType: pref.dietType,
     courseCategory: pref.courseCategory,
+    desiredFoods: JSON.parse((pref as { desiredFoods?: string }).desiredFoods ?? "[]"),
   });
   if (scored.length === 0) {
     throw new GenerationError("NO_FEASIBLE_SCHEDULE", "조건을 만족하는 장소 후보가 없습니다.", {
