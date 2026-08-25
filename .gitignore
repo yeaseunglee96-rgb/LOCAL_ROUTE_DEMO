@@ -10,3 +10,6 @@ __pycache__/
 server/prisma/dev.db
 server/prisma/dev.db-journal
 web/dist/
+
+# 임시 파일 보관함 (수동 삭제용)
+_to_delete/
