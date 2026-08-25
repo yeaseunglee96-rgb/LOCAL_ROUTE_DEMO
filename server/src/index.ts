@@ -21,7 +21,14 @@ app.use(helmet({ contentSecurityPolicy: false, strictTransportSecurity: process.
 app.use(cors({ origin(origin, callback) { callback(null, !origin || allowedOrigins.has(origin)); }, methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"], allowedHeaders: ["Content-Type", "Authorization", "Idempotency-Key", "X-Request-Id", "X-Session-Token", "X-Booking-Webhook-Secret", "X-Admin-Token"] }));
 app.use("/api/stories", express.json({ limit: "3mb" }));
 app.use(express.json({ limit: "256kb" }));
-app.use("/api", rateLimit({ windowMs: 15 * 60_000, limit: 300, standardHeaders: "draft-7", legacyHeaders: false, message: { error_code: "RATE_LIMITED", message: "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요." } }));
+app.use("/api", rateLimit({
+  windowMs: 15 * 60_000,
+  limit: 300,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  skip: (req) => req.path === "/course-categories",
+  message: { error_code: "RATE_LIMITED", message: "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요." }
+}));
 
 app.get("/health", (_req, res) => res.json({ status: "ok" }));
 app.use("/api", tripsRouter);
