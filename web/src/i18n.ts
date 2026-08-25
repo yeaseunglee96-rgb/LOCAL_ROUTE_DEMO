@@ -45,6 +45,20 @@ const KO_EN: Record<string, string> = {
   "여행 계획": "Trip planner", "장소 찾기": "Explore places", "저장한 일정": "Saved trips", "준비 중": "Coming soon",
   "현지인이 다시 가는 곳으로,": "Places locals return to,", "구글맵이 못 찾는 길도 걱정 없이": "even where Google Maps can't find the way",
   "등록된 로컬 장소 (부산 기준)": "Registered local places (Busan)",
+  "한국에서 꼭 먹어보고 싶은 음식": "Must-Try Korean Dishes in Busan",
+  "먹고 싶은 음식을 선택하면 해당 음식을 판매하는 검증된 식당을 일정에 자동 반영합니다.": "Select dishes you want to eat. We will automatically place verified restaurants into your schedule!",
+  "현장 한국어 말하기 & 화면 보여주기": "Speak Korean & Show Screen",
+  "날짜별 날씨 & 여행 준비물 안내": "Busan Weather & Packing Tips",
+  "방문 후 만족도 피드백": "How was your visit?",
+  "부산에서의 3일간의 추억 지도": "Memory Map: 3 Days in Busan",
+  "이 코스 내 일정으로 가져오기": "Copy This Course",
+  "혼밥 가능": "Solo Friendly",
+  "포장 가능": "Takeout Available",
+  "주요 이동 수단": "Primary Transport",
+  "대중교통 이용": "Public Transit",
+  "자차 이용": "By Car",
+  "여행 준비를 한곳에서": "Travel Prep All in One",
+  "예산과 지역 여행 팁을 확인하고, 동행자와 같은 일정을 준비하세요.": "Check budget and local tips, and share your plan with travel companions.",
 };
 
 const EN_KO = Object.fromEntries(Object.entries(KO_EN).map(([ko, en]) => [en, ko]));

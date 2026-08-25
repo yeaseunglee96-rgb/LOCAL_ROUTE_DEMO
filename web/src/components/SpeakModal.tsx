@@ -32,16 +32,19 @@ interface Props {
   targetCategory?: string;
   targetAddress?: string;
   targetName?: string;
+  targetNameEn?: string | null;
   language?: "KO" | "EN";
 }
 
-export function SpeakModal({ isOpen, onClose, targetCategory = "RESTAURANT", targetAddress, targetName, language = "KO" }: Props) {
+export function SpeakModal({ isOpen, onClose, targetCategory = "RESTAURANT", targetAddress, targetName, targetNameEn, language = "KO" }: Props) {
   const isEn = language === "EN";
   const [selectedCategory, setSelectedCategory] = useState<string>(targetCategory === "CAFE" ? "RESTAURANT" : targetCategory);
   const [activeSentence, setActiveSentence] = useState<SpeakSentence | null>(PRESET_SENTENCES[0]);
   const [isFullScreen, setIsFullScreen] = useState(false);
 
   if (!isOpen) return null;
+
+  const displayName = isEn && targetNameEn ? `${targetName} (${targetNameEn})` : targetName;
 
   const sentences = PRESET_SENTENCES.filter((s) => s.category === selectedCategory || selectedCategory === "ALL");
 
@@ -64,7 +67,7 @@ export function SpeakModal({ isOpen, onClose, targetCategory = "RESTAURANT", tar
           <div>
             <span className="speak-badge">AUDIO & SHOW KOREAN</span>
             <h3>{isEn ? "Speak Korean & Show Screen" : "현장 한국어 말하기 & 화면 보여주기"}</h3>
-            {targetName && <p className="speak-target">📍 {targetName} ({targetAddress ?? ""})</p>}
+            {displayName && <p className="speak-target">📍 {displayName} ({targetAddress ?? ""})</p>}
           </div>
           <button type="button" className="close-btn" onClick={onClose}>✕</button>
         </div>
@@ -96,8 +99,8 @@ export function SpeakModal({ isOpen, onClose, targetCategory = "RESTAURANT", tar
         <div className="speak-body">
           {targetAddress && selectedCategory === "TAXI" && (
             <div className="taxi-address-card">
-              <span className="card-label">기사님께 보여주세요 (Destination)</span>
-              <h2 className="taxi-destination">{targetName}</h2>
+              <span className="card-label">{isEn ? "Show this to the taxi driver (Destination)" : "기사님께 보여주세요 (Destination)"}</span>
+              <h2 className="taxi-destination">{displayName}</h2>
               <p className="taxi-address">{targetAddress}</p>
               <div className="card-actions">
                 <button type="button" className="speak-btn" onClick={() => speakText(`${targetName} (으)로 가주세요.`)}>

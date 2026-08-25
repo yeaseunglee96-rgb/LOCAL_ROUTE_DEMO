@@ -62,7 +62,7 @@ export function DesiredFoodPicker({ selectedFoods, onChange, language = "KO" }: 
             >
               <span className="food-emoji">{food.emoji}</span>
               <div className="food-info">
-                <strong>{isEn ? food.nameEn : food.nameKo}</strong>
+                <strong>{isEn ? `${food.nameKo} (${food.nameEn})` : food.nameKo}</strong>
                 <small>{isEn ? food.descriptionEn : food.descriptionKo}</small>
               </div>
               {active && <span className="food-check">✓</span>}

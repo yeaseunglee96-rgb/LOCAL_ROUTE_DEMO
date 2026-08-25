@@ -42,15 +42,27 @@ export function TripMemorySummary({ tripTitle = "부산 3일 로컬 먹방 여�
       <div className="memory-timeline-preview">
         <div className="memory-day">
           <strong>Day 1</strong>
-          <span>🍜 밀면 → 🏛️ 감천문화마을 → 🌅 광안리 야경</span>
+          <span>
+            {isEn
+              ? "🍜 밀면 (Milmyeon) → 🏛️ 감천문화마을 (Gamcheon Village) → 🌅 광안리 야경 (Gwangalli Nightview)"
+              : "🍜 밀면 → 🏛️ 감천문화마을 → 🌅 광안리 야경"}
+          </span>
         </div>
         <div className="memory-day">
           <strong>Day 2</strong>
-          <span>🍲 돼지국밥 → 🛍️ 국제시장 → ☕ 해운대 뷰 카페</span>
+          <span>
+            {isEn
+              ? "🍲 돼지국밥 (Dwaeji-gukbap) → 🛍️ 국제시장 (Gukje Market) → ☕ 해운대 뷰 카페 (Haeundae View Cafe)"
+              : "🍲 돼지국밥 → 🛍️ 국제시장 → ☕ 해운대 뷰 카페"}
+          </span>
         </div>
         <div className="memory-day">
           <strong>Day 3</strong>
-          <span>🐟 자갈치 해산물 → 🌿 태종대 해안길 → 🥞 씨앗호떡</span>
+          <span>
+            {isEn
+              ? "🐟 자갈치 해산물 (Jagalchi Seafood) → 🌿 태종대 (Taejongdae) → 🥞 씨앗호떡 (Ssiat Hotteok)"
+              : "🐟 자갈치 해산물 → 🌿 태종대 해안길 → 🥞 씨앗호떡"}
+          </span>
         </div>
       </div>
     </div>

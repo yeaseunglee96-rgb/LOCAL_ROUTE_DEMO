@@ -74,6 +74,8 @@ export function KakaoMap({ days, originLat, originLng, selectedPlaceId, souvenir
 
             const content = document.createElement("div");
             const selected = item.placeId === selectedPlaceId;
+            const placeTitle = item.nameEn ? `${item.nameKo} (${item.nameEn})` : item.nameKo;
+            content.title = `${day.dayIndex}일차 ${i + 1}. ${placeTitle}`;
             content.style.cssText = `
               background:${color};color:#fff;border-radius:50%;
               width:${selected ? 36 : 26}px;height:${selected ? 36 : 26}px;display:flex;align-items:center;justify-content:center;

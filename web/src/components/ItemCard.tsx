@@ -54,7 +54,7 @@ export function ItemCard({ item, pinned, busy, onTogglePin, onExclude, onReplace
     <div className="place-visual" style={{ backgroundColor: meta.color }}>{displayImage ? <img src={displayImage} alt={en && item.nameEn ? item.nameEn : item.nameKo} onError={() => setImageFailed(true)} /> : <span className="place-placeholder" aria-hidden="true">{categoryLabel.slice(0, 1)}</span>}{imageProvider && searchedImage?.sourceUrl && displayImage && <a className="image-source-badge" href={searchedImage.sourceUrl} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()} aria-label={`${item.nameKo} 사진 출처 열기`}>{imageProvider}</a>}</div>
     <div className="place-content">
       <div className="place-kicker"><span>{categoryLabel}</span><span>{en ? `Stay ${item.stayMinutes} min` : `체류 ${item.stayMinutes}분`}</span>{pinned && <span className="pin-badge">{en ? "Pinned" : "고정됨"}</span>}</div>
-      <h3>{en && item.nameEn ? item.nameEn : item.nameKo}{item.nameEn && <small>{en ? item.nameKo : item.nameEn}</small>}</h3>
+      <h3>{en && item.nameEn ? `${item.nameKo} (${item.nameEn})` : item.nameKo}</h3>
       <p className="place-address">{en ? item.addressEn ?? `${item.address} · English address unavailable` : item.address}</p>
       <div className="evidence-row"><span className="evidence primary">{en ? `Local score ${(item.localScore * 5).toFixed(1)}/5` : `로컬 점수 ${(item.localScore * 5).toFixed(1)}/5`}</span><span className="evidence">{en ? `Open ${item.openTime}–${item.closeTime}` : `영업 ${item.openTime}–${item.closeTime}`}</span><span className="evidence">{en ? `Est. ₩${item.estCost.toLocaleString()}` : `예상 ${item.estCost.toLocaleString()}원`}</span></div>
       {hasKakaoReviews && <div className="kakao-review-card">
@@ -71,18 +71,18 @@ export function ItemCard({ item, pinned, busy, onTogglePin, onExclude, onReplace
       </div>
       {needsFoodCheck && <div className="allergy-warning">{en ? "Allergen/diet data unavailable. Please confirm before ordering." : "알레르기·식단 정보가 없어 주문 전 확인이 필요합니다."}</div>}
       {expanded && <div className="place-details">
-        <dl><div><dt>데이터 출처</dt><dd>{sourceLabel}</dd></div>{item.category === "RESTAURANT" && <div><dt>카카오 후기</dt><dd>{hasKakaoReviews ? `${item.kakaoReviewSource === "LICENSED_IMPORT" ? "승인된 집계 데이터" : "수동 검증"}${reviewDate ? ` · ${reviewDate} 기준` : ""}` : "공식 API 미제공 · 검증된 집계 연결 전에는 추천 점수에 미반영"}</dd></div>}<div><dt>비용 성격</dt><dd>가격대 기반 추정 · 실제 결제 금액과 다를 수 있음</dd></div></dl>
-        <div className="taxi-card"><span>{en ? "Show this to the driver" : "기사님께 보여주세요"}</span><b>{taxiText}</b><button type="button" onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(taxiText); }}>{en ? "Copy address" : "주소 복사"}</button></div>
+        <dl><div><dt>{en ? "Data Source" : "데이터 출처"}</dt><dd>{sourceLabel}</dd></div>{item.category === "RESTAURANT" && <div><dt>{en ? "Kakao Reviews" : "카카오 후기"}</dt><dd>{hasKakaoReviews ? `${item.kakaoReviewSource === "LICENSED_IMPORT" ? "승인된 집계 데이터" : "수동 검증"}${reviewDate ? ` · ${reviewDate} 기준` : ""}` : "공식 API 미제공 · 검증된 집계 연결 전에는 추천 점수에 미반영"}</dd></div>}<div><dt>{en ? "Cost Note" : "비용 성격"}</dt><dd>{en ? "Price-tier estimate · actual price may differ" : "가격대 기반 추정 · 실제 결제 금액과 다를 수 있음"}</dd></div></dl>
+        <div className="taxi-card"><span>{en ? "Show this to driver" : "기사님께 보여주세요"}</span><b>{taxiText}</b><button type="button" onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(taxiText); }}>{en ? "Copy address" : "주소 복사"}</button></div>
       </div>}
       <div className="place-actions">
         <button type="button" className="speak-action-btn" onClick={(e) => { e.stopPropagation(); setShowSpeakModal(true); }}>
           🗣️ {en ? "Speak Korean" : "한국어 말하기"}
         </button>
-        <button type="button" onClick={(e) => { e.stopPropagation(); setExpanded((value) => !value); }} aria-expanded={expanded}>{expanded ? "정보 접기" : "근거·정책 보기"}</button>
+        <button type="button" onClick={(e) => { e.stopPropagation(); setExpanded((value) => !value); }} aria-expanded={expanded}>{en ? (expanded ? "Hide Details" : "Evidence & Policy") : (expanded ? "정보 접기" : "근거·정책 보기")}</button>
         <button type="button" onClick={(event) => { event.stopPropagation(); onSelect?.(item); window.setTimeout(() => document.getElementById("route-map")?.scrollIntoView({ behavior: "smooth", block: "center" }), 0); }}>{en ? "Route on map" : "지도에서 경로 보기"}</button>
-        {onTogglePin && <button type="button" disabled={busy} onClick={(e) => { e.stopPropagation(); onTogglePin(item); }}>{pinned ? "고정 해제" : "장소 고정"}</button>}
-        {onReplace && <button type="button" disabled={busy || pinned} onClick={(e) => { e.stopPropagation(); onReplace(item); }}>비슷한 장소로 교체</button>}
-        {onExclude && <button type="button" className="danger-action" disabled={busy || pinned} onClick={(e) => { e.stopPropagation(); onExclude(item); }}>제외 후 재계산</button>}
+        {onTogglePin && <button type="button" disabled={busy} onClick={(e) => { e.stopPropagation(); onTogglePin(item); }}>{pinned ? (en ? "Unpin" : "고정 해제") : (en ? "Pin Place" : "장소 고정")}</button>}
+        {onReplace && <button type="button" disabled={busy || pinned} onClick={(e) => { e.stopPropagation(); onReplace(item); }}>{en ? "Replace Place" : "비슷한 장소로 교체"}</button>}
+        {onExclude && <button type="button" className="danger-action" disabled={busy || pinned} onClick={(e) => { e.stopPropagation(); onExclude(item); }}>{en ? "Exclude & Recalculate" : "제외 후 재계산"}</button>}
       </div>
 
       <SpeakModal
@@ -91,6 +91,7 @@ export function ItemCard({ item, pinned, busy, onTogglePin, onExclude, onReplace
         targetCategory={item.category}
         targetAddress={item.address}
         targetName={item.nameKo}
+        targetNameEn={item.nameEn}
         language={language}
       />
     </div>

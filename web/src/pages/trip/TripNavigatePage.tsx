@@ -159,7 +159,7 @@ export function TripNavigatePage() {
             <select aria-label={en ? "Select leg" : "구간 선택"} value={legIndex} onChange={(event) => setLegIndex(Number(event.target.value))}>
               {legs.map((candidate, index) => (
                 <option key={index} value={index}>
-                  {(en ? candidate.from.labelEn : candidate.from.label)} → {(en ? candidate.to.labelEn : candidate.to.label)}
+                  {(en && candidate.from.labelEn !== candidate.from.label ? `${candidate.from.labelEn} (${candidate.from.label})` : candidate.from.label)} → {(en && candidate.to.labelEn !== candidate.to.label ? `${candidate.to.labelEn} (${candidate.to.label})` : candidate.to.label)}
                 </option>
               ))}
             </select>
