@@ -31,11 +31,20 @@ interface Props {
   placeCount: number | null;
   initialValues?: Partial<CreateTripRequest>;
   lodgings: PlaceRecord[];
+  /** 라우터가 단계를 URL(/plan/:step)로 제어할 때 사용. 없으면 컴포넌트 내부 상태로 동작한다. */
+  step?: number;
+  onStepChange?: (step: number) => void;
 }
 
-export function TripFormPage({ onSubmit, submitting, errorMessage, placeCount, initialValues }: Props) {
+export function TripFormPage({ onSubmit, submitting, errorMessage, placeCount, initialValues, step: controlledStep, onStepChange }: Props) {
   const initialOrigin = ORIGINS.find((item) => item.name === initialValues?.origin) ?? (initialValues?.origin ? { id: "initial-origin", name: initialValues.origin, address: initialValues.origin, lat: initialValues.originLat ?? ORIGINS[0].lat, lng: initialValues.originLng ?? ORIGINS[0].lng, category: "선택한 출발지" } : ORIGINS[0]);
-  const [step, setStep] = useState(0);
+  const [uncontrolledStep, setUncontrolledStep] = useState(0);
+  // 단계는 URL 이 진실이다. 라우터가 step 을 내려주면 그 값을 쓰고, 아니면 내부 상태로 폴백한다.
+  const step = controlledStep ?? uncontrolledStep;
+  const setStep = (next: number | ((previous: number) => number)) => {
+    const value = typeof next === "function" ? (next as (previous: number) => number)(step) : next;
+    if (onStepChange) onStepChange(value); else setUncontrolledStep(value);
+  };
   const [origin, setOrigin] = useState<LocationSearchResult>(initialOrigin);
   const [startDate, setStartDate] = useState(initialValues?.startDate ?? todayPlus(14));
   const [endDate, setEndDate] = useState(initialValues?.endDate ?? todayPlus(16));

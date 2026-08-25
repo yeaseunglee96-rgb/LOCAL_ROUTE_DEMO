@@ -1,0 +1,78 @@
+import { useState } from "react";
+import { useParams } from "react-router-dom";
+import { DayTimeline } from "../../components/DayTimeline";
+import { MapPanel } from "../../components/MapPanel";
+import { ScheduleSummaryList } from "../../components/ScheduleSummaryList";
+import { useTrip } from "./TripContext";
+
+type ListMode = "summary" | "detail";
+
+/**
+ * /trips/:tripId/schedule          — 전체 일정
+ * /trips/:tripId/schedule/:dayIndex — 특정 날짜 (딥링크 대상)
+ */
+export function TripSchedulePage() {
+  const { dayIndex: dayIndexParam } = useParams();
+  const { itinerary, regenerating, canEdit, pinnedPlaceIds, selectedPlaceId, itemProps, regenerate, editConditions, undo } = useTrip();
+
+  const deepLinkedDay = dayIndexParam ? Number(dayIndexParam) : null;
+  const [listMode, setListMode] = useState<ListMode>(deepLinkedDay ? "detail" : "summary");
+  const [activeDayIndex, setActiveDayIndex] = useState(deepLinkedDay ?? itinerary.days[0]?.dayIndex ?? 1);
+  const [mapDayIndex, setMapDayIndex] = useState<number | null>(deepLinkedDay);
+
+  return (
+    <div className="service-view">
+      <header className="service-heading">
+        <div>
+          <span className="section-eyebrow">ROUTE PLANNER</span>
+          <h1>동선 보며 일정 짜기</h1>
+          <p>날짜별 경로를 보고 장소를 고정하거나 교체할 수 있어요.</p>
+        </div>
+        <div className="service-heading-actions">
+          {canEdit && <button type="button" className="secondary-btn" onClick={editConditions}>여행 조건 수정</button>}
+          <button type="button" className="primary-btn" onClick={() => void regenerate()} disabled={regenerating || !canEdit}>{regenerating ? "계산 중…" : "일정 다시 계산"}</button>
+        </div>
+      </header>
+
+      {itinerary.warnings.length > 0 && (
+        <details className="warnings">
+          <summary>일정 검증 참고사항 {itinerary.warnings.length}건</summary>
+          <ul>{itinerary.warnings.map((warning, index) => <li key={index}>{warning}</li>)}</ul>
+        </details>
+      )}
+
+      {canEdit && (
+        <div className="undo-row">
+          <button type="button" className="secondary-btn" disabled={regenerating} onClick={() => void undo()}>최근 변경 취소</button>
+        </div>
+      )}
+
+      <div className="dashboard-columns schedule-workspace">
+        <section className={`dashboard-left schedule-list-canvas ${listMode === "summary" ? "all-days" : "single-day"}`} aria-label="여행 일정">
+          <div className="schedule-toolbar">
+            <div className="tab-switch" role="tablist">
+              <button type="button" role="tab" aria-selected={listMode === "summary"} className={`tab-btn ${listMode === "summary" ? "active" : ""}`} onClick={() => setListMode("summary")}>전체 일정</button>
+              <button type="button" role="tab" aria-selected={listMode === "detail"} className={`tab-btn ${listMode === "detail" ? "active" : ""}`} onClick={() => setListMode("detail")}>날짜별 보기</button>
+            </div>
+            <span>{pinnedPlaceIds.length ? `고정 장소 ${pinnedPlaceIds.length}곳` : "장소를 고정하거나 제외해 다시 계산할 수 있어요"}</span>
+          </div>
+          {listMode === "summary"
+            ? <ScheduleSummaryList days={itinerary.days} {...itemProps} />
+            : <DayTimeline days={itinerary.days} activeDayIndex={activeDayIndex} onSelectDay={setActiveDayIndex} {...itemProps} />}
+        </section>
+        <aside className="dashboard-right">
+          <MapPanel
+            days={itinerary.days}
+            originLat={itinerary.trip.originLat}
+            originLng={itinerary.trip.originLng}
+            activeDayIndex={mapDayIndex}
+            onActiveDayChange={setMapDayIndex}
+            selectedPlaceId={selectedPlaceId}
+            showPetSafety={itinerary.trip.hasPet}
+            showSouvenirControl={false}
+          />
+        </aside>
+      </div>
+    </div>
+  );
+}

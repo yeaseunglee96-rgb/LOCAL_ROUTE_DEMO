@@ -1,0 +1,82 @@
+import { useEffect, useState } from "react";
+import { InfoCards } from "../../components/InfoCards";
+import { ShareBar } from "../../components/ShareBar";
+import { getBookingOptions, getSponsoredPlacements, startBooking, trackAd } from "../../api/client";
+import type { BookingOption, SponsoredPlacement } from "../../types";
+import { useTrip } from "./TripContext";
+
+/** /trips/:tripId/prep — 예산·여행 팁·필수 서비스 광고·예약 제휴·공유 */
+export function TripPrepPage() {
+  const { itinerary } = useTrip();
+  const [sponsored, setSponsored] = useState<SponsoredPlacement[]>([]);
+  const [bookingOptions, setBookingOptions] = useState<BookingOption[]>([]);
+
+  useEffect(() => {
+    getSponsoredPlacements({ mode: itinerary.mode, hasPet: itinerary.trip.hasPet, language: itinerary.trip.language })
+      .then((placements) => {
+        setSponsored(placements);
+        placements.forEach((placement) => void trackAd(placement.campaignId, "impressions"));
+      })
+      .catch(() => setSponsored([]));
+  }, [itinerary.mode, itinerary.trip.hasPet, itinerary.trip.language]);
+
+  useEffect(() => {
+    if (!itinerary.trip.lodgingPlaceId) { setBookingOptions([]); return; }
+    getBookingOptions(itinerary.trip.lodgingPlaceId).then(setBookingOptions).catch(() => setBookingOptions([]));
+  }, [itinerary.trip.lodgingPlaceId]);
+
+  return (
+    <div className="service-view prep-view">
+      <header className="service-heading">
+        <div>
+          <span className="section-eyebrow">READY TO GO</span>
+          <h1>여행 준비를 한곳에서</h1>
+          <p>예산과 지역 여행 팁을 확인하고, 동행자와 같은 일정을 준비하세요.</p>
+        </div>
+      </header>
+
+      {sponsored.length > 0 && (
+        <section className="sponsored-strip" aria-label="광고">
+          <div>
+            <strong>여행 조건에 맞는 필수 서비스</strong>
+            <span>자연 추천 일정과 분리된 유료 노출입니다.</span>
+          </div>
+          {sponsored.map((placement) => (
+            <article key={placement.campaignId}>
+              <span className="sponsored-label">{placement.label}</span>
+              <b>{itinerary.trip.language === "EN" ? placement.nameEn ?? placement.nameKo : placement.nameKo}</b>
+              <small>{placement.disclosure}</small>
+              <button type="button" onClick={() => void trackAd(placement.campaignId, "clicks")}>서비스 확인</button>
+            </article>
+          ))}
+        </section>
+      )}
+
+      {bookingOptions.length > 0 && (
+        <section className="booking-strip" aria-label="숙소 예약 제휴">
+          <div>
+            <strong>선택한 숙소 예약 확인</strong>
+            <span>외부 제휴사에서 가격과 반려동물 객실을 최종 확인하세요.</span>
+          </div>
+          {bookingOptions.map((option) => (
+            <button type="button" key={option.id} onClick={async () => {
+              const booking = await startBooking(option.id, itinerary.tripId);
+              window.open(booking.bookingUrl, "_blank", "noopener,noreferrer");
+            }}>{option.provider}에서 예약 확인 <small>제휴 링크</small></button>
+          ))}
+        </section>
+      )}
+
+      <InfoCards
+        itinerary={itinerary}
+        collaboration={<ShareBar itineraryId={itinerary.itineraryId} tripId={itinerary.tripId} language={itinerary.trip.language} />}
+      />
+
+      <div className="data-honesty-bar">
+        <strong>데이터 안내</strong>
+        <span>식당은 승인된 카카오 평점·후기 집계가 있을 때만 추천 점수에 반영합니다.</span>
+        <span>비용과 실시간 교통 미연동 구간은 추정값으로 구분합니다.</span>
+      </div>
+    </div>
+  );
+}
