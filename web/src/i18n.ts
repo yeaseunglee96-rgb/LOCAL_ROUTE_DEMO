@@ -59,6 +59,8 @@ const KO_EN: Record<string, string> = {
   "제외 후 재계산": "Exclude & Recalculate",
   "주소 복사": "Copy Address",
   "기사님께 보여주세요": "Show this to driver",
+  "카카오맵 장소 검색 ↗": "Search on Kakao Map ↗",
+  "카카오맵에서 후기 보기": "See on Kakao Map",
   "날짜별 날씨 & 여행 준비물 안내": "Busan Weather & Packing Tips",
   "방문 후 만족도 피드백": "How was your visit?",
   "부산에서의 3일간의 추억 지도": "Memory Map: 3 Days in Busan",

@@ -57,11 +57,22 @@ export function ItemCard({ item, pinned, busy, onTogglePin, onExclude, onReplace
       <h3>{en && item.nameEn ? `${item.nameKo} (${item.nameEn})` : item.nameKo}</h3>
       <p className="place-address">{en ? item.addressEn ?? `${item.address} · English address unavailable` : item.address}</p>
       <div className="evidence-row"><span className="evidence primary">{en ? `Local score ${(item.localScore * 5).toFixed(1)}/5` : `로컬 점수 ${(item.localScore * 5).toFixed(1)}/5`}</span><span className="evidence">{en ? `Open ${item.openTime}–${item.closeTime}` : `영업 ${item.openTime}–${item.closeTime}`}</span><span className="evidence">{en ? `Est. ₩${item.estCost.toLocaleString()}` : `예상 ${item.estCost.toLocaleString()}원`}</span></div>
-      {hasKakaoReviews && <div className="kakao-review-card">
-        <div className="kakao-review-score"><span aria-hidden="true">★</span><strong>{item.kakaoRating!.toFixed(1)}</strong><small>{en ? `${item.kakaoReviewCount!.toLocaleString()} Kakao reviews` : `카카오 후기 ${item.kakaoReviewCount!.toLocaleString()}개`}</small></div>
-        {item.kakaoReviewKeywords.length > 0 && <div className="review-keywords">{item.kakaoReviewKeywords.slice(0, 3).map((keyword) => <span key={keyword}>“{keyword}”</span>)}</div>}
-        <a href={kakaoMapUrl} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>{en ? "See on Kakao Map" : "카카오맵에서 후기 보기"}</a>
-      </div>}
+      {hasKakaoReviews ? (
+        <div className="kakao-review-card">
+          <div className="kakao-review-score">
+            <span aria-hidden="true">★</span>
+            <strong>{item.kakaoRating!.toFixed(1)}</strong>
+            <small>{en ? `${item.kakaoReviewCount!.toLocaleString()} Kakao reviews` : `카카오 후기 ${item.kakaoReviewCount!.toLocaleString()}개`}</small>
+          </div>
+          {item.kakaoReviewKeywords.length > 0 && <div className="review-keywords">{item.kakaoReviewKeywords.slice(0, 3).map((keyword) => <span key={keyword}>“{keyword}”</span>)}</div>}
+          <a href={kakaoMapUrl} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>{en ? "See on Kakao Map" : "카카오맵에서 후기 보기"}</a>
+        </div>
+      ) : (
+        <div className="kakao-review-card simple-link">
+          <span className="evidence-badge-sm">Kakao Map</span>
+          <a href={kakaoMapUrl} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>{en ? "Search on Kakao Map ↗" : "카카오맵 장소 검색 ↗"}</a>
+        </div>
+      )}
       <p className="recommend-reason"><strong>{en ? "Why recommended" : "추천 근거"}</strong>{reason}</p>
       <div className="capability-row">
         {item.hasEnglishMenu && <span>{en ? "English Menu" : "영어 메뉴"}</span>}
