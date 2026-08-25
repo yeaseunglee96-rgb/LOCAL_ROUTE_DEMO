@@ -219,7 +219,11 @@ body{background:#f7f7f8}.dashboard-shell .dashboard-main{background:#f7f7f8;padd
 .discovery-source-link{margin-top:auto;border-bottom:1px solid #9b98a7;color:#4f4b63;font-size:12px;font-weight:750;text-decoration:none}
 
 /* Responsive app shell: protect every view from intrinsic-width overflow. */
-html,body,#root{width:100%;max-width:100%;overflow-x:hidden}
+/* overflow-x 는 hidden 대신 clip 을 쓴다. hidden 은 브라우저가 overflow-y 를
+   auto 로 계산해 스크롤 컨테이너를 만들고, 그 안의 position:sticky(좌측
+   사이드바)를 무력화시켜 스크롤 시 사이드바가 함께 밀려 올라간다.
+   clip 은 스크롤 컨테이너를 만들지 않으므로 sticky 가 정상 동작한다. */
+html,body,#root{width:100%;max-width:100%;overflow-x:clip}
 img,svg,canvas,iframe{max-width:100%}
 .dashboard-shell,.dashboard-main,.dashboard-main>* ,.service-view,.overview-hub,.top-summary-bar,.top-summary-title-row,.dashboard-columns,.dashboard-left,.dashboard-right,.planner-page,.planner-page>*{min-width:0;max-width:100%}
 .dashboard-main>* ,.planner-page{width:100%}
