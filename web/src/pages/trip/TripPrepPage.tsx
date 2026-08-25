@@ -3,24 +3,26 @@ import { InfoCards } from "../../components/InfoCards";
 import { ShareBar } from "../../components/ShareBar";
 import { WeatherPrepWidget } from "../../components/WeatherPrepWidget";
 import { TripMemorySummary } from "../../components/TripMemorySummary";
+import { BusanDialectWidget } from "../../components/BusanDialectWidget";
 import { getBookingOptions, getSponsoredPlacements, startBooking, trackAd } from "../../api/client";
 import type { BookingOption, SponsoredPlacement } from "../../types";
 import { useTrip } from "./TripContext";
 
 /** /trips/:tripId/prep — 예산·여행 팁·필수 서비스 광고·예약 제휴·공유 */
 export function TripPrepPage() {
-  const { itinerary } = useTrip();
+  const { itinerary, itemProps } = useTrip();
   const [sponsored, setSponsored] = useState<SponsoredPlacement[]>([]);
   const [bookingOptions, setBookingOptions] = useState<BookingOption[]>([]);
+  const lang = itemProps.language;
 
   useEffect(() => {
-    getSponsoredPlacements({ mode: itinerary.mode, language: itinerary.trip.language })
+    getSponsoredPlacements({ mode: itinerary.mode, language: lang })
       .then((placements) => {
         setSponsored(placements);
         placements.forEach((placement) => void trackAd(placement.campaignId, "impressions"));
       })
       .catch(() => setSponsored([]));
-  }, [itinerary.mode, itinerary.trip.language]);
+  }, [itinerary.mode, lang]);
 
   useEffect(() => {
     if (!itinerary.trip.lodgingPlaceId) { setBookingOptions([]); return; }
@@ -32,13 +34,14 @@ export function TripPrepPage() {
       <header className="service-heading">
         <div>
           <span className="section-eyebrow">READY TO GO</span>
-          <h1>여행 준비를 한곳에서</h1>
-          <p>예산과 지역 여행 팁을 확인하고, 동행자와 같은 일정을 준비하세요.</p>
+          <h1>{lang === "EN" ? "Travel Prep & Local Expressions" : "여행 준비 & 사투리 표현"}</h1>
+          <p>{lang === "EN" ? "Check budget, travel tips, and master local Busan dialect expressions!" : "예산과 지역 여행 팁을 확인하고, 부산 사투리를 함께 익혀보세요."}</p>
         </div>
       </header>
 
-      <WeatherPrepWidget language={itinerary.trip.language} />
-      <TripMemorySummary language={itinerary.trip.language} daysCount={itinerary.days.length} />
+      <WeatherPrepWidget language={lang} />
+      <TripMemorySummary language={lang} daysCount={itinerary.days.length} />
+      <BusanDialectWidget language={lang} />
 
       {sponsored.length > 0 && (
         <section className="sponsored-strip" aria-label="광고">
