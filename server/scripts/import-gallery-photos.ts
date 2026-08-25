@@ -114,9 +114,25 @@ async function main() {
 
   for (const place of places) {
     console.log(`Processing: ${place.nameKo} (${place.category})`);
+    let imageUrl: string | null = null;
     
+    // Check if it's one of the demo places we manually curated
+    if (place.nameKo === "부산역 동백상회") {
+      imageUrl = "http://tong.visitkorea.or.kr/cms2/website/10/1131210.jpg";
+    } else if (place.nameKo === "영도 로컬 기프트숍") {
+      imageUrl = "http://tong.visitkorea.or.kr/cms2/website/12/1131212.jpg";
+    } else if (place.nameKo === "광안리 부산기념품점") {
+      imageUrl = "http://tong.visitkorea.or.kr/cms2/website/18/1131218.jpg";
+    } else if (place.nameKo === "부산바다축제") {
+      imageUrl = "http://tong.visitkorea.or.kr/cms2/website/04/1046404.jpg";
+    } else if (place.nameKo === "영도다리축제") {
+      imageUrl = "https://tong.visitkorea.or.kr/cms/resource_photo/44/2927844_image2_1.jpg";
+    }
+
     // 1. Try with original nameKo
-    let imageUrl = await fetchPhoto(place.nameKo);
+    if (!imageUrl) {
+      imageUrl = await fetchPhoto(place.nameKo);
+    }
     
     // 2. Try with cleaned keyword
     if (!imageUrl) {
