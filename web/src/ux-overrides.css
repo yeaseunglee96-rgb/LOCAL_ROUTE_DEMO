@@ -422,3 +422,48 @@ button,input,select,textarea{max-width:100%}
 
 .map-full-canvas{min-height:min(74vh,760px);display:grid}
 .map-full-canvas>*{min-height:0}
+
+
+/* ──────────────────────────────────────────────────────────────
+   일정 탭 장소 카드 — 사진 확대
+
+   기존: 72×72 썸네일. 카드 본문은 220~300px 높이인데 사진만 72px이어서
+   왼쪽 열이 크게 비었고, 어떤 장소인지 사진으로 알아보기 어려웠다.
+
+   변경: 사진 열을 172px로 넓히고 카드 높이에 맞춰 늘리되
+   max-height 로 상한을 두어 정사각에 가까운 비율을 유지한다.
+   (상한이 없으면 카카오 후기가 붙은 긴 카드에서 사진이 세로 스트립처럼 늘어난다)
+   폭이 좁아질수록 단계적으로 줄이고, 모바일(≤640px)에서는 숨기는 대신
+   본문 위에 가로로 넓게 배치한다.
+   적용 범위는 .summary-item-list 안쪽 — 일정 탭의 전체 일정·날짜별 보기.
+   ────────────────────────────────────────────────────────────── */
+.summary-item-list .place-card,
+.summary-item-list .place-card.pinned{grid-template-columns:52px 172px minmax(0,1fr);gap:16px;align-items:stretch}
+.summary-item-list .place-visual{width:172px;height:100%;min-height:150px;max-height:190px;border-radius:11px}
+.summary-item-list .place-visual img{width:100%;height:100%;object-fit:cover}
+.summary-item-list .place-placeholder{font-size:34px}
+.summary-item-list .place-visual .image-source-badge{right:7px;bottom:7px;padding:4px 7px;font-size:9px}
+
+@media(max-width:1400px){
+  .summary-item-list .place-card,.summary-item-list .place-card.pinned{grid-template-columns:48px 148px minmax(0,1fr);gap:14px}
+  .summary-item-list .place-visual{width:148px;min-height:132px;max-height:166px}
+}
+@media(max-width:1100px){
+  .summary-item-list .place-card,.summary-item-list .place-card.pinned{grid-template-columns:36px 126px minmax(0,1fr);gap:12px}
+  .summary-item-list .place-visual{display:grid;width:126px;min-height:114px;max-height:142px}
+}
+@media(max-width:760px){
+  .summary-item-list .place-card,.summary-item-list .place-card.pinned{grid-template-columns:32px 106px minmax(0,1fr);gap:10px}
+  .summary-item-list .place-visual{width:106px;min-height:98px;max-height:120px}
+}
+/* 모바일: 숨기지 않고 본문 위에 가로로 넓게 배치한다 */
+@media(max-width:640px){
+  .summary-item-list .place-card,.summary-item-list .place-card.pinned{
+    grid-template-columns:34px minmax(0,1fr);
+    grid-template-areas:"seq visual" "seq content";
+    gap:10px
+  }
+  .summary-item-list .place-sequence{grid-area:seq}
+  .summary-item-list .place-visual{grid-area:visual;display:block;width:100%;height:170px;min-height:0;max-height:none;border-radius:10px}
+  .summary-item-list .place-content{grid-area:content}
+}
