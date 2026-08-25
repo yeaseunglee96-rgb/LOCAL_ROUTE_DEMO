@@ -8,6 +8,7 @@
   ],
   "scripts": {
     "dev": "node scripts/dev.mjs",
+    "doctor": "node scripts/doctor.mjs",
     "dev:server": "npm run dev --workspace server",
     "dev:web": "npm run dev --workspace web",
     "seed": "npm run seed --workspace server"

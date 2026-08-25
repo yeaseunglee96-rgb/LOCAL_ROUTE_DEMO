@@ -34,7 +34,7 @@ export function HomePage() {
         <h1>부산을 마음껏 즐기세요</h1>
         <p>장소를 나열하는 대신 운영시간, 이동시간, 예산과 동반 조건을 함께 계산합니다.</p>
         <button type="button" className="primary-btn" onClick={() => navigate(paths.plan())}>여행 일정 만들기</button>
-        {placeCount !== null && <small>등록된 로컬 장소 {placeCount.toLocaleString()}곳 (부산 기준)</small>}
+        {typeof placeCount === "number" && <small>등록된 로컬 장소 {placeCount.toLocaleString()}곳 (부산 기준)</small>}
       </section>
 
       {categories.length > 0 && (

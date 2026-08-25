@@ -100,7 +100,9 @@ export async function updateTripPreferences(
 export async function getPlaceCount(): Promise<number> {
   const res = await fetch("/api/places");
   const places = await handle<PlaceRecord[]>(res);
-  return places.length;
+  // 서버가 배열이 아닌 형태(에러 객체, 페이지네이션 래퍼 등)를 돌려줘도
+  // 화면이 깨지지 않도록 숫자를 보장한다.
+  return Array.isArray(places) ? places.length : 0;
 }
 
 export async function getCourseCategories(): Promise<CourseCategory[]> {
