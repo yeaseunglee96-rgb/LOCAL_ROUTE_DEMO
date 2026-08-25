@@ -161,7 +161,7 @@ export async function buildItinerary(
     }
   }
 
-  // 지리적으로 가까운 장소를 같은 날짜로 채움 (라운드로빈)
+  // 지리적으로 가장 가까운 장소를 같은 날짜로 채움 (거리 제곱 페널티로 이동시간 최적화)
   let guard = 0;
   while (pool.length > 0 && guard < 10000) {
     guard++;
@@ -172,11 +172,15 @@ export async function buildItinerary(
       if (pool.length === 0) break;
       const c = centroid(dayBuckets[d]);
       let nearestIdx = 0;
-      let nearestDist = Infinity;
+      let minCostScore = Infinity;
       pool.forEach((p, i) => {
-        const dist = haversineDistanceM(c.lat, c.lng, p.lat, p.lng);
-        if (dist < nearestDist) {
-          nearestDist = dist;
+        const distM = haversineDistanceM(c.lat, c.lng, p.lat, p.lng);
+        // 이동 시간을 최소화하기 위해 4km 초과 장소에는 거리에 비선형 페널티를 부과
+        const spatialPenalty = distM > 4000 ? Math.pow(distM / 1000, 2.2) * 800 : distM;
+        // 장소 추천 점수(p.score)와 지리적 근접성을 결합
+        const scoreFit = spatialPenalty - p.score * 1500;
+        if (scoreFit < minCostScore) {
+          minCostScore = scoreFit;
           nearestIdx = i;
         }
       });
@@ -445,8 +449,10 @@ function scheduleSingleDay(
       const closeMin = parseTimeToMin(p.closeTime);
       const departure = arrival + p.recommendedStayMin;
       if (arrival < openMin || departure > closeMin || departure > endTimeMin) continue;
-      if (travel.durationMin < chosenTravel) {
-        chosenTravel = travel.durationMin;
+      // 이동 시간 최소화 우선
+      const travelScore = travel.durationMin * 2.0 - p.score * 2;
+      if (travelScore < chosenTravel) {
+        chosenTravel = travelScore;
         chosenIdx = i;
         chosenArrival = arrival;
       }
