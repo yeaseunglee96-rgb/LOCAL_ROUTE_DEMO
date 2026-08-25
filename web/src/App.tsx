@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { acceptInvite, createTrip, generateItinerary, getItinerary, getLodgings, getPlaceCount, reoptimizeDay, undoItineraryChange } from "./api/client";
+import { acceptInvite, ApiUnavailableError, createTrip, generateItinerary, getItinerary, getLodgings, getPlaceCount, reoptimizeDay, undoItineraryChange } from "./api/client";
 import { ResultDashboard } from "./pages/ResultDashboard";
 import { TripFormPage } from "./pages/TripFormPage";
 import { GenerationProgress } from "./components/GenerationProgress";
@@ -61,14 +61,15 @@ export default function App() {
   const [view, setView] = useState<ViewState>({ kind: "form" });
   const [placeCount, setPlaceCount] = useState<number | null>(null);
   const [lodgings, setLodgings] = useState<PlaceRecord[]>([]);
+  const [apiOffline, setApiOffline] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
   const [pinnedPlaceIds, setPinnedPlaceIds] = useState<string[]>([]);
   const [excludedPlaceIds, setExcludedPlaceIds] = useState<string[]>([]);
 
   useEffect(() => {
     getPlaceCount()
-      .then(setPlaceCount)
-      .catch(() => setPlaceCount(null));
+      .then((count) => { setPlaceCount(count); setApiOffline(false); })
+      .catch((error) => { setPlaceCount(null); setApiOffline(error instanceof ApiUnavailableError); });
     getLodgings().then(setLodgings).catch(() => setLodgings([]));
 
     if (shareSlug) return;
@@ -145,36 +146,53 @@ export default function App() {
     setView({ kind: "form", initialValues });
   };
 
-  if (shareSlug) return <SharedItineraryPage slug={shareSlug} />;
+  const renderView = () => {
+    if (shareSlug) return <SharedItineraryPage slug={shareSlug} />;
 
-  if (view.kind === "result") {
+    if (view.kind === "result") {
+      return (
+        <ResultDashboard
+          itinerary={view.itinerary}
+          placeCount={placeCount}
+          regenerating={regenerating}
+          onRegenerate={handleRegenerate}
+          onEdit={handleEdit}
+          pinnedPlaceIds={pinnedPlaceIds}
+          excludedPlaceIds={excludedPlaceIds}
+          onPartialReoptimize={handlePartialReoptimize}
+          onUndo={handleUndo}
+        />
+      );
+    }
+
+    if (view.kind === "loading") {
+      return <GenerationProgress job={view.job} />;
+    }
+
     return (
-      <ResultDashboard
-        itinerary={view.itinerary}
+      <TripFormPage
+        onSubmit={handleSubmit}
+        submitting={false}
+        errorMessage={view.kind === "error" ? view.message : null}
         placeCount={placeCount}
-        regenerating={regenerating}
-        onRegenerate={handleRegenerate}
-        onEdit={handleEdit}
-        pinnedPlaceIds={pinnedPlaceIds}
-        excludedPlaceIds={excludedPlaceIds}
-        onPartialReoptimize={handlePartialReoptimize}
-        onUndo={handleUndo}
+        initialValues={view.kind === "form" ? view.initialValues : undefined}
+        lodgings={lodgings}
       />
     );
-  }
-
-  if (view.kind === "loading") {
-    return <GenerationProgress job={view.job} />;
-  }
+  };
 
   return (
-    <TripFormPage
-      onSubmit={handleSubmit}
-      submitting={false}
-      errorMessage={view.kind === "error" ? view.message : null}
-      placeCount={placeCount}
-      initialValues={view.kind === "form" ? view.initialValues : undefined}
-      lodgings={lodgings}
-    />
+    <>
+      {apiOffline && (
+        <div className="api-offline-banner" role="alert">
+          <strong>백엔드 서버에 연결할 수 없습니다</strong>
+          <span>
+            화면은 표시되지만 장소 조회·일정 생성 등 모든 기능이 동작하지 않습니다.
+            프로젝트 루트에서 <code>npm run dev</code> 를 실행하면 서버(:4000)와 웹(:5173)이 함께 실행됩니다.
+          </span>
+        </div>
+      )}
+      {renderView()}
+    </>
   );
 }

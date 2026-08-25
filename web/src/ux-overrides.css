@@ -352,3 +352,28 @@ button,input,select,textarea{max-width:100%}
   .my-story-area{grid-template-columns:1fr}
   .composer-toggle{width:100%;min-height:44px}
 }
+
+
+/* 백엔드 미실행 경고 — 화면만 뜨고 기능이 죽는 상황을 눈에 보이게 한다 */
+.api-offline-banner {
+  position: sticky;
+  top: 0;
+  z-index: 999;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 20px;
+  background: #fef2f2;
+  border-bottom: 2px solid #dc2626;
+  color: #7f1d1d;
+  font-size: 13px;
+  line-height: 1.55;
+}
+.api-offline-banner strong { font-size: 14px; }
+.api-offline-banner code {
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: #fee2e2;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+}

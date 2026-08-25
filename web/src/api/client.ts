@@ -1,5 +1,27 @@
 import type { BookingOption, CourseCategory, CreateTripRequest, EmbeddedRoute, Festival, ItineraryJob, ItineraryOutput, LocationSearchResult, PetSafetyPlace, PlaceAlternative, PlaceImageMatch, PlaceRecord, SharedItinerary, SouvenirShop, SponsoredPlacement, StoryRecord, WeatherForecast } from "../types";
 
+/**
+ * 백엔드가 떠 있지 않으면 fetch 는 TypeError("Failed to fetch") 로 실패한다.
+ * 그대로 두면 화면은 정상인데 기능만 조용히 죽어 원인을 찾기 어렵다.
+ * 이 모듈 안의 모든 fetch 호출을 감싸 원인을 명확한 에러로 바꾼다.
+ */
+export class ApiUnavailableError extends Error {
+  constructor() {
+    super("백엔드 서버(http://localhost:4000)에 연결할 수 없습니다. 프로젝트 루트에서 npm run dev 로 서버와 웹을 함께 실행해 주세요.");
+    this.name = "ApiUnavailableError";
+  }
+}
+
+const rawFetch = globalThis.fetch.bind(globalThis);
+// 아래 fetch 는 이 모듈 스코프에서 전역 fetch 를 가린다(호출부 수정 불필요).
+async function fetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  try {
+    return await rawFetch(input, init);
+  } catch {
+    throw new ApiUnavailableError();
+  }
+}
+
 async function handle<T>(res: Response): Promise<T> {
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
