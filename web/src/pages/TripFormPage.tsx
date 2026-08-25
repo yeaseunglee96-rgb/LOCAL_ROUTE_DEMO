@@ -7,6 +7,8 @@ import { OriginPicker } from "../components/OriginPicker";
 import { DesiredPlacesPicker, type DesiredPlace } from "../components/DesiredPlacesPicker";
 import type { LocationSearchResult } from "../types";
 
+import { DesiredFoodPicker } from "../components/DesiredFoodPicker";
+
 const ORIGINS: LocationSearchResult[] = [
   { id: "preset-busan-station", name: "부산역", address: "부산 동구 중앙대로 206", lat: 35.1152, lng: 129.0403, category: "교통" },
   { id: "preset-haeundae", name: "해운대", address: "부산 해운대구 해운대해변로", lat: 35.1587, lng: 129.1604, category: "지역" },
@@ -64,6 +66,7 @@ export function TripFormPage({ onSubmit, submitting, errorMessage, placeCount, i
   useEffect(() => { getCourseCategories().then(setCourseCategories).catch(() => setCourseCategories([])); }, []);
   const [allergyText, setAllergyText] = useState((initialValues?.allergies ?? []).join(", "));
   const [dietType, setDietType] = useState<DietType>(initialValues?.dietType ?? "NONE");
+  const [desiredFoods, setDesiredFoods] = useState<string[]>(initialValues?.desiredFoods ?? ["milmyeon", "dwaeji_gukbap"]);
   const [desiredPlaces, setDesiredPlaces] = useState<DesiredPlace[]>(
     (initialValues?.mustVisitAssignments ?? []).map((a) => ({ placeId: a.placeId, name: a.placeId, address: "", dayIndex: a.dayIndex }))
   );
@@ -83,10 +86,11 @@ export function TripFormPage({ onSubmit, submitting, errorMessage, placeCount, i
     recommendationMode: mode, dayStart, dayEnd,
     maxWalkingKm: 100, language,
     allergies: allergyText.split(",").map((value) => value.trim()).filter(Boolean), dietType,
+    desiredFoods,
     mustVisitPlaceIds: desiredPlaces.map((place) => place.placeId),
     mustVisitAssignments: desiredPlaces.map((place) => ({ placeId: place.placeId, dayIndex: Math.min(Math.max(place.dayIndex, 1), numDays) })),
     ...recommendationRatios,
-  }), [origin, startDate, endDate, partySize, totalBudget, hasCar, pace, selectedTags, selectedCourse, courseCategory, mode, dayStart, dayEnd, language, allergyText, dietType, desiredPlaces, numDays]);
+  }), [origin, startDate, endDate, partySize, totalBudget, hasCar, pace, selectedTags, selectedCourse, courseCategory, mode, dayStart, dayEnd, language, allergyText, dietType, desiredFoods, desiredPlaces, numDays]);
 
   const submit = (event: React.FormEvent) => {
     event.preventDefault();
@@ -119,7 +123,8 @@ export function TripFormPage({ onSubmit, submitting, errorMessage, placeCount, i
           <div className="section-heading"><div><span>STEP 2</span><h2 id="taste-title">어떤 부산을 만나고 싶나요?</h2></div><p>선택한 취향은 추천 점수의 근거로 표시됩니다.</p></div>
           <div className="mode-grid" role="radiogroup" aria-label="추천 모드">{MODES.map((item, index) => <button type="button" role="radio" aria-checked={mode === item.value} key={item.value} className={mode === item.value ? "selected" : ""} onClick={() => setMode(item.value)}><span className="mode-number">0{index + 1}</span><strong>{item.title}</strong><small>{item.description}</small></button>)}</div>
           <section className="course-category-section" aria-labelledby="course-category-title"><div className="course-category-heading"><div><span>COURSE CATEGORY · 10</span><h3 id="course-category-title">어떤 성격의 여행을 원하나요?</h3></div><p>추천 모드와 코스 카테고리를 함께 적용합니다.</p></div><div className="course-category-grid" role="radiogroup" aria-label="코스 카테고리"><button type="button" role="radio" aria-checked={!courseCategory} className={!courseCategory ? "selected" : ""} onClick={() => setCourseCategory("")}><span>GENERAL</span><strong>기본 코스</strong><small>별도 카테고리 없이 취향을 중심으로 구성</small></button>{courseCategories.map((category, index) => <button type="button" role="radio" aria-checked={courseCategory === category.code} className={courseCategory === category.code ? "selected" : ""} key={category.code} onClick={() => { setCourseCategory(category.code); if (category.scheduleParams?.pace) setPace(category.scheduleParams.pace); const transport = category.scheduleParams?.transport ?? ""; if (transport.startsWith("WALK")) setHasCar(false); else if (transport === "CAR" || transport.startsWith("CAR_OR_TAXI")) setHasCar(true); }}><span>{String(index + 1).padStart(2, "0")} · {{ BUDGET: "예산", MOOD: "분위기", THEME: "테마", MOBILITY: "이동", COMPANION: "동행", SITUATION: "상황" }[category.axis]}</span><strong>{language === "EN" ? category.nameEn : category.nameKo}</strong><small>{category.summaryKo}</small></button>)}</div></section>
-          <div className="field"><span>여행 취향 · {selectedTags.length}개 선택</span><div className="tag-grid">{TAGS.map(([slug, label]) => { const selected = selectedTags.includes(slug); return <button type="button" aria-pressed={selected} key={slug} className={`tag-chip ${selected ? "selected" : ""}`} onClick={() => setSelectedTags((prev) => selected ? prev.filter((tag) => tag !== slug) : [...prev, slug])}>{selected && <span aria-hidden="true">✓ </span>}{label}</button>; })}</div><small>선택하지 않으면 거리와 로컬 점수를 중심으로 계산합니다.</small></div>
+          <DesiredFoodPicker selectedFoods={desiredFoods} onChange={setDesiredFoods} language={language} />
+          <div className="field" style={{ marginTop: "24px" }}><span>여행 취향 · {selectedTags.length}개 선택</span><div className="tag-grid">{TAGS.map(([slug, label]) => { const selected = selectedTags.includes(slug); return <button type="button" aria-pressed={selected} key={slug} className={`tag-chip ${selected ? "selected" : ""}`} onClick={() => setSelectedTags((prev) => selected ? prev.filter((tag) => tag !== slug) : [...prev, slug])}>{selected && <span aria-hidden="true">✓ </span>}{label}</button>; })}</div><small>선택하지 않으면 거리와 로컬 점수를 중심으로 계산합니다.</small></div>
           <DesiredPlacesPicker numDays={numDays} value={desiredPlaces} onChange={setDesiredPlaces} />
         </section>}
 

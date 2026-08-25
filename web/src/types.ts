@@ -25,6 +25,7 @@ export interface CreateTripRequest {
   language?: "KO" | "EN";
   allergies?: string[];
   dietType?: DietType;
+  desiredFoods?: string[];
   lodgingPlaceId?: string;
   landmarkRatio?: number;
   localRatio?: number;
@@ -52,6 +53,7 @@ export interface TripMeta {
   language: "KO" | "EN";
   allergies: string[];
   dietType: DietType;
+  desiredFoods?: string[];
   lodgingPlaceId: string | null;
   lodgingName: string | null;
   lodgingAddress: string | null;
@@ -76,6 +78,12 @@ export interface ItineraryItemOutput {
   lng: number;
   openTime: string;
   closeTime: string;
+  breakTime?: string | null;
+  soloFriendly?: boolean;
+  phoneRequiredForWaiting?: boolean;
+  takeoutAvailable?: boolean;
+  subwayStation?: string | null;
+  subwayExit?: string | null;
   plannedArrival: string;
   stayMinutes: number;
   estCost: number;

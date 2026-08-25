@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { InfoCards } from "../../components/InfoCards";
 import { ShareBar } from "../../components/ShareBar";
+import { WeatherPrepWidget } from "../../components/WeatherPrepWidget";
+import { TripMemorySummary } from "../../components/TripMemorySummary";
 import { getBookingOptions, getSponsoredPlacements, startBooking, trackAd } from "../../api/client";
 import type { BookingOption, SponsoredPlacement } from "../../types";
 import { useTrip } from "./TripContext";
@@ -34,6 +36,9 @@ export function TripPrepPage() {
           <p>예산과 지역 여행 팁을 확인하고, 동행자와 같은 일정을 준비하세요.</p>
         </div>
       </header>
+
+      <WeatherPrepWidget language={itinerary.trip.language} />
+      <TripMemorySummary language={itinerary.trip.language} daysCount={itinerary.days.length} />
 
       {sponsored.length > 0 && (
         <section className="sponsored-strip" aria-label="광고">

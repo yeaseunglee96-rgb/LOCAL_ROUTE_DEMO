@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { ItineraryItemOutput, PlaceImageMatch } from "../types";
 import { getPlaceImage } from "../api/client";
+import { SpeakModal } from "./SpeakModal";
 
 const CATEGORY_META: Record<string, { label: string; color: string }> = {
   TOURIST: { label: "관광지", color: "#b9d9f4" }, RESTAURANT: { label: "식당", color: "#d8cff4" },
@@ -22,6 +23,7 @@ interface Props {
 
 export function ItemCard({ item, pinned, busy, onTogglePin, onExclude, onReplace, onSelect, language, userAllergies = [], dietType = "NONE" }: Props) {
   const [expanded, setExpanded] = useState(false);
+  const [showSpeakModal, setShowSpeakModal] = useState(false);
   const [searchedImage, setSearchedImage] = useState<PlaceImageMatch | null>(null);
   const [imageFailed, setImageFailed] = useState(false);
   const meta = CATEGORY_META[item.category] ?? { label: item.category, color: "#d8dde5" };
@@ -61,19 +63,36 @@ export function ItemCard({ item, pinned, busy, onTogglePin, onExclude, onReplace
         <a href={kakaoMapUrl} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>{en ? "See on Kakao Map" : "카카오맵에서 후기 보기"}</a>
       </div>}
       <p className="recommend-reason"><strong>{en ? "Why recommended" : "추천 근거"}</strong>{reason}</p>
-      <div className="capability-row">{item.hasEnglishMenu && <span>{en ? "English menu" : "영어 메뉴"}</span>}{item.foreignCardPayment && <span>{en ? "International cards" : "해외카드"}</span>}</div>
+      <div className="capability-row">
+        {item.hasEnglishMenu && <span>{en ? "English menu" : "영어 메뉴"}</span>}
+        {item.foreignCardPayment && <span>{en ? "International cards" : "해외카드"}</span>}
+        {item.soloFriendly && <span style={{ background: "#e0f2fe", color: "#0369a1" }}>{en ? "Solo Friendly" : "혼밥 가능"}</span>}
+        {item.takeoutAvailable && <span style={{ background: "#fef3c7", color: "#b45309" }}>{en ? "Takeout Available" : "포장 가능"}</span>}
+      </div>
       {needsFoodCheck && <div className="allergy-warning">{en ? "Allergen/diet data unavailable. Please confirm before ordering." : "알레르기·식단 정보가 없어 주문 전 확인이 필요합니다."}</div>}
       {expanded && <div className="place-details">
         <dl><div><dt>데이터 출처</dt><dd>{sourceLabel}</dd></div>{item.category === "RESTAURANT" && <div><dt>카카오 후기</dt><dd>{hasKakaoReviews ? `${item.kakaoReviewSource === "LICENSED_IMPORT" ? "승인된 집계 데이터" : "수동 검증"}${reviewDate ? ` · ${reviewDate} 기준` : ""}` : "공식 API 미제공 · 검증된 집계 연결 전에는 추천 점수에 미반영"}</dd></div>}<div><dt>비용 성격</dt><dd>가격대 기반 추정 · 실제 결제 금액과 다를 수 있음</dd></div></dl>
         <div className="taxi-card"><span>{en ? "Show this to the driver" : "기사님께 보여주세요"}</span><b>{taxiText}</b><button type="button" onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(taxiText); }}>{en ? "Copy address" : "주소 복사"}</button></div>
       </div>}
       <div className="place-actions">
+        <button type="button" style={{ background: "#0f7a68", color: "#fff" }} onClick={(e) => { e.stopPropagation(); setShowSpeakModal(true); }}>
+          🗣️ {en ? "Speak Korean" : "한국어 말하기"}
+        </button>
         <button type="button" onClick={(e) => { e.stopPropagation(); setExpanded((value) => !value); }} aria-expanded={expanded}>{expanded ? "정보 접기" : "근거·정책 보기"}</button>
         <button type="button" onClick={(event) => { event.stopPropagation(); onSelect?.(item); window.setTimeout(() => document.getElementById("route-map")?.scrollIntoView({ behavior: "smooth", block: "center" }), 0); }}>{en ? "Route on map" : "지도에서 경로 보기"}</button>
         {onTogglePin && <button type="button" disabled={busy} onClick={(e) => { e.stopPropagation(); onTogglePin(item); }}>{pinned ? "고정 해제" : "장소 고정"}</button>}
         {onReplace && <button type="button" disabled={busy || pinned} onClick={(e) => { e.stopPropagation(); onReplace(item); }}>비슷한 장소로 교체</button>}
         {onExclude && <button type="button" className="danger-action" disabled={busy || pinned} onClick={(e) => { e.stopPropagation(); onExclude(item); }}>제외 후 재계산</button>}
       </div>
+
+      <SpeakModal
+        isOpen={showSpeakModal}
+        onClose={() => setShowSpeakModal(false)}
+        targetCategory={item.category}
+        targetAddress={item.address}
+        targetName={item.nameKo}
+        language={language}
+      />
     </div>
   </article>;
 }

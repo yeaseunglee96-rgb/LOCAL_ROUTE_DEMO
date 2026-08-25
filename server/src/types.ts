@@ -28,6 +28,7 @@ export interface CreateTripRequest {
   language?: Language;
   allergies?: string[];
   dietType?: DietType;
+  desiredFoods?: string[];
   lodgingPlaceId?: string;
   landmarkRatio?: number;
   localRatio?: number;
@@ -55,6 +56,7 @@ export interface TripMeta {
   language: Language;
   allergies: string[];
   dietType: DietType;
+  desiredFoods?: string[];
   lodgingPlaceId: string | null;
   lodgingName: string | null;
   lodgingAddress: string | null;
