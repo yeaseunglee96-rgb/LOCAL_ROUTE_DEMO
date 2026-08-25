@@ -27,7 +27,6 @@
       ],
       "weightMultipliers": { "budgetFit": 2.0, "travelEfficiency": 1.5 },
       "scheduleParams": { "pace": "NORMAL", "placesPerDay": [4, 5], "transport": "WALK_FIRST", "stayMinutesScale": 1.0 },
-      "boostTasteTags": ["culture", "nature"],
       "relaxationLadder": [
         { "step": 1, "action": "EXPAND_RADIUS", "value": 1.5 },
         { "step": 2, "action": "ALLOW_PRICE_LEVEL", "value": 1, "maxPlacesPerDay": 1,
@@ -38,7 +37,7 @@
     {
       "code": "BEST_BANG", "nameKo": "갓성비 코스", "nameEn": "Best Bang", "axis": "BUDGET",
       "summaryKo": "낸 돈 대비 만족이 가장 큰 곳",
-      "enabled": true,
+      "enabled": false, "disabledReason": "DATA_NOT_READY_SATISFACTION",
       "budgetPerPersonPerDay": { "min": 50000, "max": 80000 },
       "hardFilters": [
         { "field": "priceLevel", "op": "lte", "value": 2 }
@@ -51,7 +50,6 @@
         "weight": 25
       },
       "scheduleParams": { "pace": "NORMAL", "placesPerDay": [4, 5], "transport": "CAR_OR_WALK", "stayMinutesScale": 1.0 },
-      "boostTasteTags": ["hidden_local", "food", "culture"],
       "relaxationLadder": [
         { "step": 1, "action": "EXPAND_RADIUS", "value": 1.5 },
         { "step": 2, "action": "ALLOW_PRICE_LEVEL", "value": 3 }
@@ -60,7 +58,7 @@
     {
       "code": "SPLURGE", "nameKo": "럭셔리 코스", "nameEn": "Splurge", "axis": "BUDGET",
       "summaryKo": "가격을 보지 않고 최고만",
-      "enabled": true,
+      "enabled": false, "disabledReason": "INVENTORY_UNVERIFIED_BUSAN",
       "budgetPerPersonPerDay": { "min": 200000, "max": null },
       "hardFilters": [
         { "field": "priceLevel", "op": "gte", "value": 4 }
@@ -68,7 +66,6 @@
       "weightMultipliers": { "foreignerEase": 1.3, "travelEfficiency": 0.8 },
       "budgetFitMode": "INVERSE",
       "scheduleParams": { "pace": "RELAXED", "placesPerDay": [3, 4], "transport": "CAR_OR_TAXI", "stayMinutesScale": 1.3 },
-      "boostTasteTags": ["relax", "food", "cafe"],
       "relaxationLadder": [
         { "step": 1, "action": "ALLOW_PRICE_LEVEL", "value": 3 },
         { "step": 2, "action": "SUGGEST_ALTERNATIVE_CATEGORY", "value": "BEST_BANG" }
@@ -84,7 +81,6 @@
       ],
       "weightMultipliers": { "localScore": 2.0, "tasteMatch": 1.2, "travelEfficiency": 1.2 },
       "landmarkPenalty": 0.5,
-      "boostTasteTags": ["food", "history", "hidden_local"],
       "scheduleParams": { "pace": "NORMAL", "placesPerDay": [4, 5], "transport": "WALK_FIRST", "stayMinutesScale": 1.0,
                           "forbidTimeRange": { "after": "20:00", "reasonKo": "시장·노포는 야간 영업이 드묾" } },
       "relaxationLadder": [
@@ -101,7 +97,7 @@
         { "field": "outdoorRatioPerDay", "op": "gte", "value": 0.7, "scope": "DAY" }
       ],
       "weightMultipliers": { "tasteMatch": 1.5, "petFit": 1.2 },
-      "boostTasteTags": ["nature", "relax", "photo"],
+      "boostTasteTags": ["nature", "rest", "photo"],
       "scheduleParams": { "pace": "RELAXED", "placesPerDay": [3, 4], "transport": "CAR", "stayMinutesScale": 1.4,
                           "maxWalkDistanceScale": 1.5 },
       "relaxationLadder": [
@@ -112,14 +108,14 @@
     {
       "code": "PICTURE_PERFECT", "nameKo": "인생샷 코스", "nameEn": "Picture Perfect", "axis": "THEME",
       "summaryKo": "사진이 가장 잘 나오는 순간에 맞춰",
-      "enabled": true,
+      "enabled": false, "disabledReason": "DATA_NOT_READY_PHOTO_TIME_WINDOW",
       "budgetPerPersonPerDay": { "min": 50000, "max": 90000 },
       "hardFilters": [
         { "field": "hasPhotoTag", "op": "eq", "value": true },
         { "field": "thumbnail", "op": "notNull" }
       ],
       "weightMultipliers": { "tasteMatch": 1.5, "travelEfficiency": 0.7 },
-      "boostTasteTags": ["photo", "nightview"],
+      "boostTasteTags": ["photo", "night_view"],
       "timeWindowRule": {
         "$comment": "photoTimeWindow가 SUNSET인 장소는 일몰시각 기준으로 고정 배치한다.",
         "field": "photoTimeWindow",
@@ -146,7 +142,6 @@
           "$comment": "하루 일정의 모든 장소가 반경 1.2km 클러스터 안에 있어야 한다" }
       ],
       "weightMultipliers": { "travelEfficiency": 2.0, "foreignerEase": 1.3 },
-      "boostTasteTags": ["hidden_local", "shopping", "culture"],
       "scheduleParams": { "pace": "NORMAL", "placesPerDay": [3, 4], "transport": "WALK_ONLY",
                           "maxWalkDistanceScale": 1.5, "stayMinutesScale": 1.1 },
       "relaxationLadder": [
@@ -157,14 +152,13 @@
     {
       "code": "EASY_PACE", "nameKo": "효도 코스", "nameEn": "Easy Pace", "axis": "COMPANION",
       "summaryKo": "부모님과 무리 없이",
-      "enabled": true,
+      "enabled": false, "disabledReason": "DATA_NOT_READY_STEP_FREE",
       "budgetPerPersonPerDay": { "min": 60000, "max": 100000 },
       "hardFilters": [
         { "field": "stepFree", "op": "eq", "value": true },
         { "field": "hasSeating", "op": "eq", "value": true }
       ],
       "weightMultipliers": { "travelEfficiency": 1.5 },
-      "boostTasteTags": ["relax", "indoor", "culture"],
       "scheduleParams": { "pace": "RELAXED", "placesPerDay": [3, 4], "transport": "CAR",
                           "maxTravelMinutesBetween": 20, "stayMinutesScale": 1.2,
                           "regularMealTimes": true },
@@ -176,14 +170,13 @@
     {
       "code": "SOLO_FRIENDLY", "nameKo": "혼행 코스", "nameEn": "Solo Friendly", "axis": "COMPANION",
       "summaryKo": "혼자여도 어색하지 않은 곳",
-      "enabled": true,
+      "enabled": false, "disabledReason": "DATA_NOT_READY_SOLO_FLAG",
       "budgetPerPersonPerDay": { "min": 40000, "max": 70000 },
       "hardFilters": [
         { "field": "soloFriendly", "op": "eq", "value": true },
         { "field": "requiresGroupBooking", "op": "eq", "value": false }
       ],
       "weightMultipliers": { "travelEfficiency": 1.2 },
-      "boostTasteTags": ["cafe", "culture", "hidden_local"],
       "nightSafetyPenalty": { "after": "21:00", "multiplier": 0.5 },
       "scheduleParams": { "pace": "NORMAL", "placesPerDay": [4, 5], "transport": "WALK_OR_TRANSIT",
                           "stayMinutesScale": 0.9, "dayEndTimeCap": "21:00" },
@@ -200,7 +193,6 @@
         { "field": "indoorRatioPerDay", "op": "gte", "value": 0.9, "scope": "DAY" }
       ],
       "weightMultipliers": { "travelEfficiency": 1.5 },
-      "boostTasteTags": ["indoor", "culture", "cafe"],
       "scheduleParams": { "pace": "NORMAL", "placesPerDay": [3, 4], "transport": "CAR_OR_TAXI", "stayMinutesScale": 1.2 },
       "isFallbackFor": "WEATHER_ALERT",
       "relaxationLadder": [
