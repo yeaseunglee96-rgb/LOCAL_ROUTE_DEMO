@@ -119,18 +119,9 @@ export async function getEmbeddedRoute(lat1: number, lng1: number, lat2: number,
   const fallback = fallbackEstimate(lat1, lng1, lat2, lng2, mode === "CAR");
   const busMinutes = Math.max(12, Math.round(fallback.distanceM / 1000 / 18 * 60) + 8);
   const subwayMinutes = Math.max(15, Math.round(fallback.distanceM / 1000 / 32 * 60) + 12);
-  const fallbackAlternatives: TransitAlternative[] = mode === "TRANSIT" ? [
-    { id: "estimated-bus", label: "버스 중심 예상", distanceM: fallback.distanceM, durationMin: busMinutes, fare: 1550, transfers: 0, path: [[lng1, lat1], [lng2, lat2]], isEstimate: true, steps: [
-      { guidance: "출발지에서 가까운 버스 정류장까지 도보 이동", durationMin: 5, distanceM: 350, vehicle: "도보" },
-      { guidance: "목적지 방향 버스 탑승 구간", durationMin: Math.max(4, busMinutes - 9), distanceM: Math.max(0, fallback.distanceM - 650), vehicle: "버스 · 실제 노선은 데이터 연동 시 표시" },
-      { guidance: "하차 후 목적지까지 도보 이동", durationMin: 4, distanceM: 300, vehicle: "도보" },
-    ] },
-    { id: "estimated-subway", label: "지하철 중심 예상", distanceM: fallback.distanceM, durationMin: subwayMinutes, fare: 1650, transfers: fallback.distanceM > 9000 ? 1 : 0, path: [[lng1, lat1], [lng2, lat2]], isEstimate: true, steps: [
-      { guidance: "출발지에서 가까운 도시철도역까지 이동", durationMin: 7, distanceM: 500, vehicle: "도보 또는 버스" },
-      { guidance: "목적지 인근 역 방향 지하철 탑승 구간", durationMin: Math.max(4, subwayMinutes - 12), distanceM: Math.max(0, fallback.distanceM - 900), vehicle: "지하철 · 실제 호선은 데이터 연동 시 표시" },
-      { guidance: "역에서 목적지까지 도보 이동", durationMin: 5, distanceM: 400, vehicle: "도보" },
-    ] },
-  ] : [];
+  const fallbackAlternatives: TransitAlternative[] = mode === "TRANSIT"
+    ? getFallbackAlternatives(lat1, lng1, lat2, lng2, fallback.distanceM, busMinutes, subwayMinutes)
+    : [];
   const fallbackResult: EmbeddedRoute = {
     mode, distanceM: fallback.distanceM, durationMin: mode === "TRANSIT" ? Math.max(8, Math.round(fallback.durationMin * .55)) : fallback.durationMin,
     fare: null, transfers: null, steps: [{ guidance: mode === "TRANSIT" ? "대중교통 경로 데이터를 확인할 수 없어 예상 시간으로 표시합니다." : "자동차 경로 데이터를 확인할 수 없어 예상 시간으로 표시합니다.", durationMin: fallback.durationMin, distanceM: fallback.distanceM, vehicle: null }],
@@ -244,3 +235,189 @@ export function estimateTravelSync(
 }
 
 export { haversineDistanceM };
+
+function getFallbackAlternatives(
+  lat1: number, lng1: number,
+  lat2: number, lng2: number,
+  distanceM: number,
+  busMinutes: number,
+  subwayMinutes: number
+): TransitAlternative[] {
+  const getRegion = (lat: number, lng: number) => {
+    if (lat < 35.10 && lng < 129.09) return "YEONGDO";
+    if (lat >= 35.10 && lat < 35.14 && lng < 129.09) return "BUSAN_STATION";
+    if (lat >= 35.14 && lat < 35.16 && lng >= 129.09 && lng < 129.14) return "GWANGALLI";
+    if (lat >= 35.15 && lng >= 129.14) return "HAEUNDAE";
+    return "OTHER";
+  };
+
+  const r1 = getRegion(lat1, lng1);
+  const r2 = getRegion(lat2, lng2);
+
+  let busSteps = [
+    { guidance: "출발지 인근 버스 정류장으로 도보 이동", durationMin: 5, distanceM: 300, vehicle: "도보" },
+    { guidance: "목적지 방면 시내버스 탑승", durationMin: Math.max(5, busMinutes - 9), distanceM: Math.max(100, distanceM - 600), vehicle: "시내버스" },
+    { guidance: "정류장 하차 후 목적지까지 도보 이동", durationMin: 4, distanceM: 300, vehicle: "도보" }
+  ];
+  let subwaySteps = [
+    { guidance: "출발지 인근 도시철도역으로 도보 이동", durationMin: 6, distanceM: 400, vehicle: "도보" },
+    { guidance: "도시철도 탑승", durationMin: Math.max(5, subwayMinutes - 11), distanceM: Math.max(100, distanceM - 800), vehicle: "지하철" },
+    { guidance: "역 하차 후 목적지까지 도보 이동", durationMin: 5, distanceM: 400, vehicle: "도보" }
+  ];
+
+  let busTransfers = 0;
+  let subwayTransfers = 0;
+  let busLabel = "버스 경로";
+  let subwayLabel = "지하철 경로";
+
+  if ((r1 === "BUSAN_STATION" && r2 === "YEONGDO") || (r1 === "YEONGDO" && r2 === "BUSAN_STATION")) {
+    busSteps = [
+      { guidance: "출발지 정류장까지 도보 이동", durationMin: 4, distanceM: 250, vehicle: "도보" },
+      { guidance: "부산역·영도 연결 시내버스 탑승", durationMin: Math.max(5, busMinutes - 8), distanceM: Math.max(100, distanceM - 500), vehicle: "버스 82 또는 508" },
+      { guidance: "하차 후 목적지까지 도보 이동", durationMin: 4, distanceM: 250, vehicle: "도보" }
+    ];
+    busLabel = "버스 82 / 508";
+    
+    subwaySteps = [
+      { guidance: "출발지 정류장까지 도보 이동", durationMin: 5, distanceM: 300, vehicle: "도보" },
+      { guidance: "지하철 연계 버스 탑승", durationMin: 8, distanceM: 1200, vehicle: "버스 82" },
+      { guidance: "남포역에서 지하철 1호선 환승", durationMin: Math.max(5, subwayMinutes - 18), distanceM: Math.max(100, distanceM - 2000), vehicle: "지하철 1호선" },
+      { guidance: "하차 후 목적지까지 도보 이동", durationMin: 5, distanceM: 500, vehicle: "도보" }
+    ];
+    subwayTransfers = 1;
+    subwayLabel = "버스 82 → 지하철 1호선";
+  }
+  else if ((r1 === "BUSAN_STATION" && r2 === "GWANGALLI") || (r1 === "GWANGALLI" && r2 === "BUSAN_STATION")) {
+    busSteps = [
+      { guidance: "출발지 앞 급행 정류장으로 이동", durationMin: 5, distanceM: 300, vehicle: "도보" },
+      { guidance: "광안리 방면 급행버스 탑승", durationMin: Math.max(5, busMinutes - 9), distanceM: Math.max(100, distanceM - 600), vehicle: "급행버스 1003" },
+      { guidance: "광안리역(광안해변) 하차 후 도보 이동", durationMin: 4, distanceM: 300, vehicle: "도보" }
+    ];
+    busLabel = "급행버스 1003";
+
+    subwaySteps = [
+      { guidance: "가까운 도시철도역으로 도보 이동", durationMin: 5, distanceM: 350, vehicle: "도보" },
+      { guidance: "지하철 1호선 탑승 (서면역 방면)", durationMin: 12, distanceM: 3200, vehicle: "지하철 1호선" },
+      { guidance: "서면역에서 지하철 2호선으로 환승", durationMin: Math.max(5, subwayMinutes - 22), distanceM: Math.max(100, distanceM - 4000), vehicle: "지하철 2호선" },
+      { guidance: "수영역 또는 광안역 하차 후 도보 이동", durationMin: 5, distanceM: 400, vehicle: "도보" }
+    ];
+    subwayTransfers = 1;
+    subwayLabel = "지하철 1호선 → 지하철 2호선";
+  }
+  else if ((r1 === "YEONGDO" && r2 === "GWANGALLI") || (r1 === "GWANGALLI" && r2 === "YEONGDO")) {
+    busSteps = [
+      { guidance: "출발지 인근 정류장으로 도보 이동", durationMin: 5, distanceM: 300, vehicle: "도보" },
+      { guidance: "부산항대교 경유 급행버스 탑승", durationMin: Math.max(5, busMinutes - 9), distanceM: Math.max(100, distanceM - 600), vehicle: "급행버스 1006" },
+      { guidance: "하차 후 목적지까지 도보 이동", durationMin: 4, distanceM: 300, vehicle: "도보" }
+    ];
+    busLabel = "급행버스 1006";
+
+    subwaySteps = [
+      { guidance: "영도 구내 버스정류장으로 도보 이동", durationMin: 5, distanceM: 300, vehicle: "도보" },
+      { guidance: "영도대교 방면 시내버스 탑승", durationMin: 10, distanceM: 2500, vehicle: "버스 82" },
+      { guidance: "남포역에서 지하철 1호선 환승 (서면역 방면)", durationMin: 15, distanceM: 4000, vehicle: "지하철 1호선" },
+      { guidance: "서면역에서 지하철 2호선 환승 (광안역 방면)", durationMin: Math.max(5, subwayMinutes - 35), distanceM: Math.max(100, distanceM - 7000), vehicle: "지하철 2호선" },
+      { guidance: "하차 후 목적지까지 도보 이동", durationMin: 5, distanceM: 400, vehicle: "도보" }
+    ];
+    subwayTransfers = 2;
+    subwayLabel = "버스 82 → 지하철 1호선 → 지하철 2호선";
+  }
+  else if ((r1 === "GWANGALLI" && r2 === "HAEUNDAE") || (r1 === "HAEUNDAE" && r2 === "GWANGALLI")) {
+    busSteps = [
+      { guidance: "수영로 인근 버스정류장으로 이동", durationMin: 4, distanceM: 250, vehicle: "도보" },
+      { guidance: "해운대·광안리 연결 시내버스 탑승", durationMin: Math.max(5, busMinutes - 8), distanceM: Math.max(100, distanceM - 550), vehicle: "버스 38 또는 40" },
+      { guidance: "정류장 하차 후 도보 이동", durationMin: 4, distanceM: 300, vehicle: "도보" }
+    ];
+    busLabel = "버스 38 / 40";
+
+    subwaySteps = [
+      { guidance: "수영역 또는 광안역으로 도보 이동", durationMin: 5, distanceM: 350, vehicle: "도보" },
+      { guidance: "지하철 2호선 탑승", durationMin: Math.max(5, subwayMinutes - 10), distanceM: Math.max(100, distanceM - 700), vehicle: "지하철 2호선" },
+      { guidance: "하차역에서 목적지까지 도보 이동", durationMin: 5, distanceM: 350, vehicle: "도보" }
+    ];
+    subwayLabel = "지하철 2호선";
+  }
+  else if ((r1 === "BUSAN_STATION" && r2 === "HAEUNDAE") || (r1 === "HAEUNDAE" && r2 === "BUSAN_STATION")) {
+    busSteps = [
+      { guidance: "출발지 인근 급행 정류장으로 이동", durationMin: 5, distanceM: 300, vehicle: "도보" },
+      { guidance: "해운대 방면 급행버스 탑승", durationMin: Math.max(5, busMinutes - 9), distanceM: Math.max(100, distanceM - 600), vehicle: "급행버스 1003" },
+      { guidance: "해운대역 또는 해수욕장 하차 후 도보", durationMin: 4, distanceM: 300, vehicle: "도보" }
+    ];
+    busLabel = "급행버스 1003";
+
+    subwaySteps = [
+      { guidance: "가까운 지하철역으로 도보 이동", durationMin: 5, distanceM: 350, vehicle: "도보" },
+      { guidance: "지하철 1호선 탑승 (서면역 방면)", durationMin: 12, distanceM: 3200, vehicle: "지하철 1호선" },
+      { guidance: "서면역에서 지하철 2호선 환승 (해운대역 방면)", durationMin: Math.max(5, subwayMinutes - 22), distanceM: Math.max(100, distanceM - 4000), vehicle: "지하철 2호선" },
+      { guidance: "하차 후 목적지까지 도보 이동", durationMin: 5, distanceM: 400, vehicle: "도보" }
+    ];
+    subwayTransfers = 1;
+    subwayLabel = "지하철 1호선 → 지하철 2호선";
+  }
+  else if ((r1 === "YEONGDO" && r2 === "HAEUNDAE") || (r1 === "HAEUNDAE" && r2 === "YEONGDO")) {
+    busSteps = [
+      { guidance: "출발지 인근 정류장으로 도보 이동", durationMin: 5, distanceM: 300, vehicle: "도보" },
+      { guidance: "남항대교·부산항대교 경유 급행버스 탑승", durationMin: Math.max(5, busMinutes - 9), distanceM: Math.max(100, distanceM - 600), vehicle: "급행버스 1011" },
+      { guidance: "하차 후 목적지까지 도보 이동", durationMin: 4, distanceM: 300, vehicle: "도보" }
+    ];
+    busLabel = "급행버스 1011";
+
+    subwaySteps = [
+      { guidance: "가까운 시내버스 정류장으로 도보 이동", durationMin: 5, distanceM: 300, vehicle: "도보" },
+      { guidance: "영도대교 방면 시내버스 탑승", durationMin: 10, distanceM: 2500, vehicle: "버스 82" },
+      { guidance: "남포역에서 지하철 1호선 환승 (서면역 방면)", durationMin: 15, distanceM: 4000, vehicle: "지하철 1호선" },
+      { guidance: "서면역에서 지하철 2호선 환승 (해운대역 방면)", durationMin: Math.max(5, subwayMinutes - 35), distanceM: Math.max(100, distanceM - 7000), vehicle: "지하철 2호선" },
+      { guidance: "하차 후 목적지까지 도보 이동", durationMin: 5, distanceM: 400, vehicle: "도보" }
+    ];
+    subwayTransfers = 2;
+    subwayLabel = "버스 82 → 지하철 1호선 → 지하철 2호선";
+  }
+  else {
+    if (r1 === "YEONGDO") {
+      busSteps[1].vehicle = "버스 82 또는 7";
+      busLabel = "시내버스 82 / 7";
+      subwaySteps[1].vehicle = "버스 508 또는 9";
+      subwayLabel = "시내버스 508 / 9";
+    } else if (r1 === "BUSAN_STATION") {
+      busSteps[1].vehicle = "버스 26 또는 41";
+      busLabel = "시내버스 41 / 26";
+      subwaySteps[1].vehicle = "지하철 1호선";
+      subwayLabel = "지하철 1호선";
+    } else if (r1 === "GWANGALLI") {
+      busSteps[1].vehicle = "버스 42 또는 62";
+      busLabel = "시내버스 62 / 42";
+      subwaySteps[1].vehicle = "지하철 2호선";
+      subwayLabel = "지하철 2호선";
+    } else if (r1 === "HAEUNDAE") {
+      busSteps[1].vehicle = "버스 39 또는 100-1";
+      busLabel = "시내버스 39 / 100-1";
+      subwaySteps[1].vehicle = "지하철 2호선";
+      subwayLabel = "지하철 2호선";
+    }
+  }
+
+  return [
+    {
+      id: "estimated-bus",
+      label: busLabel,
+      distanceM: distanceM,
+      durationMin: busMinutes,
+      fare: 1550,
+      transfers: busTransfers,
+      path: [[lng1, lat1], [lng2, lat2]],
+      isEstimate: true,
+      steps: busSteps
+    },
+    {
+      id: "estimated-subway",
+      label: subwayLabel,
+      distanceM: distanceM,
+      durationMin: subwayMinutes,
+      fare: 1650,
+      transfers: subwayTransfers,
+      path: [[lng1, lat1], [lng2, lat2]],
+      isEstimate: true,
+      steps: subwaySteps
+    }
+  ];
+}
