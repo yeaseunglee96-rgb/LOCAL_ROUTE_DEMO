@@ -1187,6 +1187,37 @@ button {
   color: var(--brand, #0f7a68);
 }
 
+/* Capability badges */
+.capability-row .badge-blue {
+  background: #e0f2fe;
+  color: #0369a1;
+  border-radius: 999px;
+  padding: 3px 9px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.capability-row .badge-amber {
+  background: #fef3c7;
+  color: #b45309;
+  border-radius: 999px;
+  padding: 3px 9px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+/* Speak action button in ItemCard */
+.place-actions .speak-action-btn {
+  background: var(--brand, #0f7a68);
+  color: #ffffff;
+  font-weight: 800;
+  border: 1px solid var(--brand, #0f7a68);
+}
+.place-actions .speak-action-btn:hover {
+  background: var(--brand-dark, #095e50);
+  border-color: var(--brand-dark, #095e50);
+}
+
+
 
 
 

@@ -66,8 +66,8 @@ export function ItemCard({ item, pinned, busy, onTogglePin, onExclude, onReplace
       <div className="capability-row">
         {item.hasEnglishMenu && <span>{en ? "English menu" : "영어 메뉴"}</span>}
         {item.foreignCardPayment && <span>{en ? "International cards" : "해외카드"}</span>}
-        {item.soloFriendly && <span style={{ background: "#e0f2fe", color: "#0369a1" }}>{en ? "Solo Friendly" : "혼밥 가능"}</span>}
-        {item.takeoutAvailable && <span style={{ background: "#fef3c7", color: "#b45309" }}>{en ? "Takeout Available" : "포장 가능"}</span>}
+        {item.soloFriendly && <span className="badge-blue">{en ? "Solo Friendly" : "혼밥 가능"}</span>}
+        {item.takeoutAvailable && <span className="badge-amber">{en ? "Takeout Available" : "포장 가능"}</span>}
       </div>
       {needsFoodCheck && <div className="allergy-warning">{en ? "Allergen/diet data unavailable. Please confirm before ordering." : "알레르기·식단 정보가 없어 주문 전 확인이 필요합니다."}</div>}
       {expanded && <div className="place-details">
@@ -75,7 +75,7 @@ export function ItemCard({ item, pinned, busy, onTogglePin, onExclude, onReplace
         <div className="taxi-card"><span>{en ? "Show this to the driver" : "기사님께 보여주세요"}</span><b>{taxiText}</b><button type="button" onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(taxiText); }}>{en ? "Copy address" : "주소 복사"}</button></div>
       </div>}
       <div className="place-actions">
-        <button type="button" style={{ background: "#0f7a68", color: "#fff" }} onClick={(e) => { e.stopPropagation(); setShowSpeakModal(true); }}>
+        <button type="button" className="speak-action-btn" onClick={(e) => { e.stopPropagation(); setShowSpeakModal(true); }}>
           🗣️ {en ? "Speak Korean" : "한국어 말하기"}
         </button>
         <button type="button" onClick={(e) => { e.stopPropagation(); setExpanded((value) => !value); }} aria-expanded={expanded}>{expanded ? "정보 접기" : "근거·정책 보기"}</button>

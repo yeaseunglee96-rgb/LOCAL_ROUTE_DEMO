@@ -2,6 +2,8 @@ import { useNavigate } from "react-router-dom";
 import { FilterRow } from "../../components/FilterRow";
 import { OverviewHub } from "../../components/OverviewHub";
 import { TopSummaryBar } from "../../components/TopSummaryBar";
+import { WeatherPrepWidget } from "../../components/WeatherPrepWidget";
+import { TripMemorySummary } from "../../components/TripMemorySummary";
 import { TAB_TO_PATH } from "../../routes/paths";
 import { useTrip } from "./TripContext";
 
@@ -13,7 +15,9 @@ export function TripOverviewPage() {
   return (
     <div className="service-view home-view">
       <TopSummaryBar itinerary={itinerary} onEdit={editConditions} onRegenerate={() => void regenerate()} regenerating={regenerating} canEdit={canEdit} />
+      <WeatherPrepWidget language={itinerary.trip.language} />
       <OverviewHub itinerary={itinerary} onNavigate={(tab) => navigate(TAB_TO_PATH[tab](tripId))} />
+      <TripMemorySummary language={itinerary.trip.language} daysCount={itinerary.days.length} />
       <FilterRow trip={itinerary.trip} />
     </div>
   );

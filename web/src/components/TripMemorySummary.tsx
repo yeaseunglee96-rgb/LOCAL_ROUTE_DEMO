@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { paths } from "../routes/paths";
 
 interface Props {
   tripTitle?: string;
@@ -10,12 +12,16 @@ interface Props {
 
 export function TripMemorySummary({ tripTitle = "부산 3일 로컬 먹방 여행", daysCount = 3, totalPlaces = 12, language = "KO", onCopyCourse }: Props) {
   const isEn = language === "EN";
+  const navigate = useNavigate();
   const [copied, setCopied] = useState(false);
 
   const handleCopy = () => {
     setCopied(true);
     if (onCopyCourse) onCopyCourse();
-    setTimeout(() => setCopied(false), 2000);
+    setTimeout(() => {
+      setCopied(false);
+      navigate(paths.plan("basic"));
+    }, 1000);
   };
 
   return (
