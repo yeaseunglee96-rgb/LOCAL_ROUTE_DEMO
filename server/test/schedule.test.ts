@@ -74,15 +74,42 @@ test("여러 날짜의 일별 예산 합계가 전체 예산을 넘지 않는다
   assert.ok(total <= 32_000 + 1);
 });
 
-test("대형견 휴식과 숙소 복귀를 포함해 하루 종료 시각을 넘지 않는다", async () => {
-  const candidates = Array.from({ length: 6 }, (_, index) => scored({ id: `pet-${index}`, lat: origin.lat + index * 0.0001, recommendedStayMin: 90 }));
-  const result = await buildItinerary(candidates, input({ hasPet: true, petSize: "LARGE", recommendationMode: "PET_SAFE", hasCar: true }));
+test("날짜를 지정한 필수 방문 장소는 그 날짜에 배정된다", async () => {
+  const candidates = [
+    ...Array.from({ length: 6 }, (_, index) => scored({ id: `filler-${index}`, lat: origin.lat + index * 0.0002 })),
+    scored({ id: "day2-pick", lat: origin.lat + 0.01 }),
+  ];
+  const result = await buildItinerary(candidates, input({
+    endDate: "2026-08-26", // 3일 여행
+    mustVisitPlaceIds: ["day2-pick"],
+    mustVisitAssignments: [{ placeId: "day2-pick", dayIndex: 2 }],
+  }));
+  const day1Ids = result.days[0].items.map((item) => item.placeId);
+  const day2Ids = result.days[1].items.map((item) => item.placeId);
+  const day3Ids = result.days[2].items.map((item) => item.placeId);
+  assert.ok(day2Ids.includes("day2-pick"), "지정한 날짜(2일차)에 배정되어야 한다");
+  assert.ok(!day1Ids.includes("day2-pick") && !day3Ids.includes("day2-pick"), "다른 날짜에는 들어가면 안 된다");
+});
+
+test("범위를 벗어난 날짜 지정은 마지막 날짜로 보정하고 경고를 남긴다", async () => {
+  const candidates = [scored({ id: "only-pick" })];
+  const result = await buildItinerary(candidates, input({
+    endDate: "2026-08-25", // 2일 여행
+    mustVisitPlaceIds: ["only-pick"],
+    mustVisitAssignments: [{ placeId: "only-pick", dayIndex: 9 }],
+  }));
+  assert.ok(result.days[1].items.some((item) => item.placeId === "only-pick"));
+  assert.ok(result.warnings.some((warning) => warning.includes("배정되었습니다")));
+});
+
+test("숙소 복귀를 포함해 하루 종료 시각을 넘지 않는다", async () => {
+  const candidates = Array.from({ length: 6 }, (_, index) => scored({ id: `far-${index}`, lat: origin.lat + index * 0.0001, recommendedStayMin: 90 }));
+  const result = await buildItinerary(candidates, input({ recommendationMode: "EASY", hasCar: true }));
   const day = result.days[0];
-  assert.ok(day.petBreaks.length > 0);
   const last = day.items.at(-1)!;
   const [hour, minute] = last.plannedArrival.split(":").map(Number);
   const finish = hour * 60 + minute + last.stayMinutes + (day.returnTravelMin ?? 0);
-  assert.ok(finish <= 20 * 60, `휴식 포함 복귀 시각이 ${finish}분으로 종료 시각을 넘었습니다.`);
+  assert.ok(finish <= 20 * 60, `복귀 시각이 ${finish}분으로 종료 시각을 넘었습니다.`);
 });
 
 test("일정의 절반 이상을 관광·체험으로 구성하고 식당 편중을 막는다", async () => {

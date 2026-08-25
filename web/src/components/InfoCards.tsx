@@ -6,17 +6,11 @@ interface Props {
   collaboration?: ReactNode;
 }
 
-function pct(count: number, total: number): number {
-  return total > 0 ? Math.round((count / total) * 100) : 0;
-}
-
 export function InfoCards({ itinerary, collaboration }: Props) {
   const { trip, days } = itinerary;
   const en = trip.language === "EN";
   const allItems = days.flatMap((d) => d.items);
-  const total = allItems.length;
 
-  const petFriendlyCount = allItems.filter((i) => i.petFriendly).length;
   const foodCost = allItems
     .filter((i) => i.category === "RESTAURANT" || i.category === "CAFE")
     .reduce((s, i) => s + i.estCost, 0);
@@ -26,19 +20,6 @@ export function InfoCards({ itinerary, collaboration }: Props) {
 
   return (
     <div className="info-cards">
-      {trip.hasPet && (
-        <div className="info-card">
-          <div className="info-card-title">
-            {en ? "Pet access" : "반려견 동반정보"}
-          </div>
-          <ul className="info-list">
-            <li>{en ? `✔ ${pct(petFriendlyCount, total)}% of stops allow pets` : `✔ 전 일정 ${pct(petFriendlyCount, total)}% 동반 가능`}</li>
-            <li>{en ? `✔ Suitable for ${trip.petSize?.toLowerCase() ?? "selected"} dogs` : `✔ ${trip.petSize ? { SMALL: "소형견", MEDIUM: "중형견", LARGE: "대형견" }[trip.petSize] : ""} 적합 코스`}</li>
-            <li>{en ? `✔ ${petFriendlyCount} stops with pet access` : `✔ 반려동물 편의시설 ${petFriendlyCount}곳 포함`}</li>
-          </ul>
-        </div>
-      )}
-
       <div className="info-card regional-tip-card">
         <div className="info-card-title">{en ? "Busan travel notes" : "부산 여행 팁"}</div>
         <p className="regional-tip-intro">{en ? "Small details that make moving through Busan easier." : "부산은 바다와 산 사이로 지역이 길게 이어져 있어, 동네별 이동 시간을 넉넉히 잡는 것이 중요합니다."}</p>

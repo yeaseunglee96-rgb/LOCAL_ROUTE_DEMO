@@ -35,24 +35,6 @@ export function place(overrides: Partial<PlaceWithPolicy> = {}): PlaceWithPolicy
     kakaoReviewKeywords: "[]",
     kakaoReviewSource: null,
     kakaoReviewCollectedAt: null,
-    petPolicy: {
-      allowed: true,
-      indoorAllowed: true,
-      outdoorAllowed: true,
-      sizeLimit: "LARGE",
-      extraFee: 0,
-      freshnessGrade: "VERIFIED",
-      carrierRequired: false,
-      strollerAllowed: true,
-      maxPetCount: null,
-      weightLimitKg: null,
-      leashRequired: true,
-      waterBowl: true,
-      wasteBags: false,
-      verifiedCount: 2,
-      lastVerifiedAt: new Date("2026-08-01"),
-      source: "TEST",
-    },
     ...overrides,
   };
 }
@@ -63,9 +45,6 @@ export function scored(overrides: Partial<ScoredPlace> = {}): ScoredPlace {
     ...base,
     closedDays: JSON.parse(base.closedDays),
     tasteTags: JSON.parse(base.tasteTags),
-    petPolicy: base.petPolicy
-      ? { ...base.petPolicy, sizeLimit: base.petPolicy.sizeLimit as "SMALL" | "MEDIUM" | "LARGE" | "NONE" }
-      : null,
     score: 0.8,
     ...overrides,
   };

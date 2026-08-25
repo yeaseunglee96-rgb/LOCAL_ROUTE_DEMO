@@ -11,7 +11,6 @@
     "seed": "tsx prisma/seed.ts",
     "import:tourapi": "tsx prisma/import-tourapi.ts",
     "import:kakao-reviews": "tsx prisma/import-kakao-reviews.ts",
-    "seed:pet-safety": "tsx prisma/ensure-pet-safety.ts",
     "seed:translations": "tsx prisma/ensure-translations.ts",
     "seed:commerce": "tsx prisma/ensure-commerce.ts",
     "seed:v2": "tsx prisma/ensure-v2-features.ts",

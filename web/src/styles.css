@@ -333,37 +333,6 @@ button {
   background: var(--card-bg);
 }
 
-.pet-card {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.pet-card-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.pet-emoji {
-  font-size: 20px;
-}
-
-.pet-name {
-  font-weight: 700;
-  font-size: 14px;
-}
-
-.pet-size-badge {
-  align-self: flex-start;
-  background: var(--mint-light);
-  color: var(--mint);
-  font-size: 11px;
-  font-weight: 600;
-  padding: 3px 8px;
-  border-radius: 999px;
-}
-
 .stat-card {
   margin-top: auto;
   text-align: center;
@@ -423,18 +392,13 @@ button {
 
 .field > select,
 .field > input[type="date"],
-.field > input[type="number"],
-.pet-name-input {
+.field > input[type="number"] {
   padding: 10px 12px;
   border: 1px solid var(--border);
   border-radius: 8px;
   font-size: 15px;
   color: var(--text);
   background: #fff;
-}
-
-.pet-name-input {
-  flex: 1;
 }
 
 .field-row {
@@ -664,6 +628,44 @@ button {
   padding: 10px 14px;
 }
 
+.top-right-lang-switcher {
+  position: fixed;
+  top: 16px;
+  right: 24px;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--line, #dce5e0);
+  border-radius: 999px;
+  padding: 6px 14px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  font-size: 13px;
+  font-weight: 700;
+}
+.top-right-lang-switcher .lang-btn {
+  border: none;
+  background: transparent;
+  color: var(--muted, #66736d);
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+.top-right-lang-switcher .lang-btn:hover {
+  color: var(--ink, #17251f);
+}
+.top-right-lang-switcher .lang-btn.active {
+  color: var(--brand, #0f7a68);
+  font-weight: 800;
+}
+.top-right-lang-switcher .lang-divider {
+  color: var(--line, #dce5e0);
+  user-select: none;
+}
+
 .filter-icon {
   font-size: 15px;
 }
@@ -844,14 +846,6 @@ button {
   border-radius: 999px;
 }
 
-.tag-pet {
-  background: var(--mint-light);
-  color: var(--mint);
-  padding: 2px 8px;
-  border-radius: 999px;
-  font-weight: 600;
-}
-
 .tag-foreign {
   background: var(--sky-light);
   color: var(--sky);
@@ -1014,6 +1008,12 @@ button {
   color: #b45309;
   background: #fffbeb;
   text-align: center;
+}
+
+/* 비어 있을 때도 position:absolute;inset:0 박스가 배경색과 함께 지도 전체를 덮어버리는
+   문제가 있었다 - 에러 텍스트가 없으면 아예 그리지 않는다. */
+.map-error:empty {
+  display: none;
 }
 
 .map-legend {

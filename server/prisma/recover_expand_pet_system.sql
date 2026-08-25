@@ -1,5 +1,0 @@
-ALTER TABLE "PlacePetPolicy" ADD COLUMN "lastVerifiedAt" DATETIME NOT NULL DEFAULT '2026-08-24 00:00:00';
-ALTER TABLE "PlacePetPolicy" ADD COLUMN "source" TEXT NOT NULL DEFAULT 'INITIAL_RESEARCH';
-ALTER TABLE "ItineraryDay" ADD COLUMN "petBreaksJson" TEXT NOT NULL DEFAULT '[]';
-CREATE TABLE "PetPolicyReport" ("id" TEXT NOT NULL PRIMARY KEY,"policyId" TEXT NOT NULL,"reportType" TEXT NOT NULL,"note" TEXT,"createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,"status" TEXT NOT NULL DEFAULT 'PENDING',CONSTRAINT "PetPolicyReport_policyId_fkey" FOREIGN KEY("policyId") REFERENCES "PlacePetPolicy"("id") ON DELETE RESTRICT ON UPDATE CASCADE);
-CREATE INDEX "PetPolicyReport_policyId_createdAt_idx" ON "PetPolicyReport"("policyId","createdAt");

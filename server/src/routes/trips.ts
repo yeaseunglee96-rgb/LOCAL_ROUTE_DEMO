@@ -3,8 +3,9 @@ import { prisma } from "../db.js";
 import { scorePlaces } from "../services/recommend.js";
 import { buildItinerary } from "../services/schedule.js";
 import { createJob, getJob, subscribeJob } from "../services/jobs.js";
-import { reoptimizeItineraryDay, undoLatestRevision } from "../services/reoptimize.js";
+import { reoptimizeItineraryDay, reorderItineraryDay, undoLatestRevision } from "../services/reoptimize.js";
 import { getEmbeddedRoute, haversineDistanceM, searchKakaoLocations } from "../services/kakao.js";
+import { localizeRoute, transferDifficultyFromCount } from "../services/navText.js";
 import { searchPlaceImage } from "../services/placeImages.js";
 import { applyCourseCategoryTasteTags, findCourseCategory, getCourseCategories } from "../services/courseCategories.js";
 import type { CreateTripRequest, ItineraryOutput, TripMeta } from "../types.js";
@@ -40,8 +41,23 @@ tripsRouter.get("/routes/directions", async (req, res, next) => {
     const startLat = Number(req.query.startLat); const startLng = Number(req.query.startLng);
     const endLat = Number(req.query.endLat); const endLng = Number(req.query.endLng);
     const mode = req.query.mode === "CAR" ? "CAR" : "TRANSIT";
+    const lang = req.query.lang === "EN" ? "EN" : "KO";
     if (![startLat, startLng, endLat, endLng].every(Number.isFinite)) return res.status(400).json({ error_code: "INVALID_COORDINATES" });
-    return res.json(await getEmbeddedRoute(startLat, startLng, endLat, endLng, mode));
+    const route = await getEmbeddedRoute(startLat, startLng, endLat, endLng, mode);
+    // F-NAV-01/03(v4 6.3장): 구글맵이 한국에서 지원하지 못하는 영어 턴바이턴 안내와
+    // 환승 난이도 요약을 얹는다. 별도 DB 테이블 없이 매 요청 응답을 가공한다(v2 13.4장).
+    await recordEvent({ eventType: "route_guide_viewed", entityType: "route", entityId: `${startLat.toFixed(3)},${startLng.toFixed(3)}-${endLat.toFixed(3)},${endLng.toFixed(3)}`, language: lang, payload: { mode } });
+    return res.json({ ...localizeRoute(route, lang), transferDifficulty: transferDifficultyFromCount(route.transfers) });
+  } catch (error) { next(error); }
+});
+
+tripsRouter.get("/routes/taxi-card", async (req, res, next) => {
+  try {
+    const place = await prisma.place.findUnique({ where: { id: String(req.query.placeId ?? "") }, select: { id: true, nameKo: true, nameEn: true, address: true } });
+    if (!place) return res.status(404).json({ error_code: "PLACE_NOT_FOUND" });
+    await recordEvent({ eventType: "taxi_card_generated", entityType: "place", entityId: place.id });
+    // F-NAV-02(v4 6.3장): 한국어를 못 읽는 외국인이 택시 기사에게 그대로 보여줄 수 있는 카드.
+    return res.json({ placeId: place.id, nameKo: place.nameKo, nameEn: place.nameEn, addressKo: place.address, phraseKo: `기사님, 여기로 가주세요: ${place.address}` });
   } catch (error) { next(error); }
 });
 
@@ -66,26 +82,12 @@ function buildTripMeta(
   preference: {
     tasteTags: string;
     courseCategory: string | null;
-    hasPet: boolean;
-    petSize: string | null;
-    petName: string | null;
     language: string;
-    needsEnglishMenu: boolean;
-    needsForeignCard: boolean;
-    petIndoorRequired: boolean;
-    usesPetCarrier: boolean;
     allergies: string;
     dietType: string;
-    needsOnlineReservation: boolean;
-    maxTransferCount: number;
-    petWeightKg: number | null;
-    petCount: number;
-    usesPetStroller: boolean;
-    petRestaurantRequired: boolean;
-    petLodgingRequired: boolean;
     landmarkRatio: number;
     localRatio: number;
-    petRatio: number;
+    easyRatio: number;
   },
   lodgingPlace?: { id: string; nameKo: string; address: string } | null
 ): TripMeta {
@@ -107,74 +109,40 @@ function buildTripMeta(
     maxWalkingKm: trip.maxWalkingKm,
     recommendationMode: trip.recommendationMode as TripMeta["recommendationMode"],
     tasteTags: JSON.parse(preference.tasteTags),
-    hasPet: preference.hasPet,
-    petSize: preference.petSize as TripMeta["petSize"],
-    petName: preference.petName,
     language: preference.language as TripMeta["language"],
-    needsEnglishMenu: preference.needsEnglishMenu,
-    needsForeignCard: preference.needsForeignCard,
-    petIndoorRequired: preference.petIndoorRequired,
-    usesPetCarrier: preference.usesPetCarrier,
     allergies: JSON.parse(preference.allergies),
     dietType: preference.dietType as TripMeta["dietType"],
-    needsOnlineReservation: preference.needsOnlineReservation,
-    maxTransferCount: preference.maxTransferCount,
-    petWeightKg: preference.petWeightKg,
-    petCount: preference.petCount,
-    usesPetStroller: preference.usesPetStroller,
-    petRestaurantRequired: preference.petRestaurantRequired,
-    petLodgingRequired: preference.petLodgingRequired,
     lodgingPlaceId: lodgingPlace?.id ?? null,
     lodgingName: lodgingPlace?.nameKo ?? null,
     lodgingAddress: lodgingPlace?.address ?? null,
     landmarkRatio: preference.landmarkRatio,
     localRatio: preference.localRatio,
-    petRatio: preference.petRatio,
+    easyRatio: preference.easyRatio,
   };
 }
 
 tripsRouter.get("/places", async (req, res) => {
   const category = typeof req.query.category === "string" ? req.query.category : undefined;
+  const search = typeof req.query.search === "string" ? req.query.search.trim().slice(0, 100) : undefined;
   const places = await prisma.place.findMany({
-    where: category ? { category } : undefined,
-    include: { petPolicy: true },
+    where: {
+      ...(category ? { category } : {}),
+      // 위저드의 "가고 싶은 곳" 검색은 카카오 전체 검색이 아니라 이 앱의 시드 장소 카탈로그
+      // 안에서만 찾는다 - mustVisitPlaceIds는 이 카탈로그의 Place.id를 기대하기 때문에,
+      // 카카오 POI id를 그대로 저장하면 스케줄러가 절대 찾지 못해 조용히 실패한다.
+      ...(search ? { OR: [{ nameKo: { contains: search } }, { nameEn: { contains: search } }, { address: { contains: search } }] } : {}),
+    },
+    take: search ? 20 : undefined,
   });
   res.json(places);
 });
 
 tripsRouter.get("/places/:id", async (req, res) => {
   const lang = typeof req.query.lang === "string" ? req.query.lang.toUpperCase() : "KO";
-  const place = await prisma.place.findUnique({ where: { id: req.params.id }, include: { petPolicy: true, translations: { where: { lang } } } });
+  const place = await prisma.place.findUnique({ where: { id: req.params.id }, include: { translations: { where: { lang } } } });
   if (!place) return res.status(404).json({ error_code: "PLACE_NOT_FOUND" });
   const translation = place.translations[0] ?? null;
   return res.json({ ...place, displayName: translation?.name ?? place.nameKo, displayAddress: translation?.address ?? place.addressEn ?? place.address, allergens: JSON.parse(place.allergens), dietOptions: JSON.parse(place.dietOptions), translationSource: translation?.source ?? null });
-});
-
-tripsRouter.get("/pet-safety", async (req, res) => {
-  const lat = Number(req.query.lat);
-  const lng = Number(req.query.lng);
-  const radiusM = Math.max(500, Number(req.query.radiusKm ?? 2) * 1000);
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return res.status(400).json({ error_code: "INVALID_COORDINATES" });
-  const places = await prisma.place.findMany({ where: { category: { in: ["VET", "PET_SUPPLY"] } } });
-  return res.json(places.map((place) => ({ ...place, distanceM: Math.round(haversineDistanceM(lat, lng, place.lat, place.lng)) })).filter((place) => place.distanceM <= radiusM).sort((a, b) => a.distanceM - b.distanceM));
-});
-
-tripsRouter.get("/places/:id/pet-policy", async (req, res) => {
-  const policy = await prisma.placePetPolicy.findUnique({ where: { placeId: req.params.id }, include: { reports: { orderBy: { createdAt: "desc" }, take: 5 } } });
-  if (!policy) return res.status(404).json({ error_code: "PET_POLICY_NOT_FOUND" });
-  return res.json(policy);
-});
-
-tripsRouter.post("/places/:id/pet-policy/reports", async (req, res) => {
-  const policy = await prisma.placePetPolicy.findUnique({ where: { placeId: req.params.id } });
-  if (!policy) return res.status(404).json({ error_code: "PET_POLICY_NOT_FOUND" });
-  const reportType = String(req.body?.reportType ?? "");
-  if (!["ENTRY_DENIED", "POLICY_CHANGED", "CONFIRMED", "OTHER"].includes(reportType)) return res.status(400).json({ error_code: "INVALID_REPORT_TYPE" });
-  const report = await prisma.petPolicyReport.create({ data: { policyId: policy.id, reportType, note: typeof req.body?.note === "string" ? req.body.note.slice(0, 500) : null } });
-  if (["ENTRY_DENIED", "POLICY_CHANGED"].includes(reportType)) await prisma.placePetPolicy.update({ where: { id: policy.id }, data: { freshnessGrade: "CONFLICTING" } });
-  if (reportType === "CONFIRMED") await prisma.placePetPolicy.update({ where: { id: policy.id }, data: { verifiedCount: { increment: 1 }, lastVerifiedAt: new Date(), freshnessGrade: "VERIFIED" } });
-  if (reportType === "ENTRY_DENIED" || reportType === "CONFIRMED") await recordEvent({ eventType: reportType === "ENTRY_DENIED" ? "pet_entry_denied" : "pet_policy_verified", entityType: "place", entityId: req.params.id, payload: { reportId: report.id } });
-  return res.status(201).json({ reportId: report.id, status: report.status });
 });
 
 tripsRouter.post("/trips/:id/itineraries\\:generate", async (req, res) => {
@@ -230,6 +198,22 @@ tripsRouter.post("/itineraries/:id/days/:dayIndex/reoptimize", async (req, res) 
   }
 });
 
+tripsRouter.patch("/itineraries/:id/days/:dayIndex/reorder", async (req, res) => {
+  try {
+    if (!await requireItineraryEditor(req, res, req.params.id)) return;
+    const itemIds = req.body?.itemIds;
+    if (!Array.isArray(itemIds) || itemIds.some((id) => typeof id !== "string") || itemIds.length === 0) {
+      return res.status(400).json({ error_code: "INVALID_REQUEST", message: "itemIds 배열이 필요합니다." });
+    }
+    const result = await reorderItineraryDay(req.params.id, Number(req.params.dayIndex), itemIds);
+    return res.json(result);
+  } catch (error) {
+    const code = error instanceof Error ? error.message : "REORDER_FAILED";
+    const status = code.includes("NOT_FOUND") ? 404 : code === "INVALID_ORDER" ? 400 : 400;
+    return res.status(status).json({ error_code: code, message: code === "INVALID_ORDER" ? "기존 항목과 같은 장소들의 순서만 바꿀 수 있습니다." : "순서 변경 요청을 처리하지 못했습니다." });
+  }
+});
+
 tripsRouter.post("/itineraries/:id/undo", async (req, res) => {
   try { if (!await requireItineraryEditor(req, res, req.params.id)) return; return res.json(await undoLatestRevision(req.params.id)); }
   catch { return res.status(409).json({ error_code: "NO_REVISION", message: "실행 취소할 변경이 없습니다." }); }
@@ -243,12 +227,12 @@ tripsRouter.get("/itineraries/:id/items/:itemId/alternatives", async (req, res) 
   const currentDay = itinerary.days.find((day) => day.items.some((item) => item.id === req.params.itemId))!;
   const used = itinerary.days.flatMap((day) => day.items.map((item) => item.placeId));
   const pref = itinerary.trip.preference;
-  const places = await prisma.place.findMany({ where: { category: current.place.category }, include: { petPolicy: true } });
+  const places = await prisma.place.findMany({ where: { category: current.place.category } });
   const dayCode = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"][new Date(`${currentDay.visitDate}T00:00:00`).getDay()];
   const available = places.filter((place) => !(JSON.parse(place.closedDays) as string[]).includes(dayCode));
   const reachable = itinerary.trip.hasCar ? available : available.filter((place) => haversineDistanceM(itinerary.trip.originLat, itinerary.trip.originLng, place.lat, place.lng) <= itinerary.trip.maxWalkingKm * 500);
-  const scored = scorePlaces(reachable, JSON.parse(pref.tasteTags), pref.hasPet, (pref.petSize as any) ?? undefined, itinerary.trip.totalBudget / itinerary.days.length, itinerary.trip.partySize, used, { mode: itinerary.mode as any, needsEnglishMenu: pref.needsEnglishMenu, needsForeignCard: pref.needsForeignCard, petIndoorRequired: pref.petIndoorRequired, ratios: { landmark: pref.landmarkRatio, local: pref.localRatio, pet: pref.petRatio }, petProfile: { usesCarrier: pref.usesPetCarrier, usesStroller: pref.usesPetStroller, weightKg: pref.petWeightKg, count: pref.petCount }, allergies: JSON.parse(pref.allergies), dietType: pref.dietType, needsOnlineReservation: pref.needsOnlineReservation });
-  return res.json(scored.slice(0, 5).map((place) => ({ placeId: place.id, nameKo: place.nameKo, nameEn: place.nameEn, category: place.category, address: place.address, score: place.score, localScore: place.localScore, estCost: place.priceTier === 1 ? 0 : place.priceTier === 2 ? 8000 : place.priceTier === 3 ? 20000 : 45000, petFriendly: !!place.petPolicy?.allowed, hasEnglishMenu: place.hasEnglishMenu, foreignCardPayment: place.foreignCardPayment })));
+  const scored = scorePlaces(reachable, JSON.parse(pref.tasteTags), itinerary.trip.totalBudget / itinerary.days.length, itinerary.trip.partySize, used, { mode: itinerary.mode as any, ratios: { landmark: pref.landmarkRatio, local: pref.localRatio, easy: pref.easyRatio }, allergies: JSON.parse(pref.allergies), dietType: pref.dietType });
+  return res.json(scored.slice(0, 5).map((place) => ({ placeId: place.id, nameKo: place.nameKo, nameEn: place.nameEn, category: place.category, address: place.address, score: place.score, localScore: place.localScore, estCost: place.priceTier === 1 ? 0 : place.priceTier === 2 ? 8000 : place.priceTier === 3 ? 20000 : 45000, hasEnglishMenu: place.hasEnglishMenu, foreignCardPayment: place.foreignCardPayment })));
 });
 
 tripsRouter.post("/trips", async (req, res) => {
@@ -287,10 +271,11 @@ tripsRouter.post("/trips", async (req, res) => {
   if (!Number.isInteger(adultCount) || adultCount < 1 || !Number.isInteger(childCount) || childCount < 0) {
     return res.status(400).json({ error_code: "INVALID_PARTY", message: "성인은 1명 이상, 아동은 0명 이상이어야 합니다." });
   }
-  if ((body.petCount ?? 1) < 1 || (body.maxTransferCount ?? 2) < 0) {
-    return res.status(400).json({ error_code: "INVALID_CONSTRAINT", message: "반려동물 마릿수와 환승 허용 횟수를 확인해주세요." });
-  }
-  const ratios = [body.landmarkRatio ?? 30, body.localRatio ?? 50, body.petRatio ?? 20];
+  // 날짜 지정된 필수 방문 장소(위저드의 "가고 싶은 곳" 추가). dayIndex는 1부터 시작.
+  const mustVisitAssignments = (body.mustVisitAssignments ?? []).filter(
+    (assignment) => assignment && typeof assignment.placeId === "string" && Number.isInteger(assignment.dayIndex) && assignment.dayIndex >= 1
+  );
+  const ratios = [body.landmarkRatio ?? 30, body.localRatio ?? 50, body.easyRatio ?? 20];
   if (ratios.some((value) => !Number.isFinite(value) || value < 0) || ratios.reduce((sum, value) => sum + value, 0) <= 0) {
     return res.status(400).json({ error_code: "INVALID_RECOMMENDATION_RATIO", message: "추천 비율 합계는 0보다 커야 합니다." });
   }
@@ -329,33 +314,20 @@ tripsRouter.post("/trips", async (req, res) => {
           tasteTags: JSON.stringify(body.tasteTags ?? []),
           courseCategory: courseCategory?.code ?? null,
           mustVisitPlaceIds: JSON.stringify(body.mustVisitPlaceIds ?? []),
+          mustVisitAssignments: JSON.stringify(mustVisitAssignments),
           excludedPlaceIds: JSON.stringify(body.excludedPlaceIds ?? []),
-          hasPet: !!body.hasPet,
-          petSize: body.petSize ?? null,
-          petName: body.petName ?? null,
           language: body.language ?? "KO",
-          needsEnglishMenu: !!body.needsEnglishMenu,
-          needsForeignCard: !!body.needsForeignCard,
-          petIndoorRequired: !!body.petIndoorRequired,
-          usesPetCarrier: !!body.usesPetCarrier,
           allergies: JSON.stringify(body.allergies ?? []),
           dietType: body.dietType ?? "NONE",
-          needsOnlineReservation: !!body.needsOnlineReservation,
-          maxTransferCount: body.maxTransferCount ?? 2,
-          petWeightKg: body.hasPet ? body.petWeightKg ?? null : null,
-          petCount: body.hasPet ? body.petCount ?? 1 : 1,
-          usesPetStroller: body.hasPet ? !!body.usesPetStroller : false,
-          petRestaurantRequired: body.hasPet ? !!body.petRestaurantRequired : false,
-          petLodgingRequired: body.hasPet ? !!body.petLodgingRequired : false,
           landmarkRatio: Math.round(ratios[0]),
           localRatio: Math.round(ratios[1]),
-          petRatio: Math.round(ratios[2]),
+          easyRatio: Math.round(ratios[2]),
         },
       },
     },
   });
 
-  await recordEvent({ eventType: "trip_searched", entityType: "trip", entityId: trip.id, language: body.language ?? "KO", payload: { startDate: body.startDate, endDate: body.endDate, hasPet: !!body.hasPet, recommendationMode: body.recommendationMode ?? "LOCAL" } });
+  await recordEvent({ eventType: "trip_searched", entityType: "trip", entityId: trip.id, language: body.language ?? "KO", payload: { startDate: body.startDate, endDate: body.endDate, recommendationMode: body.recommendationMode ?? "LOCAL" } });
 
   res.status(201).json({ tripId: trip.id, status: trip.status, createdAt: trip.createdAt });
 });
@@ -372,7 +344,7 @@ tripsRouter.post("/trips/:id/itinerary", async (req, res) => {
 
   // LODGING은 16.3장 10단계("매일 종료 노드로 고정")를 이번 MVP에서 구현하지 않으므로
   // 낮 시간 관광 후보군에서 제외한다(그렇지 않으면 숙소가 일반 방문지처럼 스케줄링됨).
-  const places = (await prisma.place.findMany({ include: { petPolicy: true } })).filter(
+  const places = (await prisma.place.findMany()).filter(
     (p) => ["TOURIST", "RESTAURANT", "CAFE"].includes(p.category)
   );
   const pref = trip.preference;
@@ -390,19 +362,13 @@ tripsRouter.post("/trips/:id/itinerary", async (req, res) => {
   const scored = scorePlaces(
     places,
     tasteTags,
-    pref.hasPet,
-    (pref.petSize as any) ?? undefined,
     dayBudgetEstimate,
     trip.partySize,
     excludedPlaceIds,
     {
       mode: trip.recommendationMode as any,
-      needsEnglishMenu: pref.needsEnglishMenu,
-      needsForeignCard: pref.needsForeignCard,
-      petIndoorRequired: pref.petIndoorRequired,
-      petProfile: { usesCarrier: pref.usesPetCarrier, usesStroller: pref.usesPetStroller, weightKg: pref.petWeightKg, count: pref.petCount },
-      allergies: JSON.parse(pref.allergies), dietType: pref.dietType, needsOnlineReservation: pref.needsOnlineReservation,
-      ratios: { landmark: pref.landmarkRatio, local: pref.localRatio, pet: pref.petRatio },
+      allergies: JSON.parse(pref.allergies), dietType: pref.dietType,
+      ratios: { landmark: pref.landmarkRatio, local: pref.localRatio, easy: pref.easyRatio },
       courseCategory: pref.courseCategory,
     }
   );
@@ -410,7 +376,7 @@ tripsRouter.post("/trips/:id/itinerary", async (req, res) => {
   if (scored.length === 0) {
     return res.status(422).json({
       error_code: "NO_FEASIBLE_SCHEDULE",
-      message: "조건을 만족하는 장소 후보가 없습니다. 예산을 늘리거나 반려동물 조건을 완화해보세요.",
+      message: "조건을 만족하는 장소 후보가 없습니다. 예산을 늘려보세요.",
     });
   }
 
@@ -431,8 +397,6 @@ tripsRouter.post("/trips/:id/itinerary", async (req, res) => {
     dayEnd: effectiveDayEnd,
     maxWalkingKm: trip.maxWalkingKm * (selectedCourseCategory?.scheduleParams?.maxWalkDistanceScale ?? 1),
     mustVisitPlaceIds,
-    hasPet: pref.hasPet,
-    petSize: pref.petSize,
     recommendationMode: trip.recommendationMode,
   });
   if (days.every((day) => day.items.length === 0)) {
@@ -465,7 +429,6 @@ tripsRouter.post("/trips/:id/itinerary", async (req, res) => {
           returnTravelMin: d.returnTravelMin,
           returnDistanceM: d.returnDistanceM,
           returnTravelIsEstimate: d.returnTravelIsEstimate,
-          petBreaksJson: JSON.stringify(d.petBreaks),
           items: {
             create: d.items.map((it) => ({
               placeId: it.placeId,
@@ -532,7 +495,7 @@ tripsRouter.get("/trips/:id/itinerary", async (req, res) => {
     orderBy: { generatedAt: "desc" },
     include: {
       trip: { include: { preference: true, lodgingPlace: true } },
-      days: { include: { items: { include: { place: { include: { petPolicy: true } } } } } },
+      days: { include: { items: { include: { place: true } } } },
     },
   });
   if (!itinerary || !itinerary.trip.preference) {
@@ -559,7 +522,6 @@ tripsRouter.get("/trips/:id/itinerary", async (req, res) => {
         returnTravelMin: d.returnTravelMin,
         returnDistanceM: d.returnDistanceM,
         returnTravelIsEstimate: d.returnTravelIsEstimate,
-        petBreaks: JSON.parse(d.petBreaksJson),
         items: d.items
           .sort((a, b) => a.seqOrder - b.seqOrder)
           .map((it) => ({
@@ -586,7 +548,6 @@ tripsRouter.get("/trips/:id/itinerary", async (req, res) => {
             travelIsEstimate: it.travelIsEstimate,
             travelSource: it.travelSource as "KAKAO_MOBILITY" | "HAVERSINE",
             recommendReason: it.recommendReason,
-            petFriendly: !!it.place.petPolicy?.allowed,
             hasEnglishMenu: it.place.hasEnglishMenu,
             foreignCardPayment: it.place.foreignCardPayment,
             localScore: it.place.localScore,
@@ -600,26 +561,6 @@ tripsRouter.get("/trips/:id/itinerary", async (req, res) => {
             kakaoReviewKeywords: JSON.parse(it.place.kakaoReviewKeywords),
             kakaoReviewSource: it.place.kakaoReviewSource,
             kakaoReviewCollectedAt: it.place.kakaoReviewCollectedAt,
-            petPolicy: it.place.petPolicy
-              ? {
-                  allowed: it.place.petPolicy.allowed,
-                  indoorAllowed: it.place.petPolicy.indoorAllowed,
-                  outdoorAllowed: it.place.petPolicy.outdoorAllowed,
-                  sizeLimit: it.place.petPolicy.sizeLimit as any,
-                  extraFee: it.place.petPolicy.extraFee,
-                  freshnessGrade: it.place.petPolicy.freshnessGrade,
-                  carrierRequired: it.place.petPolicy.carrierRequired,
-                  strollerAllowed: it.place.petPolicy.strollerAllowed,
-                  maxPetCount: it.place.petPolicy.maxPetCount,
-                  weightLimitKg: it.place.petPolicy.weightLimitKg,
-                  leashRequired: it.place.petPolicy.leashRequired,
-                  waterBowl: it.place.petPolicy.waterBowl,
-                  wasteBags: it.place.petPolicy.wasteBags,
-                  verifiedCount: it.place.petPolicy.verifiedCount,
-                  lastVerifiedAt: it.place.petPolicy.lastVerifiedAt,
-                  source: it.place.petPolicy.source,
-                }
-              : null,
           })),
       })),
   };

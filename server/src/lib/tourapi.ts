@@ -1,14 +1,12 @@
 /**
  * 한국관광공사 TourAPI 4.0 클라이언트 (17장 원칙: 배치 수집으로 자체 DB에 적재).
- * 세 서비스 모두 같은 인증키(TOUR_API_KEY)를 쓴다:
- *   KorService2      국문 관광정보
- *   EngService2      영문 관광정보 (contentId로만 조회 — areaCode 필터는 국문과 다른 contentTypeId 체계라 신뢰 불가)
- *   KorPetTourService2 반려동물 동반여행 정보
+ * 두 서비스 모두 같은 인증키(TOUR_API_KEY)를 쓴다:
+ *   KorService2 국문 관광정보
+ *   EngService2 영문 관광정보 (contentId로만 조회 — areaCode 필터는 국문과 다른 contentTypeId 체계라 신뢰 불가)
  */
 
 const KOR_BASE = "https://apis.data.go.kr/B551011/KorService2";
 const ENG_BASE = "https://apis.data.go.kr/B551011/EngService2";
-const PET_BASE = "https://apis.data.go.kr/B551011/KorPetTourService2";
 
 const MOBILE_APP = "LocalRoute";
 
@@ -142,25 +140,6 @@ export async function fetchEnglishName(contentId: string): Promise<string | null
   } catch {
     return null;
   }
-}
-
-/** 반려동물 동반여행 서비스에 등록된 부산 지역 contentId 전체를 한 번에 가져와 Set으로 반환 */
-export async function fetchPetFriendlyContentIds(areaCode: number): Promise<Set<string>> {
-  const ids = new Set<string>();
-  let pageNo = 1;
-  const numOfRows = 100;
-  for (let guard = 0; guard < 10; guard++) {
-    const body = await callApi<{ totalCount?: number }>(PET_BASE, "areaBasedList2", {
-      areaCode,
-      numOfRows,
-      pageNo,
-    });
-    const items = normalizeItems<{ contentid: string }>(body);
-    items.forEach((it) => ids.add(it.contentid));
-    if (items.length < numOfRows) break;
-    pageNo++;
-  }
-  return ids;
 }
 
 /** "09:00~18:00" 류의 자유 텍스트에서 HH:MM 시간창을 뽑아낸다. 못 찾으면 null(호출부에서 하루종일로 폴백). */

@@ -13,7 +13,7 @@ export type GenerationStage = "COLLECTING" | "SCORING" | "OPTIMIZING" | "VALIDAT
 
 function preferenceSignature(trip: {
   originLat: number; originLng: number; startDate: string; endDate: string; pace: string; hasCar: boolean;
-  dayStart: string; dayEnd: string; preference: { tasteTags: string; courseCategory: string | null; hasPet: boolean; petSize: string | null } | null;
+  dayStart: string; dayEnd: string; preference: { tasteTags: string; courseCategory: string | null } | null;
 }) {
   const preference = trip.preference;
   let tags: string[] = [];
@@ -22,7 +22,7 @@ function preferenceSignature(trip: {
   return JSON.stringify({
     area: [trip.originLat.toFixed(2), trip.originLng.toFixed(2)], duration, pace: trip.pace, hasCar: trip.hasCar,
     dayStart: trip.dayStart, dayEnd: trip.dayEnd, tags: [...new Set(tags)].sort(),
-    courseCategory: preference?.courseCategory ?? null, hasPet: preference?.hasPet ?? false, petSize: preference?.petSize ?? null,
+    courseCategory: preference?.courseCategory ?? null,
   });
 }
 
@@ -34,14 +34,15 @@ export async function generateItineraryForTrip(
   const trip = await prisma.trip.findUnique({ where: { id: tripId }, include: { preference: true, lodgingPlace: true } });
   if (!trip || !trip.preference) throw new GenerationError("TRIP_NOT_FOUND", "여행 조건을 찾을 수 없습니다.");
 
-  const places = (await prisma.place.findMany({ include: { petPolicy: true } })).filter((place) => ["TOURIST", "RESTAURANT", "CAFE"].includes(place.category));
+  const places = (await prisma.place.findMany()).filter((place) => ["TOURIST", "RESTAURANT", "CAFE"].includes(place.category));
   const pref = trip.preference;
   const courseCategory = findCourseCategory(pref.courseCategory);
   const tasteTags = applyCourseCategoryTasteTags(JSON.parse(pref.tasteTags), pref.courseCategory);
   const mustVisitPlaceIds: string[] = JSON.parse(pref.mustVisitPlaceIds);
+  const mustVisitAssignments: { placeId: string; dayIndex: number }[] = JSON.parse(pref.mustVisitAssignments ?? "[]");
   const excludedPlaceIds: string[] = JSON.parse(pref.excludedPlaceIds);
   const numDays = Math.round((new Date(`${trip.endDate}T00:00:00`).getTime() - new Date(`${trip.startDate}T00:00:00`).getTime()) / 86_400_000) + 1;
-  const modes = ["ESSENTIAL", "LOCAL", "PET_SAFE"] as const;
+  const modes = ["ESSENTIAL", "LOCAL", "EASY"] as const;
   let selectedItineraryId = "";
   const currentSignature = preferenceSignature(trip);
   const recentItineraries = await prisma.itinerary.findMany({
@@ -56,23 +57,19 @@ export async function generateItineraryForTrip(
 
   for (let modeIndex = 0; modeIndex < modes.length; modeIndex++) {
   const mode = modes[modeIndex];
-  const presets = { ESSENTIAL: { landmark: 70, local: 20, pet: 10 }, LOCAL: { landmark: 10, local: 80, pet: 10 }, PET_SAFE: { landmark: 10, local: 30, pet: 60 } } as const;
-  const ratios = mode === trip.recommendationMode ? { landmark: pref.landmarkRatio, local: pref.localRatio, pet: pref.petRatio } : presets[mode];
+  const presets = { ESSENTIAL: { landmark: 70, local: 20, easy: 10 }, LOCAL: { landmark: 10, local: 80, easy: 10 }, EASY: { landmark: 10, local: 30, easy: 60 } } as const;
+  const ratios = mode === trip.recommendationMode ? { landmark: pref.landmarkRatio, local: pref.localRatio, easy: pref.easyRatio } : presets[mode];
 
   await onProgress("SCORING", 20 + modeIndex * 25);
-  const scored = scorePlaces(places, tasteTags, pref.hasPet, (pref.petSize as any) ?? undefined, trip.totalBudget / numDays, trip.partySize, excludedPlaceIds, {
+  const scored = scorePlaces(places, tasteTags, trip.totalBudget / numDays, trip.partySize, excludedPlaceIds, {
     mode,
-    needsEnglishMenu: pref.needsEnglishMenu,
-    needsForeignCard: pref.needsForeignCard,
-    petIndoorRequired: pref.petIndoorRequired,
     ratios,
-    petProfile: { usesCarrier: pref.usesPetCarrier, usesStroller: pref.usesPetStroller, weightKg: pref.petWeightKg, count: pref.petCount },
-    allergies: JSON.parse(pref.allergies), dietType: pref.dietType, needsOnlineReservation: pref.needsOnlineReservation,
+    allergies: JSON.parse(pref.allergies), dietType: pref.dietType,
     courseCategory: pref.courseCategory,
   });
   if (scored.length === 0) {
     throw new GenerationError("NO_FEASIBLE_SCHEDULE", "조건을 만족하는 장소 후보가 없습니다.", {
-      suggestions: ["예산 늘리기", "반려동물 실내 조건 완화", "외국인 편의 필수 조건 완화"],
+      suggestions: ["예산 늘리기", "여행 조건 완화"],
     });
   }
 
@@ -106,8 +103,7 @@ export async function generateItineraryForTrip(
     dayEnd: effectiveDayEnd,
     maxWalkingKm: trip.maxWalkingKm * (courseCategory?.scheduleParams?.maxWalkDistanceScale ?? 1),
     mustVisitPlaceIds,
-    hasPet: pref.hasPet,
-    petSize: pref.petSize,
+    mustVisitAssignments,
     recommendationMode: mode,
   });
 
@@ -140,7 +136,6 @@ export async function generateItineraryForTrip(
           returnTravelMin: day.returnTravelMin,
           returnDistanceM: day.returnDistanceM,
           returnTravelIsEstimate: day.returnTravelIsEstimate,
-          petBreaksJson: JSON.stringify(day.petBreaks),
           items: {
             create: day.items.map((item) => ({
               placeId: item.placeId,

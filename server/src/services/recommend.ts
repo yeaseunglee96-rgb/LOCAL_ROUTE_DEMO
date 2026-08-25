@@ -1,4 +1,4 @@
-import type { PetSize, RecommendationMode, ScoredPlace } from "../types.js";
+import type { RecommendationMode, ScoredPlace } from "../types.js";
 import { findCourseCategory } from "./courseCategories.js";
 
 export interface PlaceWithPolicy {
@@ -34,27 +34,7 @@ export interface PlaceWithPolicy {
   kakaoReviewKeywords: string;
   kakaoReviewSource: string | null;
   kakaoReviewCollectedAt: Date | null;
-  petPolicy: {
-    allowed: boolean;
-    indoorAllowed: boolean;
-    outdoorAllowed: boolean;
-    sizeLimit: string;
-    extraFee: number;
-    freshnessGrade: string;
-    carrierRequired: boolean;
-    strollerAllowed: boolean;
-    maxPetCount: number | null;
-    weightLimitKg: number | null;
-    leashRequired: boolean;
-    waterBowl: boolean;
-    wasteBags: boolean;
-    verifiedCount: number;
-    lastVerifiedAt: Date;
-    source: string;
-  } | null;
 }
-
-const SIZE_ORDER: Record<string, number> = { SMALL: 1, MEDIUM: 2, LARGE: 3 };
 
 // priceTier(1~4)를 1인 예상 지출액(원)으로 환산
 const TIER_COST: Record<number, number> = { 1: 0, 2: 8000, 3: 20000, 4: 45000 };
@@ -84,36 +64,11 @@ function preferenceSimilarity(a: string[], b: string[]): number {
   return intersection / Math.sqrt(setA.size * setB.size);
 }
 
-/**
- * 13.3장 반려동물 hard filter. 통과하지 못하면 후보에서 원천 제외한다(soft penalty 아님).
- */
-export function passesPetHardFilter(
-  petPolicy: PlaceWithPolicy["petPolicy"],
-  hasPet: boolean,
-  petSize?: PetSize,
-  indoorRequired = false,
-  profile: { usesCarrier?: boolean; usesStroller?: boolean; weightKg?: number | null; count?: number } = {}
-): boolean {
-  if (!hasPet) return true;
-  if (!petPolicy || !petPolicy.allowed) return false;
-  if (indoorRequired && !petPolicy.indoorAllowed) return false;
-  if (petPolicy.carrierRequired && !profile.usesCarrier) return false;
-  if (profile.usesStroller && !petPolicy.strollerAllowed) return false;
-  if (petPolicy.maxPetCount !== null && (profile.count ?? 1) > petPolicy.maxPetCount) return false;
-  if (petPolicy.weightLimitKg !== null && profile.weightKg !== null && profile.weightKg !== undefined && profile.weightKg > petPolicy.weightLimitKg) return false;
-  if (!petSize) return true;
-  const limit = SIZE_ORDER[petPolicy.sizeLimit] ?? 3;
-  const size = SIZE_ORDER[petSize] ?? 1;
-  return size <= limit;
-}
-
 export interface ScoreOptions {
   mode: RecommendationMode;
-  needsEnglishMenu: boolean;
-  needsForeignCard: boolean;
-  petIndoorRequired: boolean;
-  ratios?: { landmark: number; local: number; pet: number };
-  petProfile?: { usesCarrier?: boolean; usesStroller?: boolean; weightKg?: number | null; count?: number };
+  needsEnglishMenu?: boolean;
+  needsForeignCard?: boolean;
+  ratios?: { landmark: number; local: number; easy: number };
   allergies?: string[];
   dietType?: string;
   needsOnlineReservation?: boolean;
@@ -145,24 +100,23 @@ function passesCourseCategoryProxy(place: PlaceWithPolicy, courseCategory: strin
 export function scorePlaces(
   places: PlaceWithPolicy[],
   tasteTags: string[],
-  hasPet: boolean,
-  petSize: PetSize | undefined,
   dayBudgetEstimate: number,
   partySize: number,
   excludedPlaceIds: string[],
   options: ScoreOptions
 ): ScoredPlace[] {
   const TRAVEL_EFFICIENCY_PLACEHOLDER = 0.5;
+  // v2 13/15장: 이동 편의성 및 외국인 편의 비중 반영
   const weights = {
-    ESSENTIAL: { taste: 0.2, local: 0.15, travel: 0.25, pet: 0, budget: 0.15, mode: 0.15, foreign: 0.1 },
-    LOCAL: { taste: 0.25, local: 0.35, travel: 0.15, pet: 0, budget: 0.1, mode: 0.1, foreign: 0.05 },
-    PET_SAFE: { taste: 0.2, local: 0.2, travel: 0.15, pet: 0.25, budget: 0.05, mode: 0.1, foreign: 0.05 },
+    ESSENTIAL: { taste: 0.2, local: 0.15, travel: 0.25, budget: 0.15, mode: 0.15, foreign: 0.1 },
+    LOCAL: { taste: 0.25, local: 0.35, travel: 0.15, budget: 0.1, mode: 0.1, foreign: 0.05 },
+    EASY: { taste: 0.15, local: 0.15, travel: 0.3, budget: 0.05, mode: 0.1, foreign: 0.25 },
   }[options.mode];
   const category = findCourseCategory(options.courseCategory);
   const multipliers = category?.weightMultipliers ?? {};
   const weighted = {
     taste: weights.taste * (multipliers.tasteMatch ?? 1), local: weights.local * (multipliers.localScore ?? 1),
-    travel: weights.travel * (multipliers.travelEfficiency ?? 1), pet: weights.pet * (multipliers.petFit ?? 1),
+    travel: weights.travel * (multipliers.travelEfficiency ?? 1),
     budget: weights.budget * (multipliers.budgetFit ?? 1), mode: weights.mode,
     foreign: weights.foreign * (multipliers.foreignerEase ?? 1),
   };
@@ -171,10 +125,7 @@ export function scorePlaces(
 
   return places
     .filter((p) => !excludedPlaceIds.includes(p.id))
-    .filter((p) => passesPetHardFilter(p.petPolicy, hasPet, petSize, options.petIndoorRequired, options.petProfile))
     .filter((p) => passesCourseCategoryProxy(p, options.courseCategory))
-    .filter((p) => !options.needsEnglishMenu || !["RESTAURANT", "CAFE"].includes(p.category) || p.hasEnglishMenu)
-    .filter((p) => !options.needsForeignCard || p.priceTier === 1 || p.foreignCardPayment)
     .filter((p) => {
       const known = JSON.parse(p.allergens) as string[];
       return !(options.allergies ?? []).some((allergy) => known.map((value) => value.toLowerCase()).includes(allergy.toLowerCase()));
@@ -190,19 +141,18 @@ export function scorePlaces(
       const estCost = estimatePlaceCost(p.priceTier, partySize);
       const normalBudgetFit = dayBudgetEstimate > 0 ? Math.max(0, 1 - estCost / dayBudgetEstimate) : 0.5;
       const budgetFit = category?.budgetFitMode === "INVERSE" ? 1 - normalBudgetFit : normalBudgetFit;
-      const petFit = hasPet ? 1 : 0; // 여기 도달했다면 이미 hard filter 통과
+      const foreignFit = ((p.hasEnglishMenu ? 1 : 0) + (p.foreignCardPayment ? 1 : 0)) / 2;
       const presetModeFit = options.mode === "ESSENTIAL"
         ? (placeTasteTags.includes("landmark") ? 1 : 0)
         : options.mode === "LOCAL"
           ? Math.min(1, p.localScore * 0.7 + (placeTasteTags.includes("hidden_local") ? 0.3 : 0))
-          : (p.petPolicy?.allowed ? 1 : 0);
-      const ratioTotal = options.ratios ? Math.max(1, options.ratios.landmark + options.ratios.local + options.ratios.pet) : 0;
+          : foreignFit;
+      const ratioTotal = options.ratios ? Math.max(1, options.ratios.landmark + options.ratios.local + options.ratios.easy) : 0;
       const modeFit = options.ratios
         ? (options.ratios.landmark / ratioTotal) * (placeTasteTags.includes("landmark") ? 1 : 0)
           + (options.ratios.local / ratioTotal) * Math.min(1, p.localScore * 0.7 + (placeTasteTags.includes("hidden_local") ? 0.3 : 0))
-          + (options.ratios.pet / ratioTotal) * (p.petPolicy?.allowed ? 1 : 0)
+          + (options.ratios.easy / ratioTotal) * foreignFit
         : presetModeFit;
-      const foreignFit = ((p.hasEnglishMenu ? 1 : 0) + (p.foreignCardPayment ? 1 : 0)) / 2;
       const courseFit = options.courseCategory === "ZERO_WON" ? (p.priceTier === 1 ? 1 : 0)
         : options.courseCategory === "BEST_BANG" ? Math.min(1, p.localScore * 0.7 + normalBudgetFit * 0.3)
         : options.courseCategory === "SPLURGE" ? Math.min(1, (p.priceTier - 1) / 3)
@@ -215,7 +165,6 @@ export function scorePlaces(
         normalizedWeights.taste * tasteMatch +
         normalizedWeights.local * p.localScore +
         normalizedWeights.travel * TRAVEL_EFFICIENCY_PLACEHOLDER +
-        normalizedWeights.pet * petFit +
         normalizedWeights.budget * budgetFit +
         normalizedWeights.mode * modeFit +
         normalizedWeights.foreign * foreignFit;
@@ -257,26 +206,6 @@ export function scorePlaces(
         kakaoReviewKeywords: JSON.parse(p.kakaoReviewKeywords),
         kakaoReviewSource: p.kakaoReviewSource,
         kakaoReviewCollectedAt: p.kakaoReviewCollectedAt,
-        petPolicy: p.petPolicy
-          ? {
-              allowed: p.petPolicy.allowed,
-              indoorAllowed: p.petPolicy.indoorAllowed,
-              outdoorAllowed: p.petPolicy.outdoorAllowed,
-              sizeLimit: p.petPolicy.sizeLimit as PetSize | "NONE",
-              extraFee: p.petPolicy.extraFee,
-              freshnessGrade: p.petPolicy.freshnessGrade,
-              carrierRequired: p.petPolicy.carrierRequired,
-              strollerAllowed: p.petPolicy.strollerAllowed,
-              maxPetCount: p.petPolicy.maxPetCount,
-              weightLimitKg: p.petPolicy.weightLimitKg,
-              leashRequired: p.petPolicy.leashRequired,
-              waterBowl: p.petPolicy.waterBowl,
-              wasteBags: p.petPolicy.wasteBags,
-              verifiedCount: p.petPolicy.verifiedCount,
-              lastVerifiedAt: p.petPolicy.lastVerifiedAt,
-              source: p.petPolicy.source,
-            }
-          : null,
         score,
       };
       return scored;
@@ -293,7 +222,6 @@ export function buildRecommendReason(place: ScoredPlace, travelMinToNext: number
   parts.push(place.localScore >= 0.75 ? `현지인 추천 점수 ${place.localScore.toFixed(2)}` : `로컬점수 ${place.localScore.toFixed(2)}`);
   if (place.tasteTags.length > 0) parts.push(`취향 태그: ${place.tasteTags.slice(0, 2).join(", ")}`);
   if (travelMinToNext !== null) parts.push(`다음 장소까지 약 ${travelMinToNext}분`);
-  if (place.petPolicy?.allowed) parts.push("반려동물 동반 가능");
   return parts.join(" · ");
 }
 

@@ -19,10 +19,10 @@ import { TripSouvenirsPage } from "../pages/trip/TripSouvenirsPage";
 import { TripTogetherPage } from "../pages/trip/TripTogetherPage";
 import { TripPrepPage } from "../pages/trip/TripPrepPage";
 import { TripCollaboratePage } from "../pages/trip/TripCollaboratePage";
+import { TripNavigatePage } from "../pages/trip/TripNavigatePage";
 
 import { PlaceDetailPage } from "../pages/place/PlaceDetailPage";
 import { PlaceReviewsPage } from "../pages/place/PlaceReviewsPage";
-import { PlacePetPolicyPage } from "../pages/place/PlacePetPolicyPage";
 
 import { StoryFeedPage } from "../pages/story/StoryFeedPage";
 import { StoryComposePage } from "../pages/story/StoryComposePage";
@@ -99,6 +99,7 @@ export function AppRouter() {
           <Route path="overview" element={<TripOverviewPage />} />
           <Route path="schedule" element={<TripSchedulePage />} />
           <Route path="schedule/:dayIndex" element={<TripSchedulePage />} />
+          <Route path="schedule/:dayIndex/navigate" element={<TripNavigatePage />} />
           <Route path="map" element={<TripMapPage />} />
           <Route path="discover" element={<TripDiscoverPage />} />
           <Route path="discover/festivals" element={<TripFestivalsPage />} />
@@ -110,7 +111,6 @@ export function AppRouter() {
 
         <Route path="/places/:placeId" element={<PlaceDetailPage />} />
         <Route path="/places/:placeId/reviews" element={<PlaceReviewsPage />} />
-        <Route path="/places/:placeId/pet-policy" element={<PlacePetPolicyPage />} />
 
         <Route path="/stories" element={<StoryFeedPage />} />
         <Route path="/stories/new" element={<StoryComposePage />} />

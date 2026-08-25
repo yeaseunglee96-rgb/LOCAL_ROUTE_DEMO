@@ -1,6 +1,5 @@
 export type Pace = "RELAXED" | "NORMAL" | "PACKED";
-export type PetSize = "SMALL" | "MEDIUM" | "LARGE";
-export type RecommendationMode = "ESSENTIAL" | "LOCAL" | "PET_SAFE";
+export type RecommendationMode = "ESSENTIAL" | "LOCAL" | "EASY";
 export type DietType = "NONE" | "VEGETARIAN" | "VEGAN" | "HALAL" | "GLUTEN_FREE";
 
 export interface CreateTripRequest {
@@ -17,31 +16,19 @@ export interface CreateTripRequest {
   pace: Pace;
   tasteTags: string[];
   courseCategory?: string;
-  hasPet: boolean;
-  petSize?: PetSize;
-  petName?: string;
+  mustVisitPlaceIds?: string[];
+  mustVisitAssignments?: { placeId: string; dayIndex: number }[];
   recommendationMode?: RecommendationMode;
   dayStart?: string;
   dayEnd?: string;
   maxWalkingKm?: number;
   language?: "KO" | "EN";
-  needsEnglishMenu?: boolean;
-  needsForeignCard?: boolean;
-  petIndoorRequired?: boolean;
-  usesPetCarrier?: boolean;
   allergies?: string[];
   dietType?: DietType;
-  needsOnlineReservation?: boolean;
-  maxTransferCount?: number;
-  petWeightKg?: number;
-  petCount?: number;
-  usesPetStroller?: boolean;
-  petRestaurantRequired?: boolean;
-  petLodgingRequired?: boolean;
   lodgingPlaceId?: string;
   landmarkRatio?: number;
   localRatio?: number;
-  petRatio?: number;
+  easyRatio?: number;
 }
 
 export interface TripMeta {
@@ -62,29 +49,15 @@ export interface TripMeta {
   maxWalkingKm: number;
   recommendationMode: RecommendationMode;
   tasteTags: string[];
-  hasPet: boolean;
-  petSize: PetSize | null;
-  petName: string | null;
   language: "KO" | "EN";
-  needsEnglishMenu: boolean;
-  needsForeignCard: boolean;
-  petIndoorRequired: boolean;
-  usesPetCarrier: boolean;
   allergies: string[];
   dietType: DietType;
-  needsOnlineReservation: boolean;
-  maxTransferCount: number;
-  petWeightKg: number | null;
-  petCount: number;
-  usesPetStroller: boolean;
-  petRestaurantRequired: boolean;
-  petLodgingRequired: boolean;
   lodgingPlaceId: string | null;
   lodgingName: string | null;
   lodgingAddress: string | null;
   landmarkRatio: number;
   localRatio: number;
-  petRatio: number;
+  easyRatio: number;
 }
 
 export interface ItineraryItemOutput {
@@ -111,7 +84,6 @@ export interface ItineraryItemOutput {
   travelIsEstimate: boolean;
   travelSource: "KAKAO_MOBILITY" | "HAVERSINE";
   recommendReason: string;
-  petFriendly: boolean;
   hasEnglishMenu: boolean;
   foreignCardPayment: boolean;
   localScore: number;
@@ -125,24 +97,6 @@ export interface ItineraryItemOutput {
   kakaoReviewKeywords: string[];
   kakaoReviewSource: string | null;
   kakaoReviewCollectedAt: string | null;
-  petPolicy: {
-    allowed: boolean;
-    indoorAllowed: boolean;
-    outdoorAllowed: boolean;
-    sizeLimit: PetSize | "NONE";
-    extraFee: number;
-    freshnessGrade: "VERIFIED" | "AGING" | "STALE" | string;
-    carrierRequired?: boolean;
-    strollerAllowed?: boolean;
-    maxPetCount?: number | null;
-    weightLimitKg?: number | null;
-    leashRequired?: boolean;
-    waterBowl?: boolean;
-    wasteBags?: boolean;
-    verifiedCount?: number;
-    lastVerifiedAt?: string;
-    source?: string;
-  } | null;
 }
 
 export interface ItineraryDayOutput {
@@ -156,7 +110,6 @@ export interface ItineraryDayOutput {
   returnTravelMin: number | null;
   returnDistanceM: number | null;
   returnTravelIsEstimate: boolean;
-  petBreaks: { afterPlaceId: string; startTime: string; durationMin: number; label: string }[];
   items: ItineraryItemOutput[];
 }
 
@@ -197,12 +150,9 @@ export interface PlaceAlternative {
   score: number;
   localScore: number;
   estCost: number;
-  petFriendly: boolean;
   hasEnglishMenu: boolean;
   foreignCardPayment: boolean;
 }
-
-export interface PetSafetyPlace { id: string; nameKo: string; category: "VET" | "PET_SUPPLY"; address: string; lat: number; lng: number; distanceM: number }
 
 export interface SponsoredPlacement {
   campaignId: string;
@@ -217,13 +167,15 @@ export interface SponsoredPlacement {
 
 export interface BookingOption { id: string; provider: string; }
 
-export interface Festival { placeId: string; eventType?: "FESTIVAL" | "NIGHT_MARKET" | "TRADITIONAL_MARKET"; title: string; titleEn: string | null; address: string; lat: number; lng: number; startDate: string; endDate: string; playTime: string | null; petAllowed: boolean | null; petPolicyFreshness: string | null; imageUrl: string | null; localScore: number; officialUrl?: string }
+export interface Festival { placeId: string; eventType?: "FESTIVAL" | "NIGHT_MARKET" | "TRADITIONAL_MARKET"; title: string; titleEn: string | null; address: string; lat: number; lng: number; startDate: string; endDate: string; playTime: string | null; imageUrl: string | null; localScore: number; officialUrl?: string }
 export interface SouvenirShop { id: string; nameKo: string; nameEn: string | null; address: string; lat: number; lng: number; distanceM: number; items: string[]; openTime: string; closeTime: string; cardPayment: boolean; foreignAssistance: boolean; localScore: number; imageUrl: string | null; sponsored: false }
-export interface WeatherForecast { date: string; tempMin: number; tempMax: number; rainProbability: number; sky: "CLEAR" | "CLOUDY" | "RAIN"; isEstimate: boolean; source: string; outdoorWarning: boolean; petHeatWarning: boolean }
+export interface WeatherForecast { date: string; tempMin: number; tempMax: number; rainProbability: number; sky: "CLEAR" | "CLOUDY" | "RAIN"; isEstimate: boolean; source: string; outdoorWarning: boolean }
 export interface LocationSearchResult { id: string; name: string; address: string; lat: number; lng: number; category: string }
 export interface CourseCategory { code: string; nameKo: string; nameEn: string; axis: "BUDGET" | "MOOD" | "THEME" | "MOBILITY" | "COMPANION" | "SITUATION"; summaryKo: string; enabled: boolean; disabledReason?: string; boostTasteTags?: string[]; scheduleParams?: { pace?: Pace; transport?: string; stayMinutesScale?: number; maxWalkDistanceScale?: number; dayEndTimeCap?: string; forbidTimeRange?: { after?: string } } }
 export interface PlaceImageMatch { imageUrl: string | null; sourceUrl: string | null; provider: "DATABASE" | "NAVER" | "GOOGLE" | null; title: string | null }
-export interface TransitAlternative { id: string; label: string; distanceM: number; durationMin: number; fare: number | null; transfers: number | null; steps: { guidance: string; durationMin: number; distanceM: number; vehicle: string | null }[]; path: [number, number][]; isEstimate: boolean }
-export interface EmbeddedRoute { mode: "TRANSIT" | "CAR"; distanceM: number; durationMin: number; fare: number | null; transfers: number | null; steps: { guidance: string; durationMin: number; distanceM: number; vehicle: string | null }[]; path: [number, number][]; isEstimate: boolean; source: "KAKAO_MAP" | "KAKAO_MOBILITY" | "ESTIMATE"; alternatives?: TransitAlternative[] }
-export interface StoryRecord { id: string; authorId: string; authorLabel: string; placeId: string; placeName: string; content: string; images: string[]; visibility: string; visitVerified: boolean; petTagged: boolean; areaLabel: string; publishAt: string; moderationStatus: string; createdAt: string; isFollowing: boolean; mine: boolean }
-export interface SharedItinerary { shareSlug: string; authorId: string; expiresAt: string; viewCount: number; cloneCount: number; trip: { startDate: string; endDate: string; partySize: number; pace: string; language: "KO" | "EN"; hasPet: boolean }; itinerary: { id: string; mode: string; days: { dayIndex: number; visitDate: string; items: { itemId: string; seqOrder: number; plannedArrival: string; stayMinutes: number; nameKo: string; nameEn: string | null; category: string; address: string; lat: number; lng: number }[] }[] } }
+export interface RouteStep { guidance: string; durationMin: number; distanceM: number; vehicle: string | null; destinationStop?: string | null; path: [number, number][] }
+export interface TransitAlternative { id: string; label: string; distanceM: number; durationMin: number; fare: number | null; transfers: number | null; steps: RouteStep[]; path: [number, number][]; isEstimate: boolean }
+export interface EmbeddedRoute { mode: "TRANSIT" | "CAR"; distanceM: number; durationMin: number; fare: number | null; transfers: number | null; transferDifficulty: "EASY" | "MODERATE" | "HARD" | null; steps: RouteStep[]; path: [number, number][]; isEstimate: boolean; source: "KAKAO_MAP" | "KAKAO_MOBILITY" | "ESTIMATE"; alternatives?: TransitAlternative[] }
+export interface TaxiCard { placeId: string; nameKo: string; nameEn: string | null; addressKo: string; phraseKo: string }
+export interface StoryRecord { id: string; authorId: string; authorLabel: string; placeId: string; placeName: string; content: string; images: string[]; visibility: string; visitVerified: boolean; areaLabel: string; publishAt: string; moderationStatus: string; createdAt: string; isFollowing: boolean; mine: boolean }
+export interface SharedItinerary { shareSlug: string; authorId: string; expiresAt: string; viewCount: number; cloneCount: number; trip: { startDate: string; endDate: string; partySize: number; pace: string; language: "KO" | "EN" }; itinerary: { id: string; mode: string; days: { dayIndex: number; visitDate: string; items: { itemId: string; seqOrder: number; plannedArrival: string; stayMinutes: number; nameKo: string; nameEn: string | null; category: string; address: string; lat: number; lng: number }[] }[] } }

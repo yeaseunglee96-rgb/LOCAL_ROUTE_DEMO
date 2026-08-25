@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url";
 
 export interface CourseCategoryConfig {
   code: string; nameKo: string; nameEn: string; axis: string; summaryKo: string; enabled: boolean; disabledReason?: string; boostTasteTags?: string[];
-  weightMultipliers?: Partial<Record<"tasteMatch" | "localScore" | "travelEfficiency" | "petFit" | "budgetFit" | "foreignerEase" | "freshness", number>>;
+  weightMultipliers?: Partial<Record<"tasteMatch" | "localScore" | "travelEfficiency" | "budgetFit" | "foreignerEase" | "freshness", number>>;
   scheduleParams?: { pace?: "RELAXED" | "NORMAL" | "PACKED"; placesPerDay?: [number, number]; transport?: string; stayMinutesScale?: number; maxWalkDistanceScale?: number; maxTravelMinutesBetween?: number; dayEndTimeCap?: string; forbidTimeRange?: { after?: string }; regularMealTimes?: boolean };
   landmarkPenalty?: number;
   budgetFitMode?: "INVERSE";

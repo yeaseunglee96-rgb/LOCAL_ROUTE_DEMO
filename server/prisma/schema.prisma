@@ -43,7 +43,6 @@ model Place {
   kakaoReviewKeywords String  @default("[]")
   kakaoReviewSource  String?  // LICENSED_IMPORT | MANUAL_VERIFIED
   kakaoReviewCollectedAt DateTime?
-  petPolicy          PlacePetPolicy?
   items              ItineraryItem[]
   lodgingTrips       Trip[]   @relation("TripLodging")
   translations       PlaceTranslation[]
@@ -179,13 +178,12 @@ model AdCampaign {
   place             Place        @relation(fields: [placeId], references: [id])
   placeId           String
   name              String
-  serviceCategory   String       @default("LODGING") // LODGING | RENTAL_CAR | TRAVEL_INSURANCE | TAXI | AIRPORT_TRANSFER | PET_MOBILITY
+  serviceCategory   String       @default("LODGING") // LODGING | RENTAL_CAR | TRAVEL_INSURANCE | TAXI | AIRPORT_TRANSFER
   status            String       @default("DRAFT") // DRAFT | ACTIVE | PAUSED | ENDED
   budget            Float
   spent             Float        @default(0)
   bidCpc             Float
   targetingModes    String       @default("[]")
-  targetingHasPet   Boolean?
   targetingLanguage String?
   startsAt          DateTime
   endsAt            DateTime
@@ -253,40 +251,6 @@ model PlaceTranslation {
   @@unique([placeId, lang])
 }
 
-model PlacePetPolicy {
-  id              String  @id @default(cuid())
-  place           Place   @relation(fields: [placeId], references: [id])
-  placeId         String  @unique
-  allowed         Boolean
-  indoorAllowed   Boolean
-  outdoorAllowed  Boolean
-  sizeLimit       String // NONE | SMALL | MEDIUM | LARGE (max size accepted)
-  extraFee        Float   @default(0)
-  freshnessGrade  String // VERIFIED | AGING | STALE
-  carrierRequired Boolean @default(false)
-  strollerAllowed Boolean @default(true)
-  maxPetCount     Int?
-  weightLimitKg   Float?
-  leashRequired   Boolean @default(true)
-  waterBowl       Boolean @default(false)
-  wasteBags       Boolean @default(false)
-  verifiedCount   Int     @default(1)
-  lastVerifiedAt  DateTime @default(now())
-  source          String  @default("INITIAL_RESEARCH")
-  reports         PetPolicyReport[]
-}
-
-model PetPolicyReport {
-  id          String   @id @default(cuid())
-  policy      PlacePetPolicy @relation(fields: [policyId], references: [id])
-  policyId    String
-  reportType  String
-  note        String?
-  createdAt   DateTime @default(now())
-  status      String   @default("PENDING")
-  @@index([policyId, createdAt])
-}
-
 model Trip {
   id            String   @id @default(cuid())
   origin        String
@@ -340,27 +304,18 @@ model TripPreference {
     tasteTags           String // JSON string array
     courseCategory      String?
   mustVisitPlaceIds   String // JSON string array
+  mustVisitAssignments String @default("[]") // JSON: { placeId: string, dayIndex: number }[] - 날짜 지정된 필수 방문 장소
   excludedPlaceIds    String // JSON string array
-  hasPet              Boolean @default(false)
-  petSize             String? // SMALL | MEDIUM | LARGE
-  petName             String?
   language            String  @default("KO") // KO | EN
   needsEnglishMenu    Boolean @default(false)
   needsForeignCard    Boolean @default(false)
-  petIndoorRequired   Boolean @default(false)
-  usesPetCarrier      Boolean @default(false)
   allergies           String  @default("[]") // JSON string array
   dietType             String  @default("NONE") // NONE | VEGETARIAN | VEGAN | HALAL | GLUTEN_FREE
   needsOnlineReservation Boolean @default(false)
   maxTransferCount     Int     @default(2)
-  petWeightKg          Float?
-  petCount             Int     @default(1)
-  usesPetStroller      Boolean @default(false)
-  petRestaurantRequired Boolean @default(false)
-  petLodgingRequired   Boolean @default(false)
   landmarkRatio        Int     @default(30)
   localRatio           Int     @default(50)
-  petRatio             Int     @default(20)
+  easyRatio            Int     @default(20) // 초행 외국인 안심 비중(구 petRatio, v2 13장)
 }
 
 model Itinerary {
@@ -407,7 +362,6 @@ model ItineraryDay {
   returnTravelMin       Int?
   returnDistanceM       Int?
   returnTravelIsEstimate Boolean @default(true)
-  petBreaksJson String @default("[]")
   lockedBySessionId String?
   lockedUntil DateTime?
   items        ItineraryItem[]
@@ -482,7 +436,6 @@ model Story {
   rating          Int?
   visibility      String           @default("PUBLIC") // PUBLIC | FOLLOWERS | PRIVATE
   visitVerified   Boolean          @default(false)
-  petTagged       Boolean          @default(false)
   areaLabel       String
   publishAt       DateTime
   moderationStatus String          @default("PUBLISHED") // PUBLISHED | REVIEW | HIDDEN | REMOVED

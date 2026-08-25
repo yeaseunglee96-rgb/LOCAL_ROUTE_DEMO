@@ -1,7 +1,6 @@
 export type Pace = "RELAXED" | "NORMAL" | "PACKED";
-export type PetSize = "SMALL" | "MEDIUM" | "LARGE";
 export type Category = "TOURIST" | "RESTAURANT" | "CAFE" | "LODGING";
-export type RecommendationMode = "ESSENTIAL" | "LOCAL" | "PET_SAFE";
+export type RecommendationMode = "ESSENTIAL" | "LOCAL" | "EASY";
 export type Language = "KO" | "EN";
 export type DietType = "NONE" | "VEGETARIAN" | "VEGAN" | "HALAL" | "GLUTEN_FREE";
 
@@ -20,32 +19,19 @@ export interface CreateTripRequest {
   tasteTags: string[];
   courseCategory?: string;
   mustVisitPlaceIds?: string[];
+  mustVisitAssignments?: { placeId: string; dayIndex: number }[];
   excludedPlaceIds?: string[];
-  hasPet?: boolean;
-  petSize?: PetSize;
-  petName?: string;
   recommendationMode?: RecommendationMode;
   dayStart?: string;
   dayEnd?: string;
   maxWalkingKm?: number;
   language?: Language;
-  needsEnglishMenu?: boolean;
-  needsForeignCard?: boolean;
-  petIndoorRequired?: boolean;
-  usesPetCarrier?: boolean;
   allergies?: string[];
   dietType?: DietType;
-  needsOnlineReservation?: boolean;
-  maxTransferCount?: number;
-  petWeightKg?: number;
-  petCount?: number;
-  usesPetStroller?: boolean;
-  petRestaurantRequired?: boolean;
-  petLodgingRequired?: boolean;
   lodgingPlaceId?: string;
   landmarkRatio?: number;
   localRatio?: number;
-  petRatio?: number;
+  easyRatio?: number;
 }
 
 export interface TripMeta {
@@ -66,29 +52,15 @@ export interface TripMeta {
   maxWalkingKm: number;
   recommendationMode: RecommendationMode;
   tasteTags: string[];
-  hasPet: boolean;
-  petSize: PetSize | null;
-  petName: string | null;
   language: Language;
-  needsEnglishMenu: boolean;
-  needsForeignCard: boolean;
-  petIndoorRequired: boolean;
-  usesPetCarrier: boolean;
   allergies: string[];
   dietType: DietType;
-  needsOnlineReservation: boolean;
-  maxTransferCount: number;
-  petWeightKg: number | null;
-  petCount: number;
-  usesPetStroller: boolean;
-  petRestaurantRequired: boolean;
-  petLodgingRequired: boolean;
   lodgingPlaceId: string | null;
   lodgingName: string | null;
   lodgingAddress: string | null;
   landmarkRatio: number;
   localRatio: number;
-  petRatio: number;
+  easyRatio: number;
 }
 
 export interface ScoredPlace {
@@ -122,24 +94,6 @@ export interface ScoredPlace {
   kakaoReviewKeywords: string[];
   kakaoReviewSource: string | null;
   kakaoReviewCollectedAt: Date | null;
-  petPolicy: {
-    allowed: boolean;
-    indoorAllowed: boolean;
-    outdoorAllowed: boolean;
-    sizeLimit: PetSize | "NONE";
-    extraFee: number;
-    freshnessGrade: string;
-    carrierRequired: boolean;
-    strollerAllowed: boolean;
-    maxPetCount: number | null;
-    weightLimitKg: number | null;
-    leashRequired: boolean;
-    waterBowl: boolean;
-    wasteBags: boolean;
-    verifiedCount: number;
-    lastVerifiedAt: Date;
-    source: string;
-  } | null;
   score: number;
 }
 
@@ -167,7 +121,6 @@ export interface ItineraryItemOutput {
   travelIsEstimate: boolean;
   travelSource: "KAKAO_MOBILITY" | "HAVERSINE";
   recommendReason: string;
-  petFriendly: boolean;
   hasEnglishMenu: boolean;
   foreignCardPayment: boolean;
   localScore: number;
@@ -181,7 +134,6 @@ export interface ItineraryItemOutput {
   kakaoReviewKeywords: string[];
   kakaoReviewSource: string | null;
   kakaoReviewCollectedAt: Date | null;
-  petPolicy: ScoredPlace["petPolicy"];
 }
 
 export interface ItineraryDayOutput {
@@ -195,7 +147,6 @@ export interface ItineraryDayOutput {
   returnTravelMin: number | null;
   returnDistanceM: number | null;
   returnTravelIsEstimate: boolean;
-  petBreaks: { afterPlaceId: string; startTime: string; durationMin: number; label: string }[];
   items: ItineraryItemOutput[];
 }
 

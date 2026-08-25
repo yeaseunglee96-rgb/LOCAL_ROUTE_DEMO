@@ -1,6 +1,6 @@
 # LOCAL ROUTE 실행 기획서 v4
 
-**부제** — 현지인이 다시 가는 곳으로, 반려동물과 외국인도 걱정 없이
+**부제** — 현지인이 다시 가는 곳으로, 구글맵이 못 찾는 길도 걱정 없이
 
 | 항목 | 내용 |
 | --- | --- |
@@ -430,7 +430,7 @@ R=실행, A=최종책임, C=자문, I=공유
 | GEN | 추천·최적화 생성 | BE |
 | ITN | 일정 열람·편집 | FE·BE |
 | MAP | 지도·경로 | FE·BE |
-| PET | 반려동물 동반 | BE |
+| NAV | 외국인 실시간 내비게이션 | BE·FE |
 | FGN | 외국인 지원 | BE·FE |
 | LOC | 로컬 검증 | BE |
 | EXP | 지역 체험(축제·기념품) | BE·FE |
@@ -450,20 +450,17 @@ R=실행, A=최종책임, C=자문, I=공유
 | F-PLN-01 | 여행 조건 4단계 입력 (기간·인원·예산·이동 시간대·취향·동반 조건) | `POST /api/trips`, `TripFormPage.tsx` | FE·BE |
 | F-PLN-02 | 출발지 자연어 검색 | `GET /api/locations/search`, `services/kakao.ts` | BE |
 | F-PLN-03 | 10종 코스 카테고리 선택 | `GET /api/course-categories`, `services/courseCategories.ts` | BE |
-| F-PLN-04 | 숙소 지정 (반려동물 동반 객실 포함) | `GET /api/places?category=LODGING` | BE |
+| F-PLN-04 | 숙소 지정 | `GET /api/places?category=LODGING` | BE |
 | F-GEN-01 | 규칙 기반 추천 점수 계산 (7개 가중치 축) | `services/recommend.ts` (334줄) | BE |
 | F-GEN-02 | 시간창 제약 일정 스케줄링 + 휴리스틱 폴백 | `services/schedule.ts` (551줄), `services/optimizer.ts` | BE |
 | F-GEN-03 | 비동기 생성 job + SSE 진행률 | `GET /api/itinerary-jobs/:jobId/events`, `services/jobs.ts` | BE |
-| F-GEN-04 | 3가지 추천 모드 (관광 필수 / 현지인 / 반려동물 안심) | `services/generate.ts` | BE |
+| F-GEN-04 | 3가지 추천 모드 (관광 필수 / 현지인 / 초행 외국인 안심) | `services/generate.ts` | BE |
 | F-ITN-01 | 일정 결과 조회 (일자별 방문지·시각·이동·비용) | `GET /api/trips/:id/itinerary` | BE |
 | F-ITN-02 | 장소 고정(PIN) / 제외(REMOVE) / 교체(REPLACE) 후 **해당 날짜만** 부분 재최적화 | `POST /api/itineraries/:id/days/:dayIndex/reoptimize`, `services/reoptimize.ts` | BE |
 | F-ITN-03 | 대체 장소 후보 조회 | `GET /api/itineraries/:id/items/:itemId/alternatives` | BE |
 | F-ITN-04 | 최근 변경 되돌리기 | `POST /api/itineraries/:id/undo`, `ItineraryRevision` 모델 | BE |
 | F-MAP-01 | 카카오맵 마커·폴리라인 경로 표시 | `KakaoMap.tsx` (155줄), `MapPanel.tsx` | FE |
-| F-MAP-02 | 자차·대중교통 경로 조회 | `GET /api/routes/directions`, `services/kakao.ts` (499줄) | BE |
-| F-PET-01 | 반려동물 정책 필터 (크기·실내·캐리어·유모차·식당·숙소 조건) | `PlacePetPolicy` 모델, `GET /api/places/:id/pet-policy` | BE |
-| F-PET-02 | 정책 불일치 제보 | `POST /api/places/:id/pet-policy/reports`, `PetPolicyReport` 모델 | BE |
-| F-PET-03 | 반려동물 안전지점(급수·그늘) 조회 | `GET /api/pet-safety` | BE |
+| F-MAP-02 | 자차·대중교통 경로 조회 (13장 내비게이션의 확장 기반) | `GET /api/routes/directions`, `services/kakao.ts` (499줄) | BE |
 | F-FGN-01 | 한/영 UI 전환 | `i18n.ts`, `PlaceTranslation` 모델 | FE·BE |
 | F-FGN-02 | 영어 메뉴·해외카드 결제 조건 필터 | `lib/foreignConvenience.ts` | BE |
 | F-LOC-01 | GPS 방문 인증 | `POST /api/places/:id/visits/verify`, `VisitVerification` 모델 | BE |
@@ -493,6 +490,8 @@ R=실행, A=최종책임, C=자문, I=공유
 
 **정리: 서비스 로직은 이미 대부분 존재한다. 남은 일은 화면·인프라·앱이다.**
 
+**[설계 제안] 방향 전환에 따른 정리**: 8/25 방향 전환으로 반려동물 동반 기능(구 F-PET-01~03, `PlacePetPolicy`·`PetPolicyReport` 모델, `/api/places/:id/pet-policy`·`/api/pet-safety` 엔드포인트)은 목표 범위에서 제외한다. 코드 자체는 아직 저장소에 남아 있으므로 실제 삭제·마이그레이션은 별도 작업으로 진행하고, 이 문서의 M1~M3 계획에는 반영하지 않는다. 대신 같은 자리를 6.3장의 F-NAV-01~03(외국인 실시간 내비게이션)이 대체한다.
+
 ### 6.3 M1 (9/1 웹 MVP)에서 새로 만들 기능
 
 | ID | 기능 | 왜 필요한가 | 담당 | 예상 |
@@ -508,6 +507,9 @@ R=실행, A=최종책임, C=자문, I=공유
 | F-MAP-10 | 지도 전체보기 (`/trips/:id/map`) | 좁은 화면에서 동선을 확인하기 어렵다 | FE | 0.5일 |
 | F-OPS-10 | 404 화면 | 잘못된 링크에서 흰 화면이 뜬다 | FE | 0.2일 |
 | F-SYS-16 | 운영 환경 로그·헬스체크 강화 | 장애 시 원인을 못 찾으면 복구가 불가능하다 | BE·INFRA | 0.5일 |
+| F-NAV-01 | **도보·대중교통 턴바이턴 안내 (영어)** — `GET /api/routes/directions` 확장 | 구글맵이 한국에서 도보·대중교통 길찾기를 제대로 제공하지 못해 외국인이 현지에서 길을 잃는다(v2 3장·13장) | BE·FE | 1.5일 |
+| F-NAV-02 | 택시 기사용 한글 목적지 카드 생성 — 신규 `GET /api/routes/taxi-card` | 한국어를 못 읽는 외국인이 택시 기사에게 목적지를 전달할 방법이 없다 | BE·FE | 0.5일 |
+| F-NAV-03 | 환승 난이도 요약 (환승 횟수·도보 난이도, 경로 응답 필드 확장) | 대중교통 초행자에게 환승 부담을 사전에 알려준다. 별도 DB 테이블 불필요(실시간 API 응답 기반, v2 13.4장) | BE | 0.5일 |
 
 ### 6.4 M2 (9/9 앱)에서 만들 기능
 
@@ -523,7 +525,7 @@ R=실행, A=최종책임, C=자문, I=공유
 | F-APP-08 | Android 서명 키 생성·보관 | INFRA | 분실 시 앱 업데이트 불가 |
 | F-APP-09 | iOS 인증서·프로비저닝 프로파일 | INFRA | EAS 자동 관리 사용 |
 | F-SOC-10 | 스토리 상세 화면 | FE | 피드에서 진입 |
-| F-LOC-10 | 장소 상세 화면 | FE·BE | 리뷰·반려동물 정책 탭 포함 |
+| F-LOC-10 | 장소 상세 화면 | FE·BE | 리뷰 탭 포함 |
 | F-COL-10 | 공동 편집 전용 화면 | FE·BE | 현재 준비 화면에 섞여 있음 |
 
 ### 6.5 M3 (스토어 심사 통과)에 반드시 필요한 기능
@@ -637,8 +639,9 @@ export interface RouteNode {
 │   └── collaborate                      동행자 공동 편집          [편집자 이상]
 │
 ├── /places/:placeId                     장소 상세
-│   ├── /places/:placeId/reviews         리뷰와 방문 인증
-│   └── /places/:placeId/pet-policy      반려동물 정책
+│   └── /places/:placeId/reviews         리뷰와 방문 인증
+│
+├── /trips/:tripId/schedule/:dayIndex/navigate  경로 상세 · 턴바이턴 내비게이션
 │
 ├── /stories                             스토리 피드
 │   ├── /stories/new                     스토리 작성
@@ -693,7 +696,7 @@ export interface RouteNode {
 | `/trips/:tripId/collaborate` | 　동행자 공동 편집 | 웹·앱 | TRIP_EDITOR | FE·BE | 9/9 앱 | 부분 |
 | `/places/:placeId` | 장소 상세 | 웹·앱 | PUBLIC | FE·BE | 9/9 앱 | 예정 |
 | `/places/:placeId/reviews` | 　리뷰와 방문 인증 | 웹·앱 | SESSION | FE·BE | 9/9 앱 | 예정 |
-| `/places/:placeId/pet-policy` | 　반려동물 정책 | 웹·앱 | PUBLIC | FE·BE | 9/9 앱 | 예정 |
+| `/trips/:tripId/schedule/:dayIndex/navigate` | 경로 상세 · 턴바이턴 내비게이션 | 웹·앱 | TRIP_VIEWER | FE·BE | 9/9 앱 | 예정 |
 | `/stories` | 스토리 피드 | 웹·앱 | PUBLIC | FE·BE | 9/9 앱 | 부분 |
 | `/stories/new` | 　스토리 작성 | 웹·앱 | SESSION | FE·BE | 9/9 앱 | 부분 |
 | `/stories/:storyId` | 　스토리 상세 | 웹·앱 | PUBLIC | FE | 9/9 앱 | 예정 |
@@ -729,14 +732,14 @@ export interface RouteNode {
 | `/trips/:tripId` (레이아웃) | `GET /api/trips/:id/itinerary` · `GET /api/itineraries/:id/collaboration` |
 | `…/overview` | `GET /api/trips/:id/itinerary` · `GET /api/weather` |
 | `…/schedule` | `POST /api/itineraries/:id/days/:dayIndex/reoptimize` · `GET /api/itineraries/:id/items/:itemId/alternatives` · `POST /api/itineraries/:id/undo` · `GET /api/routes/directions` |
-| `…/map` | `GET /api/routes/directions` · `GET /api/pet-safety` · `GET /api/shops/souvenir` |
+| `…/map` | `GET /api/routes/directions` · `GET /api/shops/souvenir` |
 | `…/discover` | `GET /api/festivals` · `GET /api/events` · `GET /api/shops/souvenir` · `POST /api/itineraries/:id/festivals/:placeId` |
 | `…/together` | `GET /api/stories` · `POST /api/users/:id/follow` · `POST /api/stories/:id/report` |
 | `…/prep` | `GET /api/ads` · `POST /api/ads/:id/impressions` · `POST /api/ads/:id/clicks` · `GET /api/places/:id/booking-options` · `POST /api/bookings/start` · `POST /api/itineraries/:id/share` |
 | `…/collaborate` | `POST /api/trips/:tripId/members/invite` · `GET /api/itineraries/:id/collaboration` · `PATCH /api/itineraries/:id/items/:itemId/collaborate` |
 | `/places/:placeId` | `GET /api/places/:id` · `GET /api/places/:id/image` |
 | `/places/:placeId/reviews` | `GET / POST /api/places/:id/reviews` · `POST /api/places/:id/visits/verify` |
-| `/places/:placeId/pet-policy` | `GET /api/places/:id/pet-policy` · `POST /api/places/:id/pet-policy/reports` |
+| `/trips/:tripId/schedule/:dayIndex/navigate` | `GET /api/routes/directions` · `GET /api/routes/taxi-card` |
 | `/stories` · `/stories/new` · `/stories/:storyId` | `GET / POST /api/stories` · `POST /api/stories/:id/report` |
 | `/users/:userId` | `GET /api/local-profile` · `GET /api/stories` · `POST / DELETE /api/users/:id/follow` |
 | `/me/*` | `POST /api/auth/anonymous` · `GET /api/local-profile` |
@@ -817,12 +820,12 @@ app/
 │       │   └── souvenirs.tsx
 │       ├── together.tsx
 │       ├── prep.tsx
-│       └── collaborate.tsx
+│       ├── collaborate.tsx
+│       └── schedule/[dayIndex]/navigate.tsx
 ├── places/[placeId]/
 │   ├── _layout.tsx
 │   ├── index.tsx
-│   ├── reviews.tsx
-│   └── pet-policy.tsx
+│   └── reviews.tsx
 ├── stories/
 │   ├── index.tsx
 │   ├── new.tsx
@@ -882,7 +885,7 @@ app/
 | 모델 수 | 26개 |
 | 마이그레이션 | 10개 |
 | 데이터 | Place 272 · Trip 44 · Itinerary 151 |
-| 시드 스크립트 | `seed` · `ensure-pet-safety` · `ensure-translations` · `ensure-commerce` · `ensure-v2-features` · `import-tourapi` · `import-kakao-reviews` |
+| 시드 스크립트 | `seed` · `ensure-pet-safety`(방향 전환으로 MVP 범위 밖, 실행 불필요) · `ensure-translations` · `ensure-commerce` · `ensure-v2-features` · `import-tourapi` · `import-kakao-reviews` |
 
 **SQLite로 운영할 수 없는 이유**
 
@@ -895,7 +898,7 @@ app/
 
 | 도메인 | 모델 |
 | --- | --- |
-| 장소·콘텐츠 | `Place` `PlaceTranslation` `PlacePetPolicy` `PetPolicyReport` |
+| 장소·콘텐츠 | `Place` `PlaceTranslation` `PlacePetPolicy`(방향 전환으로 MVP 범위 밖) `PetPolicyReport`(방향 전환으로 MVP 범위 밖) |
 | 여행·일정 | `Trip` `TripPreference` `ItineraryJob` `Itinerary` `ItineraryDay` `ItineraryItem` `ItineraryRevision` |
 | 사용자·검증 | `AnonymousSession` `VisitVerification` `Review` `LocalProfile` |
 | 협업·공유 | `TripMember` `ItineraryShare` |
@@ -922,9 +925,8 @@ docker run -d --name lr-pg -e POSTGRES_PASSWORD=... -e POSTGRES_DB=local_route -
 mv server/prisma/migrations server/prisma/migrations.sqlite.bak
 npx prisma migrate dev --name init_postgres --schema server/prisma/schema.prisma
 
-# 4. 시드 전부 실행
+# 4. 시드 전부 실행 (seed:pet-safety는 방향 전환으로 MVP 범위 밖 — 스킵 가능)
 npm run seed --workspace server
-npm run seed:pet-safety --workspace server
 npm run seed:translations --workspace server
 npm run seed:commerce --workspace server
 npm run seed:v2 --workspace server
@@ -952,7 +954,6 @@ npm test --workspace server
 | `Place` | `(category, isActive)` | 카테고리별 후보 조회가 추천 엔진의 첫 단계 |
 | `Place` | `(lat, lng)` 복합 | 근접 검색의 1차 범위 필터(바운딩 박스) |
 | `Place` | `(localScore DESC)` | 로컬 점수 상위 정렬 |
-| `PlacePetPolicy` | `(placeId)` unique | 조인 |
 | `ItineraryItem` | `(itineraryDayId, sortOrder)` | 일자별 항목 정렬 조회 |
 | `ItineraryDay` | `(itineraryId, dayIndex)` | 일자 조회 |
 | `Trip` | `(sessionId, createdAt DESC)` | 내 여행 목록 |
@@ -1508,7 +1509,7 @@ npm audit --audit-level=high         # 취약점
 
 | 시나리오 | 검증 항목 |
 | --- | --- |
-| S1 반려동물 동반 | 대형견 조건으로 생성 → 동반 불가 장소가 추천에 없음 |
+| S1 외국인 내비게이션 | 대중교통 포함 일정 생성 → 환승 안내가 실제 카카오모빌리티 응답과 일치, 도보 경로 없는 구간은 택시 대안 제시 |
 | S2 외국인 | 언어를 EN으로 → 영어 UI, 영어 메뉴·해외카드 조건 반영 |
 | S3 예산 초과 | 예산을 낮게 → 예산 초과 경고가 표시되고 임의로 늘어나지 않음 |
 | S4 동행 편집 | 편집자 초대 → 동시 편집 시 409 충돌 처리 |
@@ -1516,7 +1517,7 @@ npm audit --audit-level=high         # 취약점
 | S6 공유 개인정보 | 공유 링크에 출발지·연락처·정확 위치가 **없음** |
 | S7 광고 정책 | 음식점·카페·기념품샵 캠페인 등록 시도 → API가 거부 |
 | S8 스토리 안전 | 사진 업로드 시 EXIF 제거, 위치는 지역 단위, 신고 → 검토 큐 이동 |
-| S9 데이터 정직성 | 추정값에 "추정" 표기, 근거 없는 반려동물 정책은 "안전하다고 추정하지 않음" |
+| S9 데이터 정직성 | 추정값에 "추정" 표기, 경로 API 오류·타임아웃 시 임의로 경로를 추정하지 않고 "경로 없음"으로 명시 |
 
 **S6·S7·S8은 심사와 신뢰 정책의 핵심이므로 매일 확인한다.**
 
@@ -1654,7 +1655,6 @@ npx prisma migrate dev --name <이름>    # 개발용. 운영 금지
 npx prisma migrate deploy               # 운영 배포용
 npx prisma studio                       # 데이터 확인
 npm run seed --workspace server         # 기본 시드
-npm run seed:pet-safety --workspace server
 npm run seed:translations --workspace server
 npm run seed:commerce --workspace server
 npm run seed:v2 --workspace server

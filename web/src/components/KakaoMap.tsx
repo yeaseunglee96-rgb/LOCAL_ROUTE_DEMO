@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import type { ItineraryDayOutput, PetSafetyPlace, SouvenirShop } from "../types";
+import type { ItineraryDayOutput, SouvenirShop } from "../types";
 
 declare global {
   interface Window {
@@ -30,13 +30,12 @@ interface Props {
   originLat: number;
   originLng: number;
   selectedPlaceId?: string | null;
-  safetyPlaces?: PetSafetyPlace[];
   souvenirShops?: SouvenirShop[];
   routePath?: [number, number][];
   routeMode?: "TRANSIT" | "CAR";
 }
 
-export function KakaoMap({ days, originLat, originLng, selectedPlaceId, safetyPlaces = [], souvenirShops = [], routePath = [], routeMode = "TRANSIT" }: Props) {
+export function KakaoMap({ days, originLat, originLng, selectedPlaceId, souvenirShops = [], routePath = [], routeMode = "TRANSIT" }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const errorRef = useRef<HTMLDivElement>(null);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
@@ -107,14 +106,6 @@ export function KakaoMap({ days, originLat, originLng, selectedPlaceId, safetyPl
           new kakao.maps.Polyline({ map, path: detailedPath, strokeWeight: 7, strokeColor: "#ffffff", strokeOpacity: .92, strokeStyle: "solid" });
           new kakao.maps.Polyline({ map, path: detailedPath, strokeWeight: 4, strokeColor: routeMode === "CAR" ? "#6f63c7" : "#3a96ce", strokeOpacity: .95, strokeStyle: "solid" });
         }
-        safetyPlaces.forEach((place) => {
-          const pos = new kakao.maps.LatLng(place.lat, place.lng); bounds.extend(pos);
-          const content = document.createElement("div");
-          content.title = `${place.nameKo} · ${place.address}`;
-          content.style.cssText = "background:#fff;border:2px solid #d34b56;border-radius:50%;width:30px;height:30px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.25);font-size:15px";
-          content.textContent = place.category === "VET" ? "V" : "P";
-          new kakao.maps.CustomOverlay({ map, position: pos, content, yAnchor: .5 });
-        });
         souvenirShops.forEach((shop) => {
           const pos = new kakao.maps.LatLng(shop.lat, shop.lng); bounds.extend(pos);
           const content = document.createElement("button");
@@ -144,7 +135,7 @@ export function KakaoMap({ days, originLat, originLng, selectedPlaceId, safetyPl
       cancelled = true;
       resizeObserverRef.current?.disconnect();
     };
-  }, [days, originLat, originLng, selectedPlaceId, safetyPlaces, souvenirShops, routePath, routeMode]);
+  }, [days, originLat, originLng, selectedPlaceId, souvenirShops, routePath, routeMode]);
 
   return (
     <div className="map-wrap">

@@ -43,6 +43,8 @@ export interface TripContextValue {
     onExclude: (item: ItineraryItemOutput) => void;
     onReplace: (item: ItineraryItemOutput) => void;
     onSelect: (item: ItineraryItemOutput) => void;
+    /** 같은 날짜 안에서 방문 순서 변경(드래그·위아래 버튼) */
+    onReorder: (dayIndex: number, itemIds: string[]) => Promise<void>;
   };
 }
 

@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { DayTimeline } from "../../components/DayTimeline";
 import { MapPanel } from "../../components/MapPanel";
 import { ScheduleSummaryList } from "../../components/ScheduleSummaryList";
+import { paths } from "../../routes/paths";
 import { useTrip } from "./TripContext";
 
 type ListMode = "summary" | "detail";
@@ -55,6 +56,7 @@ export function TripSchedulePage() {
               <button type="button" role="tab" aria-selected={listMode === "detail"} className={`tab-btn ${listMode === "detail" ? "active" : ""}`} onClick={() => setListMode("detail")}>날짜별 보기</button>
             </div>
             <span>{pinnedPlaceIds.length ? `고정 장소 ${pinnedPlaceIds.length}곳` : "장소를 고정하거나 제외해 다시 계산할 수 있어요"}</span>
+            <Link className="nav-launch-btn" to={paths.tripScheduleNavigate(itinerary.tripId, activeDayIndex)}>네비게이션</Link>
           </div>
           {listMode === "summary"
             ? <ScheduleSummaryList days={itinerary.days} {...itemProps} />
@@ -68,7 +70,6 @@ export function TripSchedulePage() {
             activeDayIndex={mapDayIndex}
             onActiveDayChange={setMapDayIndex}
             selectedPlaceId={selectedPlaceId}
-            showPetSafety={itinerary.trip.hasPet}
             showSouvenirControl={false}
           />
         </aside>

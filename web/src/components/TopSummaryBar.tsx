@@ -6,12 +6,6 @@ const PACE_LABEL: Record<Pace, string> = {
   PACKED: "알차게",
 };
 
-const PET_SIZE_LABEL: Record<string, string> = {
-  SMALL: "소형견(~7kg)",
-  MEDIUM: "중형견(7~15kg)",
-  LARGE: "대형견(15kg~)",
-};
-
 function formatHM(totalMinutes: number): string {
   const h = Math.floor(totalMinutes / 60);
   const m = totalMinutes % 60;
@@ -56,7 +50,7 @@ export function TopSummaryBar({ itinerary, onEdit, onRegenerate, regenerating, c
           </h1>
           <div className="trip-tags">
             <span className="tag-chip-sm">
-              {en ? `${trip.partySize} traveler(s)${trip.hasPet && trip.petSize ? ` · dog ${trip.petSize.toLowerCase()}` : ""}` : `${trip.partySize}인${trip.hasPet && trip.petSize ? ` · 반려견 ${PET_SIZE_LABEL[trip.petSize]}` : ""}`}
+              {en ? `${trip.partySize} traveler(s)` : `${trip.partySize}인`}
             </span>
             <span className="tag-chip-sm">{en ? (trip.hasCar ? "Car" : "Public transit") : (trip.hasCar ? "자차 이용" : "대중교통 이용")}</span>
             <span className="tag-chip-sm">{en ? ({ RELAXED: "Relaxed", NORMAL: "Normal", PACKED: "Packed" }[trip.pace]) : PACE_LABEL[trip.pace]}</span>

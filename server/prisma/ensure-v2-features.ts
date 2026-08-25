@@ -17,16 +17,16 @@ async function main() {
   for (const place of places) await prisma.place.upsert({ where: { contentId: place.contentId }, create: { ...place, closedDays: "[]", parkingAvailable: false, reservationRequired: false, hasEnglishMenu: false, dataSource: "TOURAPI_DEMO" }, update: place });
   const lodging = await prisma.place.findFirst({ where: { category: "LODGING" }, orderBy: { localScore: "desc" } });
   if (!lodging) throw new Error("숙소 시드가 필요합니다.");
-  await prisma.adCampaign.updateMany({ where: { serviceCategory: { notIn: ["LODGING", "RENTAL_CAR", "TRAVEL_INSURANCE", "TAXI", "AIRPORT_TRANSFER", "PET_MOBILITY"] } }, data: { status: "PAUSED" } });
+  await prisma.adCampaign.updateMany({ where: { serviceCategory: { notIn: ["LODGING", "RENTAL_CAR", "TRAVEL_INSURANCE", "TAXI", "AIRPORT_TRANSFER"] } }, data: { status: "PAUSED" } });
   await prisma.adCampaign.updateMany({ where: { place: { category: { in: ["CAFE", "RESTAURANT", "SOUVENIR"] } } }, data: { status: "PAUSED" } });
   const ownerSessionHash = createHash("sha256").update("local-route-essential-services").digest("hex").slice(0, 24);
   const business = await prisma.business.upsert({ where: { placeId: lodging.id }, create: { name: "LOCAL ROUTE 여행 필수 파트너", contactEmail: "essential@localroute.example", ownerSessionHash, status: "VERIFIED", placeId: lodging.id }, update: { status: "VERIFIED", name: "LOCAL ROUTE 여행 필수 파트너" } });
   const campaigns = [
-    ["안심 숙박 예약", "LODGING", 260], ["부산 렌터카", "RENTAL_CAR", 240], ["여행자 보험", "TRAVEL_INSURANCE", 180], ["부산 택시 호출", "TAXI", 160], ["공항 픽업", "AIRPORT_TRANSFER", 210], ["반려동물 안심 이동", "PET_MOBILITY", 190],
+    ["안심 숙박 예약", "LODGING", 260], ["부산 렌터카", "RENTAL_CAR", 240], ["여행자 보험", "TRAVEL_INSURANCE", 180], ["부산 택시 호출", "TAXI", 160], ["공항 픽업", "AIRPORT_TRANSFER", 210],
   ] as const;
   for (const [name, serviceCategory, bidCpc] of campaigns) {
     const found = await prisma.adCampaign.findFirst({ where: { businessId: business.id, name } });
-    const data = { placeId: lodging.id, name, serviceCategory, status: "ACTIVE", budget: 100000, bidCpc, targetingModes: "[]", targetingHasPet: serviceCategory === "PET_MOBILITY" ? true : null, startsAt: new Date("2025-01-01T00:00:00Z"), endsAt: new Date("2030-12-31T23:59:59Z") };
+    const data = { placeId: lodging.id, name, serviceCategory, status: "ACTIVE", budget: 100000, bidCpc, targetingModes: "[]", startsAt: new Date("2025-01-01T00:00:00Z"), endsAt: new Date("2030-12-31T23:59:59Z") };
     if (found) await prisma.adCampaign.update({ where: { id: found.id }, data }); else await prisma.adCampaign.create({ data: { businessId: business.id, ...data } });
   }
   console.log(JSON.stringify({ experiencePlaces: places.length, essentialCampaigns: campaigns.length }));

@@ -6,12 +6,6 @@ const PACE_LABEL: Record<Pace, string> = {
   PACKED: "알차게",
 };
 
-const PET_SIZE_LABEL: Record<string, string> = {
-  SMALL: "소형견 (~7kg)",
-  MEDIUM: "중형견 (7~15kg)",
-  LARGE: "대형견 (15kg~)",
-};
-
 interface Props {
   trip: TripMeta;
 }
@@ -59,14 +53,6 @@ export function FilterRow({ trip }: Props) {
         <div>
           <div className="filter-label">{en ? "Travel style" : "여행 스타일"}</div>
           <div className="filter-value">{en ? ({ RELAXED: "Relaxed", NORMAL: "Normal", PACKED: "Packed" }[trip.pace]) : PACE_LABEL[trip.pace]}</div>
-        </div>
-      </div>
-      <div className="filter-pill">
-        <div>
-          <div className="filter-label">{en ? "Traveling with a dog" : "반려견 동반"}</div>
-          <div className="filter-value">
-            {en ? (trip.hasPet && trip.petSize ? `${trip.petSize.toLowerCase()} dog` : "None") : (trip.hasPet && trip.petSize ? PET_SIZE_LABEL[trip.petSize] : "없음")}
-          </div>
         </div>
       </div>
     </div>

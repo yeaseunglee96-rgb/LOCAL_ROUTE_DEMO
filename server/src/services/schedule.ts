@@ -11,12 +11,12 @@ const PACE_CONFIG: Record<Pace, { dayStart: string; dayEnd: string; maxPerDay: n
   PACKED: { dayStart: "09:00", dayEnd: "21:00", maxPerDay: 6 },
 };
 
-function parseTimeToMin(t: string): number {
+export function parseTimeToMin(t: string): number {
   const [h, m] = t.split(":").map(Number);
   return h * 60 + m;
 }
 
-function formatMinToTime(min: number): string {
+export function formatMinToTime(min: number): string {
   const h = Math.floor(min / 60) % 24;
   const m = min % 60;
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
@@ -67,8 +67,8 @@ export interface ScheduleInput {
   dayEnd: string;
   maxWalkingKm: number;
   mustVisitPlaceIds: string[];
-  hasPet?: boolean;
-  petSize?: string | null;
+  /** 사용자가 위저드에서 "며칠째"까지 직접 지정한 필수 방문 장소. dayIndex는 1부터 시작. */
+  mustVisitAssignments?: { placeId: string; dayIndex: number }[];
   recommendationMode?: string;
 }
 
@@ -91,8 +91,7 @@ export async function buildItinerary(
   // 식사는 여행의 한 부분으로 제한하고, 나머지 슬롯은 관광·문화·자연·체험에 사용한다.
   const maxFoodStops = Math.max(1, Math.floor(maxPerDay / 2));
   const maxRestaurantStops = maxPerDay >= 5 ? 2 : 1;
-  const petBreakReserveMin = input.hasPet && input.petSize === "LARGE" && input.recommendationMode === "PET_SAFE" ? (maxPerDay - 1) * 30 : 0;
-  const solverDayEnd = formatMinToTime(Math.max(parseTimeToMin(dayStart) + 120, parseTimeToMin(dayEnd) - petBreakReserveMin));
+  const solverDayEnd = formatMinToTime(Math.max(parseTimeToMin(dayStart) + 120, parseTimeToMin(dayEnd)));
 
   // 1) 날짜별 군집화
   // 매일 출발 기준점으로 복귀하므로, 개별 후보도 최소 왕복 거리 안에 있어야 한다.
@@ -112,11 +111,30 @@ export async function buildItinerary(
     return pool.splice(idx, 1)[0];
   };
 
-  // 필수 방문 장소를 먼저 각 날짜에 고르게 배정
+  // 사용자가 날짜를 직접 지정한 필수 방문 장소를 먼저 그 날짜에 확정 배정한다(라운드로빈보다 우선).
+  const assignedPlaceIds = new Set<string>();
+  for (const { placeId, dayIndex } of input.mustVisitAssignments ?? []) {
+    const place = takeFromPool(placeId);
+    if (!place) {
+      warnings.push(`직접 추가한 장소(${placeId})가 조건(제외 목록 등)과 맞지 않아 일정에서 제외되었습니다.`);
+      continue;
+    }
+    assignedPlaceIds.add(placeId);
+    let target = dayIndex - 1;
+    if (target < 0 || target >= numDays) {
+      const clamped = Math.min(Math.max(target, 0), numDays - 1);
+      warnings.push(`${dayIndex}일차 일정이 없어 ${place.nameKo}은(는) ${clamped + 1}일차로 배정되었습니다.`);
+      target = clamped;
+    }
+    dayBuckets[target].push(place);
+  }
+
+  // 날짜 지정이 없는 필수 방문 장소는 지금까지처럼 가장 여유 있는 날짜에 고르게 배정한다.
   for (const mustId of input.mustVisitPlaceIds) {
+    if (assignedPlaceIds.has(mustId)) continue; // 이미 위에서 날짜 지정으로 배정됨
     const place = takeFromPool(mustId);
     if (!place) {
-      warnings.push(`필수 방문 장소(${mustId})가 조건(반려동물/제외 목록 등)과 맞지 않아 일정에서 제외되었습니다.`);
+      warnings.push(`필수 방문 장소(${mustId})가 조건(제외 목록 등)과 맞지 않아 일정에서 제외되었습니다.`);
       continue;
     }
     const target = dayBuckets.reduce((minDay, day, i, arr) =>
@@ -257,7 +275,6 @@ export async function buildItinerary(
       returnTravelMin: null,
       returnDistanceM: null,
       returnTravelIsEstimate: true,
-      petBreaks: [],
       items: dayResult.items,
     });
   }
@@ -286,21 +303,6 @@ export async function buildItinerary(
       day.returnTravelMin = back.durationMin;
       day.returnDistanceM = back.distanceM;
       day.returnTravelIsEstimate = back.isEstimate;
-    }
-    if (input.hasPet && input.petSize === "LARGE" && input.recommendationMode === "PET_SAFE") {
-      let outdoorMinutes = 0;
-      let shift = 0;
-      for (let index = 0; index < day.items.length; index++) {
-        const item = day.items[index];
-        if (shift) item.plannedArrival = formatMinToTime(parseTimeToMin(item.plannedArrival) + shift);
-        if (item.petPolicy?.outdoorAllowed) outdoorMinutes += item.stayMinutes;
-        if (outdoorMinutes >= 90 && index < day.items.length - 1) {
-          const startTime = formatMinToTime(parseTimeToMin(item.plannedArrival) + item.stayMinutes);
-          day.petBreaks.push({ afterPlaceId: item.placeId, startTime, durationMin: 30, label: "대형견 산책·급수 휴식" });
-          shift += 30;
-          outdoorMinutes = 0;
-        }
-      }
     }
   }
 
@@ -353,7 +355,6 @@ function materializeOptimizedDay(
       travelIsEstimate: true,
       travelSource: "HAVERSINE" as const,
       recommendReason: buildRecommendReason(place, null),
-      petFriendly: !!place.petPolicy?.allowed,
       hasEnglishMenu: place.hasEnglishMenu,
       foreignCardPayment: place.foreignCardPayment,
       localScore: place.localScore,
@@ -367,7 +368,6 @@ function materializeOptimizedDay(
       kakaoReviewKeywords: place.kakaoReviewKeywords,
       kakaoReviewSource: place.kakaoReviewSource,
       kakaoReviewCollectedAt: place.kakaoReviewCollectedAt,
-      petPolicy: place.petPolicy,
     }];
   });
   const warnings: string[] = [];
@@ -520,7 +520,6 @@ function scheduleSingleDay(
       travelIsEstimate: true,
       travelSource: "HAVERSINE",
       recommendReason: buildRecommendReason(place, null),
-      petFriendly: !!place.petPolicy?.allowed,
       hasEnglishMenu: place.hasEnglishMenu,
       foreignCardPayment: place.foreignCardPayment,
       localScore: place.localScore,
@@ -534,7 +533,6 @@ function scheduleSingleDay(
       kakaoReviewKeywords: place.kakaoReviewKeywords,
       kakaoReviewSource: place.kakaoReviewSource,
       kakaoReviewCollectedAt: place.kakaoReviewCollectedAt,
-      petPolicy: place.petPolicy,
     });
     currentTimeMin = arrivalMin + place.recommendedStayMin;
     currentLat = place.lat;

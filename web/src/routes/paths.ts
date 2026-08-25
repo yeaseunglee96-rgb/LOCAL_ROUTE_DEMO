@@ -7,13 +7,14 @@ export const paths = {
   home: () => "/",
   onboarding: () => "/onboarding",
 
-  plan: (step: "basic" | "taste" | "conditions" | "confirm" = "basic") => `/plan/${step}`,
+  plan: (step: "basic" | "taste" | "confirm" = "basic") => `/plan/${step}`,
   generating: (tripId: string) => `/generating/${tripId}`,
 
   trip: (tripId: string) => `/trips/${tripId}`,
   tripOverview: (tripId: string) => `/trips/${tripId}/overview`,
   tripSchedule: (tripId: string) => `/trips/${tripId}/schedule`,
   tripScheduleDay: (tripId: string, dayIndex: number) => `/trips/${tripId}/schedule/${dayIndex}`,
+  tripScheduleNavigate: (tripId: string, dayIndex: number) => `/trips/${tripId}/schedule/${dayIndex}/navigate`,
   tripMap: (tripId: string) => `/trips/${tripId}/map`,
   tripDiscover: (tripId: string) => `/trips/${tripId}/discover`,
   tripFestivals: (tripId: string) => `/trips/${tripId}/discover/festivals`,
@@ -24,7 +25,6 @@ export const paths = {
 
   place: (placeId: string) => `/places/${placeId}`,
   placeReviews: (placeId: string) => `/places/${placeId}/reviews`,
-  placePetPolicy: (placeId: string) => `/places/${placeId}/pet-policy`,
 
   stories: () => "/stories",
   storyNew: () => "/stories/new",

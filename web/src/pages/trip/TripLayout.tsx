@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Outlet, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { DashboardShell } from "../../components/DashboardShell";
-import { getAlternatives, getCollaboration, getItinerary, generateItinerary, reoptimizeDay, undoItineraryChange } from "../../api/client";
+import { getAlternatives, getCollaboration, getItinerary, generateItinerary, reoptimizeDay, reorderDay, undoItineraryChange } from "../../api/client";
 import type { ItineraryItemOutput, ItineraryOutput, PlaceAlternative } from "../../types";
 import { setUiLanguage } from "../../i18n";
 import { useAppShell } from "../../routes/AppShell";
@@ -107,6 +107,17 @@ export function TripLayout() {
       setAlternatives(await getAlternatives(itinerary.itineraryId, item.itemId));
     };
 
+    const reorder = async (dayIndex: number, itemIds: string[]) => {
+      setRegenerating(true);
+      try {
+        const result = await reorderDay(itinerary.itineraryId, dayIndex, itemIds);
+        await refresh();
+        setNotice(result.warnings.length ? result.warnings.join(" ") : "방문 순서를 변경했습니다.");
+      } finally {
+        setRegenerating(false);
+      }
+    };
+
     return {
       tripId,
       itinerary,
@@ -142,6 +153,7 @@ export function TripLayout() {
         onExclude: setPendingExclude,
         onReplace: (item) => void requestReplace(item),
         onSelect: (item) => setSelectedPlaceId(item.placeId),
+        onReorder: reorder,
       },
     };
   }, [itinerary, tripId, placeCount, regenerating, canEdit, myRole, pinnedPlaceIds, excludedPlaceIds, selectedPlaceId, partialReoptimize, navigate, refresh]);
@@ -181,7 +193,6 @@ export function TripLayout() {
     <TripContext.Provider value={value}>
       <DashboardShell
         placeCount={placeCount}
-        pet={value.itinerary.trip.hasPet ? { name: value.itinerary.trip.petName, size: value.itinerary.trip.petSize! } : null}
         language={value.itinerary.trip.language}
         activeTab={activeTab}
         onTabChange={(tab) => { navigate(TAB_TO_PATH[tab](tripId)); window.scrollTo({ top: 0, behavior: "smooth" }); }}
@@ -220,7 +231,7 @@ export function TripLayout() {
                   <button autoFocus={index === 0} type="button" key={alternative.placeId} disabled={regenerating} onClick={() => replaceWith(alternative)}>
                     <strong>{alternative.nameKo}</strong>
                     <span>로컬 {(alternative.localScore * 5).toFixed(1)}/5 · 예상 {alternative.estCost.toLocaleString()}원</span>
-                    <small>{[alternative.petFriendly && "반려동물", alternative.hasEnglishMenu && "영어 메뉴", alternative.foreignCardPayment && "해외카드"].filter(Boolean).join(" · ") || "추가 편의정보 없음"}</small>
+                    <small>{[alternative.hasEnglishMenu && "영어 메뉴", alternative.foreignCardPayment && "해외카드"].filter(Boolean).join(" · ") || "추가 편의정보 없음"}</small>
                   </button>
                 ))}
               </div>

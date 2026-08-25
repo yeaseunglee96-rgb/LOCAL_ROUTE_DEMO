@@ -12,13 +12,13 @@ export function TripPrepPage() {
   const [bookingOptions, setBookingOptions] = useState<BookingOption[]>([]);
 
   useEffect(() => {
-    getSponsoredPlacements({ mode: itinerary.mode, hasPet: itinerary.trip.hasPet, language: itinerary.trip.language })
+    getSponsoredPlacements({ mode: itinerary.mode, language: itinerary.trip.language })
       .then((placements) => {
         setSponsored(placements);
         placements.forEach((placement) => void trackAd(placement.campaignId, "impressions"));
       })
       .catch(() => setSponsored([]));
-  }, [itinerary.mode, itinerary.trip.hasPet, itinerary.trip.language]);
+  }, [itinerary.mode, itinerary.trip.language]);
 
   useEffect(() => {
     if (!itinerary.trip.lodgingPlaceId) { setBookingOptions([]); return; }
@@ -56,7 +56,7 @@ export function TripPrepPage() {
         <section className="booking-strip" aria-label="숙소 예약 제휴">
           <div>
             <strong>선택한 숙소 예약 확인</strong>
-            <span>외부 제휴사에서 가격과 반려동물 객실을 최종 확인하세요.</span>
+            <span>외부 제휴사에서 가격과 객실 조건을 최종 확인하세요.</span>
           </div>
           {bookingOptions.map((option) => (
             <button type="button" key={option.id} onClick={async () => {

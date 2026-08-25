@@ -21,14 +21,6 @@ type SeedPlace = {
   tasteTags: string[];
   englishMenu?: boolean; // 명시 없으면 아래 deriveForeignConvenience()로 추정
   cardPayment?: boolean;
-  pet?: {
-    allowed: boolean;
-    indoorAllowed: boolean;
-    outdoorAllowed: boolean;
-    sizeLimit: "SMALL" | "MEDIUM" | "LARGE";
-    extraFee?: number;
-    freshnessGrade: "VERIFIED" | "AGING" | "STALE";
-  };
 };
 
 const PLACES: SeedPlace[] = [
@@ -47,7 +39,6 @@ const PLACES: SeedPlace[] = [
     parkingAvailable: true,
     localScore: 0.7,
     tasteTags: ["nature", "photo", "landmark", "activity"],
-    pet: { allowed: true, indoorAllowed: false, outdoorAllowed: true, sizeLimit: "LARGE", freshnessGrade: "VERIFIED" },
   },
   {
     nameKo: "광안리해수욕장",
@@ -63,7 +54,6 @@ const PLACES: SeedPlace[] = [
     parkingAvailable: true,
     localScore: 0.75,
     tasteTags: ["nature", "nightview", "photo", "landmark"],
-    pet: { allowed: true, indoorAllowed: false, outdoorAllowed: true, sizeLimit: "LARGE", freshnessGrade: "VERIFIED" },
   },
   {
     nameKo: "감천문화마을",
@@ -94,7 +84,6 @@ const PLACES: SeedPlace[] = [
     parkingAvailable: true,
     localScore: 0.66,
     tasteTags: ["nature", "activity", "photo", "landmark"],
-    pet: { allowed: true, indoorAllowed: false, outdoorAllowed: true, sizeLimit: "LARGE", freshnessGrade: "AGING" },
   },
   {
     nameKo: "자갈치시장",
@@ -167,7 +156,6 @@ const PLACES: SeedPlace[] = [
     parkingAvailable: true,
     localScore: 0.8,
     tasteTags: ["nature", "activity", "hidden_local", "relax"],
-    pet: { allowed: true, indoorAllowed: false, outdoorAllowed: true, sizeLimit: "LARGE", freshnessGrade: "VERIFIED" },
   },
   {
     nameKo: "이기대 해안산책로",
@@ -182,7 +170,6 @@ const PLACES: SeedPlace[] = [
     priceTier: 1,
     localScore: 0.77,
     tasteTags: ["nature", "activity", "hidden_local", "relax"],
-    pet: { allowed: true, indoorAllowed: false, outdoorAllowed: true, sizeLimit: "LARGE", freshnessGrade: "VERIFIED" },
   },
   {
     nameKo: "흰여울문화마을",
@@ -228,7 +215,6 @@ const PLACES: SeedPlace[] = [
     parkingAvailable: true,
     localScore: 0.73,
     tasteTags: ["nature", "nightview", "hidden_local", "relax"],
-    pet: { allowed: true, indoorAllowed: false, outdoorAllowed: true, sizeLimit: "LARGE", freshnessGrade: "AGING" },
   },
 
   // ---- 식당(RESTAURANT) ----
@@ -246,7 +232,6 @@ const PLACES: SeedPlace[] = [
     parkingAvailable: true,
     localScore: 0.65,
     tasteTags: ["food", "hidden_local"],
-    pet: { allowed: true, indoorAllowed: false, outdoorAllowed: true, sizeLimit: "SMALL", freshnessGrade: "VERIFIED" },
   },
   {
     nameKo: "할매집 돼지국밥",
@@ -262,7 +247,6 @@ const PLACES: SeedPlace[] = [
     localScore: 0.88,
     tasteTags: ["food", "hidden_local"],
     englishMenu: false, // 현지인 단골집이라 영어 메뉴 없음
-    pet: { allowed: true, indoorAllowed: false, outdoorAllowed: true, sizeLimit: "MEDIUM", freshnessGrade: "AGING" },
   },
   {
     nameKo: "자갈치 회센터",
@@ -295,7 +279,6 @@ const PLACES: SeedPlace[] = [
     parkingAvailable: true,
     localScore: 0.79,
     tasteTags: ["food", "hidden_local", "nature"],
-    pet: { allowed: true, indoorAllowed: false, outdoorAllowed: true, sizeLimit: "MEDIUM", freshnessGrade: "AGING" },
   },
   {
     nameKo: "전포동 곱창골목",
@@ -370,7 +353,6 @@ const PLACES: SeedPlace[] = [
     priceTier: 2,
     localScore: 0.6,
     tasteTags: ["cafe", "hidden_local", "photo"],
-    pet: { allowed: true, indoorAllowed: true, outdoorAllowed: true, sizeLimit: "SMALL", freshnessGrade: "VERIFIED" },
   },
   {
     nameKo: "전포카페거리 모모스커피",
@@ -385,7 +367,6 @@ const PLACES: SeedPlace[] = [
     priceTier: 2,
     localScore: 0.83,
     tasteTags: ["cafe", "hidden_local", "photo"],
-    pet: { allowed: true, indoorAllowed: false, outdoorAllowed: true, sizeLimit: "MEDIUM", freshnessGrade: "VERIFIED" },
   },
   {
     nameKo: "흰여울카페",
@@ -400,7 +381,6 @@ const PLACES: SeedPlace[] = [
     priceTier: 2,
     localScore: 0.78,
     tasteTags: ["cafe", "photo", "nature"],
-    pet: { allowed: true, indoorAllowed: true, outdoorAllowed: true, sizeLimit: "SMALL", freshnessGrade: "VERIFIED" },
   },
   {
     nameKo: "청사포 카페거리",
@@ -415,7 +395,6 @@ const PLACES: SeedPlace[] = [
     priceTier: 2,
     localScore: 0.71,
     tasteTags: ["cafe", "nature", "nightview"],
-    pet: { allowed: true, indoorAllowed: false, outdoorAllowed: true, sizeLimit: "MEDIUM", freshnessGrade: "AGING" },
   },
   {
     nameKo: "해리단길 카페",
@@ -430,7 +409,6 @@ const PLACES: SeedPlace[] = [
     priceTier: 2,
     localScore: 0.69,
     tasteTags: ["cafe", "photo", "hidden_local"],
-    pet: { allowed: true, indoorAllowed: true, outdoorAllowed: true, sizeLimit: "MEDIUM", freshnessGrade: "VERIFIED" },
   },
   {
     nameKo: "광안리 오션뷰 카페",
@@ -445,7 +423,6 @@ const PLACES: SeedPlace[] = [
     priceTier: 3,
     localScore: 0.72,
     tasteTags: ["cafe", "nightview", "photo"],
-    pet: { allowed: true, indoorAllowed: false, outdoorAllowed: true, sizeLimit: "LARGE", freshnessGrade: "VERIFIED" },
   },
 
   // ---- 숙소(LODGING) ----
@@ -480,11 +457,10 @@ const PLACES: SeedPlace[] = [
     parkingAvailable: true,
     localScore: 0.55,
     tasteTags: ["relax", "nature", "photo"],
-    pet: { allowed: true, indoorAllowed: true, outdoorAllowed: true, sizeLimit: "MEDIUM", extraFee: 30000, freshnessGrade: "VERIFIED" },
   },
   {
-    nameKo: "영도 펫프렌들리 게스트하우스",
-    nameEn: "Yeongdo Pet Friendly Guesthouse",
+    nameKo: "영도 게스트하우스",
+    nameEn: "Yeongdo Guesthouse",
     category: "LODGING",
     address: "부산 영도구 태종로",
     lat: 35.08,
@@ -495,8 +471,7 @@ const PLACES: SeedPlace[] = [
     priceTier: 2,
     reservationRequired: true,
     localScore: 0.62,
-    tasteTags: ["relax", "pet", "hidden_local"],
-    pet: { allowed: true, indoorAllowed: true, outdoorAllowed: true, sizeLimit: "LARGE", extraFee: 10000, freshnessGrade: "VERIFIED" },
+    tasteTags: ["relax", "hidden_local"],
   },
   {
     nameKo: "서면 시티호텔",
@@ -528,8 +503,7 @@ const PLACES: SeedPlace[] = [
     reservationRequired: true,
     parkingAvailable: true,
     localScore: 0.6,
-    tasteTags: ["relax", "nature", "pet"],
-    pet: { allowed: true, indoorAllowed: true, outdoorAllowed: true, sizeLimit: "LARGE", extraFee: 20000, freshnessGrade: "VERIFIED" },
+    tasteTags: ["relax", "nature"],
   },
 
   // ---- 추가 관광지/체험(대표관광지 비중 확보) ----
@@ -591,13 +565,11 @@ const PLACES: SeedPlace[] = [
     priceTier: 1,
     localScore: 0.69,
     tasteTags: ["nature", "photo", "relax"],
-    pet: { allowed: true, indoorAllowed: false, outdoorAllowed: true, sizeLimit: "LARGE", freshnessGrade: "VERIFIED" },
   },
 ];
 
 async function main() {
   console.log(`Seeding ${PLACES.length} places...`);
-  await prisma.placePetPolicy.deleteMany();
   await prisma.itineraryItem.deleteMany();
   await prisma.itineraryDay.deleteMany();
   await prisma.itinerary.deleteMany();
@@ -626,18 +598,6 @@ async function main() {
         tasteTags: JSON.stringify(p.tasteTags),
         hasEnglishMenu: p.englishMenu ?? derived.englishMenu,
         foreignCardPayment: p.cardPayment ?? derived.cardPayment,
-        petPolicy: p.pet
-          ? {
-              create: {
-                allowed: p.pet.allowed,
-                indoorAllowed: p.pet.indoorAllowed,
-                outdoorAllowed: p.pet.outdoorAllowed,
-                sizeLimit: p.pet.sizeLimit,
-                extraFee: p.pet.extraFee ?? 0,
-                freshnessGrade: p.pet.freshnessGrade,
-              },
-            }
-          : undefined,
       },
     });
   }

@@ -1,15 +1,11 @@
 import { useEffect, useState } from "react";
 import type { ItineraryItemOutput, PlaceImageMatch } from "../types";
-import { getPlaceImage, reportPetPolicy } from "../api/client";
+import { getPlaceImage } from "../api/client";
 
 const CATEGORY_META: Record<string, { label: string; color: string }> = {
   TOURIST: { label: "관광지", color: "#b9d9f4" }, RESTAURANT: { label: "식당", color: "#d8cff4" },
   CAFE: { label: "카페", color: "#cce9ee" }, LODGING: { label: "숙소", color: "#ddd7ea" },
 };
-const FRESHNESS = {
-  VERIFIED: { label: "최근 확인됨", tone: "verified" }, AGING: { label: "변경되었을 수 있음", tone: "warning" },
-  STALE: { label: "방문 전 확인 권장", tone: "danger" },
-} as const;
 
 interface Props {
   item: ItineraryItemOutput;
@@ -26,11 +22,9 @@ interface Props {
 
 export function ItemCard({ item, pinned, busy, onTogglePin, onExclude, onReplace, onSelect, language, userAllergies = [], dietType = "NONE" }: Props) {
   const [expanded, setExpanded] = useState(false);
-  const [policyNotice, setPolicyNotice] = useState("");
   const [searchedImage, setSearchedImage] = useState<PlaceImageMatch | null>(null);
   const [imageFailed, setImageFailed] = useState(false);
   const meta = CATEGORY_META[item.category] ?? { label: item.category, color: "#d8dde5" };
-  const freshness = item.petPolicy ? FRESHNESS[item.petPolicy.freshnessGrade as keyof typeof FRESHNESS] ?? { label: "확인일 정보 없음", tone: "neutral" } : null;
   const sourceLabel = item.dataSource === "TOURAPI" ? "한국관광공사 기초 데이터" : "LOCAL ROUTE 초기 조사 데이터";
   const en = language === "EN" || (!language && document.documentElement.lang === "en");
   const mapUrl = `https://map.kakao.com/link/to/${encodeURIComponent(item.nameKo)},${item.lat},${item.lng}`;
@@ -39,7 +33,7 @@ export function ItemCard({ item, pinned, busy, onTogglePin, onExclude, onReplace
   const reviewDate = item.kakaoReviewCollectedAt ? new Intl.DateTimeFormat(en ? "en-US" : "ko-KR", { year: "numeric", month: "short", day: "numeric" }).format(new Date(item.kakaoReviewCollectedAt)) : null;
   const taxiText = `${item.nameKo}로 가주세요. ${item.address}`;
   const categoryLabel = en ? ({ TOURIST: "Attraction", RESTAURANT: "Restaurant", CAFE: "Cafe", LODGING: "Lodging" }[item.category] ?? item.category) : meta.label;
-  const reason = en ? item.recommendReason.replace(/카카오 평점 ([\d.]+) · 후기 ([\d,]+)개/, "Kakao rating $1 · $2 reviews").replace(/후기 키워드:/, "review highlights:").replace(/로컬점수 ([\d.]+)/, "Local score $1").replace(/취향 태그:/, "tags:").replace(/다음 장소까지 약 (\d+)분/, "about $1 min to next stop").replace(/반려동물 동반 가능/, "pet friendly") : item.recommendReason;
+  const reason = en ? item.recommendReason.replace(/카카오 평점 ([\d.]+) · 후기 ([\d,]+)개/, "Kakao rating $1 · $2 reviews").replace(/후기 키워드:/, "review highlights:").replace(/로컬점수 ([\d.]+)/, "Local score $1").replace(/취향 태그:/, "tags:").replace(/다음 장소까지 약 (\d+)분/, "about $1 min to next stop") : item.recommendReason;
   const effectiveAllergies = userAllergies.length ? userAllergies : JSON.parse(document.documentElement.dataset.allergies ?? "[]");
   const effectiveDiet = dietType !== "NONE" ? dietType : document.documentElement.dataset.diet ?? "NONE";
   const needsFoodCheck = ["RESTAURANT", "CAFE"].includes(item.category) && (effectiveAllergies.length > 0 || effectiveDiet !== "NONE") && item.allergens.length === 0 && item.dietOptions.length === 0;
@@ -67,12 +61,11 @@ export function ItemCard({ item, pinned, busy, onTogglePin, onExclude, onReplace
         <a href={kakaoMapUrl} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>{en ? "See on Kakao Map" : "카카오맵에서 후기 보기"}</a>
       </div>}
       <p className="recommend-reason"><strong>{en ? "Why recommended" : "추천 근거"}</strong>{reason}</p>
-      <div className="capability-row">{item.petFriendly && <span>{en ? "Pet friendly" : "반려동물 동반"}</span>}{item.hasEnglishMenu && <span>{en ? "English menu" : "영어 메뉴"}</span>}{item.foreignCardPayment && <span>{en ? "International cards" : "해외카드"}</span>}{freshness && <span className={`status-${freshness.tone}`}>{en ? ({ VERIFIED: "Recently verified", AGING: "May have changed", STALE: "Call before visiting" }[item.petPolicy!.freshnessGrade] ?? freshness.label) : freshness.label}</span>}</div>
+      <div className="capability-row">{item.hasEnglishMenu && <span>{en ? "English menu" : "영어 메뉴"}</span>}{item.foreignCardPayment && <span>{en ? "International cards" : "해외카드"}</span>}</div>
       {needsFoodCheck && <div className="allergy-warning">{en ? "Allergen/diet data unavailable. Please confirm before ordering." : "알레르기·식단 정보가 없어 주문 전 확인이 필요합니다."}</div>}
       {expanded && <div className="place-details">
-        <dl><div><dt>데이터 출처</dt><dd>{sourceLabel}</dd></div>{item.category === "RESTAURANT" && <div><dt>카카오 후기</dt><dd>{hasKakaoReviews ? `${item.kakaoReviewSource === "LICENSED_IMPORT" ? "승인된 집계 데이터" : "수동 검증"}${reviewDate ? ` · ${reviewDate} 기준` : ""}` : "공식 API 미제공 · 검증된 집계 연결 전에는 추천 점수에 미반영"}</dd></div>}<div><dt>정책 정보</dt><dd>{item.petPolicy ? `실내 ${item.petPolicy.indoorAllowed ? "가능" : "불가"} · 실외 ${item.petPolicy.outdoorAllowed ? "가능" : "불가"} · ${item.petPolicy.sizeLimit}까지${item.petPolicy.carrierRequired ? " · 이동가방 필수" : ""}${item.petPolicy.weightLimitKg ? ` · ${item.petPolicy.weightLimitKg}kg 이하` : ""}` : "반려동물 정책 정보 없음"}</dd></div><div><dt>편의시설</dt><dd>{item.petPolicy ? [item.petPolicy.waterBowl && "급수대", item.petPolicy.wasteBags && "배변봉투", item.petPolicy.leashRequired && "목줄 필수"].filter(Boolean).join(" · ") || "확인된 시설 없음" : "정보 없음"}</dd></div><div><dt>비용 성격</dt><dd>가격대 기반 추정 · 실제 결제 금액과 다를 수 있음</dd></div></dl>
-        {item.petPolicy && <div className="policy-report-actions"><button type="button" onClick={async (e) => { e.stopPropagation(); await reportPetPolicy(item.placeId, "CONFIRMED"); setPolicyNotice("정책 확인을 반영했습니다."); }}>정보가 맞아요</button><button type="button" onClick={async (e) => { e.stopPropagation(); await reportPetPolicy(item.placeId, "ENTRY_DENIED"); setPolicyNotice("입장 거부 신고가 접수됐습니다."); }}>입장 거부 신고</button>{policyNotice && <small>{policyNotice}</small>}</div>}
-        <div className="taxi-card"><span>기사님께 보여주세요</span><b>{taxiText}</b><button type="button" onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(taxiText); }}>주소 복사</button></div>
+        <dl><div><dt>데이터 출처</dt><dd>{sourceLabel}</dd></div>{item.category === "RESTAURANT" && <div><dt>카카오 후기</dt><dd>{hasKakaoReviews ? `${item.kakaoReviewSource === "LICENSED_IMPORT" ? "승인된 집계 데이터" : "수동 검증"}${reviewDate ? ` · ${reviewDate} 기준` : ""}` : "공식 API 미제공 · 검증된 집계 연결 전에는 추천 점수에 미반영"}</dd></div>}<div><dt>비용 성격</dt><dd>가격대 기반 추정 · 실제 결제 금액과 다를 수 있음</dd></div></dl>
+        <div className="taxi-card"><span>{en ? "Show this to the driver" : "기사님께 보여주세요"}</span><b>{taxiText}</b><button type="button" onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(taxiText); }}>{en ? "Copy address" : "주소 복사"}</button></div>
       </div>}
       <div className="place-actions">
         <button type="button" onClick={(e) => { e.stopPropagation(); setExpanded((value) => !value); }} aria-expanded={expanded}>{expanded ? "정보 접기" : "근거·정책 보기"}</button>

@@ -1,4 +1,4 @@
-import type { BookingOption, CourseCategory, CreateTripRequest, EmbeddedRoute, Festival, ItineraryJob, ItineraryOutput, LocationSearchResult, PetSafetyPlace, PlaceAlternative, PlaceImageMatch, PlaceRecord, SharedItinerary, SouvenirShop, SponsoredPlacement, StoryRecord, WeatherForecast } from "../types";
+import type { BookingOption, CourseCategory, CreateTripRequest, EmbeddedRoute, Festival, ItineraryJob, ItineraryOutput, LocationSearchResult, PlaceAlternative, PlaceImageMatch, PlaceRecord, SharedItinerary, SouvenirShop, SponsoredPlacement, StoryRecord, TaxiCard, WeatherForecast } from "../types";
 
 /**
  * 백엔드가 떠 있지 않으면 fetch 는 TypeError("Failed to fetch") 로 실패한다.
@@ -109,6 +109,13 @@ export async function getCourseCategories(): Promise<CourseCategory[]> {
   return (await handle<{ categories: CourseCategory[] }>(await fetch("/api/course-categories?catalog=full-v2"))).categories;
 }
 
+// 위저드의 "가고 싶은 곳" 검색용 - 카카오 전체 검색이 아니라 이 앱의 시드 장소 카탈로그 안에서만 찾는다.
+export async function searchPlaces(query: string): Promise<PlaceRecord[]> {
+  if (query.trim().length < 2) return [];
+  const res = await fetch(`/api/places?search=${encodeURIComponent(query.trim())}`);
+  return handle<PlaceRecord[]>(res);
+}
+
 export async function getLodgings(): Promise<PlaceRecord[]> {
   const res = await fetch("/api/places?category=LODGING");
   return handle<PlaceRecord[]>(res);
@@ -116,6 +123,10 @@ export async function getLodgings(): Promise<PlaceRecord[]> {
 
 export async function reoptimizeDay(itineraryId: string, dayIndex: number, payload: { action: "REMOVE" | "PIN" | "UNPIN" | "REPLACE"; itemId?: string; replacementPlaceId?: string }) {
   return handle(await fetch(`/api/itineraries/${itineraryId}/days/${dayIndex}/reoptimize`, { method: "POST", headers: { "Content-Type": "application/json", ...(await authHeaders()) }, body: JSON.stringify(payload) }));
+}
+
+export async function reorderDay(itineraryId: string, dayIndex: number, itemIds: string[]): Promise<{ changedDayIndex: number; warnings: string[] }> {
+  return handle(await fetch(`/api/itineraries/${itineraryId}/days/${dayIndex}/reorder`, { method: "PATCH", headers: { "Content-Type": "application/json", ...(await authHeaders()) }, body: JSON.stringify({ itemIds }) }));
 }
 
 export async function undoItineraryChange(itineraryId: string) {
@@ -126,10 +137,6 @@ export async function getAlternatives(itineraryId: string, itemId: string): Prom
   return handle(await fetch(`/api/itineraries/${itineraryId}/items/${itemId}/alternatives`));
 }
 
-export async function getPetSafetyPlaces(lat: number, lng: number): Promise<PetSafetyPlace[]> {
-  return handle(await fetch(`/api/pet-safety?lat=${lat}&lng=${lng}&radiusKm=2`));
-}
-
 export async function searchLocations(query: string): Promise<LocationSearchResult[]> {
   return (await handle<{ locations: LocationSearchResult[] }>(await fetch(`/api/locations/search?query=${encodeURIComponent(query)}`))).locations;
 }
@@ -138,13 +145,14 @@ export async function getPlaceImage(placeId: string): Promise<PlaceImageMatch> {
   return handle(await fetch(`/api/places/${encodeURIComponent(placeId)}/image`));
 }
 
-export async function getEmbeddedRoute(params: { startLat: number; startLng: number; endLat: number; endLng: number; mode: "TRANSIT" | "CAR" }): Promise<EmbeddedRoute> {
+export async function getEmbeddedRoute(params: { startLat: number; startLng: number; endLat: number; endLng: number; mode: "TRANSIT" | "CAR"; lang?: "KO" | "EN" }): Promise<EmbeddedRoute> {
   const query = new URLSearchParams(Object.fromEntries(Object.entries(params).map(([key, value]) => [key, String(value)])));
   return handle(await fetch(`/api/routes/directions?${query}`));
 }
 
-export async function reportPetPolicy(placeId: string, reportType: "ENTRY_DENIED" | "POLICY_CHANGED" | "CONFIRMED") {
-  return handle(await fetch(`/api/places/${placeId}/pet-policy/reports`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reportType }) }));
+// F-NAV-02(v4 6.3장): 한국어를 못 읽는 외국인이 택시 기사에게 보여줄 목적지 카드.
+export async function getTaxiCard(placeId: string): Promise<TaxiCard> {
+  return handle(await fetch(`/api/routes/taxi-card?placeId=${encodeURIComponent(placeId)}`));
 }
 
 function clientSessionId() {
@@ -178,13 +186,13 @@ export async function getSharedItinerary(slug: string): Promise<SharedItinerary>
 export async function inviteCompanion(tripId: string, role: "EDITOR" | "VIEWER") { return handle<{ inviteUrl: string; expiresAt: string }>(await fetch(`/api/trips/${tripId}/members/invite`, { method: "POST", headers: { "Content-Type": "application/json", ...(await authHeaders()) }, body: JSON.stringify({ role, expiresInDays: 7 }) })); }
 export async function acceptInvite(inviteToken: string) { return handle<{ tripId: string; role: string }>(await fetch(`/api/collaboration/invites/${inviteToken}/accept`, { method: "POST", headers: await authHeaders() })); }
 export async function getCollaboration(itineraryId: string) { return handle<{ version: number; myRole: string; members: unknown[] }>(await fetch(`/api/itineraries/${itineraryId}/collaboration`, { headers: await authHeaders() })); }
-export async function createStory(payload: { placeId: string; itineraryItemId?: string; content: string; images: string[]; visibility: string; publishMode: "NOW" | "AFTER_TRIP"; petTagged: boolean }) { return handle<{ storyId: string; delayed: boolean; exifRemoved: boolean }>(await fetch("/api/stories", { method: "POST", headers: { "Content-Type": "application/json", ...(await authHeaders()) }, body: JSON.stringify(payload) })); }
+export async function createStory(payload: { placeId: string; itineraryItemId?: string; content: string; images: string[]; visibility: string; publishMode: "NOW" | "AFTER_TRIP" }) { return handle<{ storyId: string; delayed: boolean; exifRemoved: boolean }>(await fetch("/api/stories", { method: "POST", headers: { "Content-Type": "application/json", ...(await authHeaders()) }, body: JSON.stringify(payload) })); }
 export async function getStories(options: boolean | { mine?: boolean; following?: boolean } = false): Promise<StoryRecord[]> { const params = new URLSearchParams(); if (typeof options === "boolean" ? options : options.mine) params.set("mine", "true"); if (typeof options !== "boolean" && options.following) params.set("following", "true"); return handle(await fetch(`/api/stories${params.size ? `?${params}` : ""}`, { headers: await authHeaders() })); }
 export async function reportStory(id: string, reason = "PRIVACY") { return handle(await fetch(`/api/stories/${id}/report`, { method: "POST", headers: { "Content-Type": "application/json", ...(await authHeaders()) }, body: JSON.stringify({ reason }) })); }
 export async function followUser(id: string, following: boolean) { return handle(await fetch(`/api/users/${id}/follow`, { method: following ? "DELETE" : "POST", headers: await authHeaders() })); }
 
-export async function getSponsoredPlacements(context: { mode: string; hasPet: boolean; language: string }): Promise<SponsoredPlacement[]> {
-  const query = new URLSearchParams({ mode: context.mode, hasPet: String(context.hasPet), language: context.language });
+export async function getSponsoredPlacements(context: { mode: string; language: string }): Promise<SponsoredPlacement[]> {
+  const query = new URLSearchParams({ mode: context.mode, language: context.language });
   return handle(await fetch(`/api/ads?${query}`));
 }
 

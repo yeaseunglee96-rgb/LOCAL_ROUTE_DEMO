@@ -5,25 +5,22 @@ export type AdCandidate = {
   budget: number;
   spent: number;
   targetingModes: string;
-  targetingHasPet: boolean | null;
   targetingLanguage: string | null;
   serviceCategory: string;
-  place: { id: string; nameKo: string; nameEn: string | null; category: string; localScore: number; imageUrl: string | null; petPolicy: { allowed: boolean } | null };
+  place: { id: string; nameKo: string; nameEn: string | null; category: string; localScore: number; imageUrl: string | null };
 };
 
-export const ALLOWED_AD_CATEGORIES = ["LODGING", "RENTAL_CAR", "TRAVEL_INSURANCE", "TAXI", "AIRPORT_TRANSFER", "PET_MOBILITY"] as const;
+export const ALLOWED_AD_CATEGORIES = ["LODGING", "RENTAL_CAR", "TRAVEL_INSURANCE", "TAXI", "AIRPORT_TRANSFER"] as const;
 export function isAllowedAdCategory(value: string): value is typeof ALLOWED_AD_CATEGORIES[number] {
   return ALLOWED_AD_CATEGORIES.includes(value as typeof ALLOWED_AD_CATEGORIES[number]);
 }
 
-export function rankEligibleAds(candidates: AdCandidate[], context: { mode?: string; hasPet?: boolean; language?: string; category?: string }) {
+export function rankEligibleAds(candidates: AdCandidate[], context: { mode?: string; language?: string; category?: string }) {
   const eligible = candidates.filter((candidate) => {
     if (!isAllowedAdCategory(candidate.serviceCategory)) return false;
     if (candidate.spent >= candidate.budget) return false;
     const modes = JSON.parse(candidate.targetingModes) as string[];
     if (context.mode && modes.length > 0 && !modes.includes(context.mode)) return false;
-    if (candidate.targetingHasPet !== null && candidate.targetingHasPet !== !!context.hasPet) return false;
-    if (context.hasPet && !candidate.place.petPolicy?.allowed) return false;
     if (candidate.targetingLanguage && context.language && candidate.targetingLanguage !== context.language) return false;
     if (context.category && candidate.place.category !== context.category) return false;
     return true;

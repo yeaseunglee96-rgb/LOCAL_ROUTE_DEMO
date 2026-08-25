@@ -6,14 +6,14 @@ import type { CreateTripRequest } from "../types";
 import { useAppShell } from "../routes/AppShell";
 import { paths } from "../routes/paths";
 
-const STEP_SLUGS = ["basic", "taste", "conditions", "confirm"] as const;
+const STEP_SLUGS = ["basic", "taste", "confirm"] as const;
 type StepSlug = (typeof STEP_SLUGS)[number];
 
 /**
- * /plan/:step — 4단계 여행 조건 입력 위저드
+ * /plan/:step — 3단계 여행 조건 입력 위저드
  *
  * 단계를 URL 로 노출해 뒤로가기·새로고침·딥링크가 모두 동작하게 만든다.
- * 앱에서도 같은 4개 화면을 스택 네비게이션으로 그대로 재현한다.
+ * 앱에서도 같은 3개 화면을 스택 네비게이션으로 그대로 재현한다.
  */
 export function PlanWizardPage() {
   const { step: stepParam } = useParams();

@@ -4,7 +4,7 @@ import { applyCourseCategoryTasteTags, getCourseCategories } from "../src/servic
 import { scorePlaces } from "../src/services/recommend.js";
 import { place } from "./fixtures.js";
 
-const options = { mode: "LOCAL" as const, needsEnglishMenu: false, needsForeignCard: false, petIndoorRequired: false };
+const options = { mode: "LOCAL" as const, needsEnglishMenu: false, needsForeignCard: false };
 
 test("첨부 명세의 코스 카테고리 10개를 모두 선택 가능하게 제공한다", () => {
   const categories = getCourseCategories();
@@ -32,7 +32,7 @@ test("모든 코스가 태그와 후보 조건을 실제 추천 점수에 반영
   for (const category of getCourseCategories()) {
     const candidate = fixtures[category.code as keyof typeof fixtures];
     const tags = applyCourseCategoryTasteTags([], category.code);
-    const result = scorePlaces([candidate], tags, false, undefined, 100_000, 1, [], { ...options, courseCategory: category.code });
+    const result = scorePlaces([candidate], tags, 100_000, 1, [], { ...options, courseCategory: category.code });
     assert.equal(result.length, 1, `${category.code} 후보가 적용되지 않았습니다.`);
     assert.ok(result[0].score >= 0 && result[0].score <= 1, `${category.code} 점수가 정규화 범위를 벗어났습니다.`);
   }

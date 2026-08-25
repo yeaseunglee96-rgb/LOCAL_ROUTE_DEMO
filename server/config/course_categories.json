@@ -5,16 +5,15 @@
     "$comment": "합계 100. 카테고리 multiplier 적용 후 반드시 100으로 재정규화한다.",
     "tasteMatch": 25,
     "localScore": 20,
-    "travelEfficiency": 15,
-    "petFit": 15,
+    "travelEfficiency": 30,
     "budgetFit": 10,
     "foreignerEase": 10,
     "freshness": 5
   },
   "modes": [
-    { "code": "MUST_SEE", "nameKo": "관광 필수 코스", "ratio": { "landmark": 70, "local": 20, "pet": 10 } },
-    { "code": "LOCAL", "nameKo": "현지인 코스", "ratio": { "landmark": 10, "local": 80, "pet": 10 } },
-    { "code": "PET_SAFE", "nameKo": "반려동물 안심 코스", "ratio": { "landmark": 10, "local": 30, "pet": 60 } }
+    { "code": "MUST_SEE", "nameKo": "관광 필수 코스", "ratio": { "landmark": 70, "local": 20, "easy": 10 } },
+    { "code": "LOCAL", "nameKo": "현지인 코스", "ratio": { "landmark": 10, "local": 80, "easy": 10 } },
+    { "code": "EASY", "nameKo": "초행 외국인 안심 코스", "ratio": { "landmark": 10, "local": 30, "easy": 60 } }
   ],
   "categories": [
     {
@@ -96,7 +95,7 @@
       "hardFilters": [
         { "field": "outdoorRatioPerDay", "op": "gte", "value": 0.7, "scope": "DAY" }
       ],
-      "weightMultipliers": { "tasteMatch": 1.5, "petFit": 1.2 },
+      "weightMultipliers": { "tasteMatch": 1.5 },
       "boostTasteTags": ["nature", "rest", "photo"],
       "scheduleParams": { "pace": "RELAXED", "placesPerDay": [3, 4], "transport": "CAR", "stayMinutesScale": 1.4,
                           "maxWalkDistanceScale": 1.5 },

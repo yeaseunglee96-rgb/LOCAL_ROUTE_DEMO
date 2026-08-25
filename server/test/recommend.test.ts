@@ -1,25 +1,17 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { diversifyScoredPlaces, estimatePlaceCost, kakaoRestaurantReviewSignal, passesPetHardFilter, scorePlaces } from "../src/services/recommend.js";
+import { diversifyScoredPlaces, estimatePlaceCost, kakaoRestaurantReviewSignal, scorePlaces } from "../src/services/recommend.js";
 import { place, scored } from "./fixtures.js";
 
 const options = {
   mode: "LOCAL" as const,
   needsEnglishMenu: false,
   needsForeignCard: false,
-  petIndoorRequired: false,
 };
 
 test("가격대와 인원수로 예상 비용을 계산한다", () => {
   assert.equal(estimatePlaceCost(1, 2), 0);
   assert.equal(estimatePlaceCost(3, 2), 40_000);
-});
-
-test("반려동물 크기와 실내 동반 조건을 hard filter로 적용한다", () => {
-  const smallOnly = place({ petPolicy: { ...place().petPolicy!, allowed: true, indoorAllowed: false, outdoorAllowed: true, sizeLimit: "SMALL" } }).petPolicy;
-  assert.equal(passesPetHardFilter(smallOnly, true, "LARGE"), false);
-  assert.equal(passesPetHardFilter(smallOnly, true, "SMALL", true), false);
-  assert.equal(passesPetHardFilter(smallOnly, false, "LARGE", true), true);
 });
 
 test("영어 메뉴·해외카드 필수 조건과 제외 목록을 적용한다", () => {
@@ -29,7 +21,7 @@ test("영어 메뉴·해외카드 필수 조건과 제외 목록을 적용한다
     place({ id: "no-card", foreignCardPayment: false }),
     place({ id: "excluded" }),
   ];
-  const result = scorePlaces(candidates, ["cafe"], false, undefined, 100_000, 1, ["excluded"], {
+  const result = scorePlaces(candidates, ["cafe"], 100_000, 1, ["excluded"], {
     ...options,
     needsEnglishMenu: true,
     needsForeignCard: true,
@@ -40,8 +32,8 @@ test("영어 메뉴·해외카드 필수 조건과 제외 목록을 적용한다
 test("추천 모드에 따라 장소 순위가 달라진다", () => {
   const landmark = place({ id: "landmark", localScore: 0.2, tasteTags: JSON.stringify(["landmark"]) });
   const local = place({ id: "local", localScore: 1, tasteTags: JSON.stringify(["hidden_local"]) });
-  const essential = scorePlaces([landmark, local], [], false, undefined, 100_000, 1, [], { ...options, mode: "ESSENTIAL" });
-  const localMode = scorePlaces([landmark, local], [], false, undefined, 100_000, 1, [], options);
+  const essential = scorePlaces([landmark, local], [], 100_000, 1, [], { ...options, mode: "ESSENTIAL" });
+  const localMode = scorePlaces([landmark, local], [], 100_000, 1, [], options);
   assert.equal(essential[0].id, "landmark");
   assert.equal(localMode[0].id, "local");
 });
@@ -49,7 +41,7 @@ test("추천 모드에 따라 장소 순위가 달라진다", () => {
 test("선택한 여행 취향이 식당의 일반 로컬 점수보다 우선 반영된다", () => {
   const natureExperience = place({ id: "nature", category: "TOURIST", localScore: 0.78, tasteTags: JSON.stringify(["nature", "relax", "photo"]) });
   const unrelatedRestaurant = place({ id: "food", category: "RESTAURANT", localScore: 0.96, tasteTags: JSON.stringify(["food", "hidden_local"]) });
-  const result = scorePlaces([unrelatedRestaurant, natureExperience], ["nature", "relax"], false, undefined, 100_000, 1, [], options);
+  const result = scorePlaces([unrelatedRestaurant, natureExperience], ["nature", "relax"], 100_000, 1, [], options);
   assert.equal(result[0].id, "nature");
 });
 
@@ -59,7 +51,7 @@ test("식당은 검증된 카카오 평점과 후기 신뢰도를 추천에 반�
     kakaoPositiveReviewRate: 0.92, kakaoReviewSource: "LICENSED_IMPORT", kakaoReviewKeywords: JSON.stringify(["친절해요", "재료가 신선해요"]),
   });
   const unreviewed = place({ id: "unreviewed", category: "RESTAURANT" });
-  const result = scorePlaces([unreviewed, reviewed], [], false, undefined, 100_000, 1, [], options);
+  const result = scorePlaces([unreviewed, reviewed], [], 100_000, 1, [], options);
   assert.equal(result[0].id, "reviewed");
   assert.match(result[0].kakaoReviewKeywords.join(" "), /친절/);
 });

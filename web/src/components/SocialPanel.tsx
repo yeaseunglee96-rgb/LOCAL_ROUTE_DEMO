@@ -42,7 +42,7 @@ export function SocialPanel({ itinerary }: { itinerary: ItineraryOutput }) {
   const submit = async () => {
     if (!selected || !content.trim()) return;
     try {
-      const result = await createStory({ placeId, itineraryItemId: selected.itemId, content: content.trim(), images: image ? [image] : [], visibility, publishMode: publishNow ? "NOW" : "AFTER_TRIP", petTagged: itinerary.trip.hasPet });
+      const result = await createStory({ placeId, itineraryItemId: selected.itemId, content: content.trim(), images: image ? [image] : [], visibility, publishMode: publishNow ? "NOW" : "AFTER_TRIP" });
       setContent(""); setImage(null); setComposerOpen(false);
       setNotice(result.delayed ? "여행 종료 후 공개되도록 저장했습니다. 사진의 위치정보는 제거됩니다." : "여행 기록을 공개했습니다.");
       await load();

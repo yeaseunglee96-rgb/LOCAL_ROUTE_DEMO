@@ -6,7 +6,6 @@ import {
   fetchAreaBasedList,
   fetchDetailIntro,
   fetchEnglishName,
-  fetchPetFriendlyContentIds,
   parseClosedDays,
   parseTimeRange,
 } from "../src/lib/tourapi.js";
@@ -69,15 +68,10 @@ async function main() {
   });
   console.log(`   MANUAL 장소 ${manualPlaces.length}곳`);
 
-  console.log("2) 반려동물 동반여행 서비스 — 부산 지역 contentId 목록 조회");
-  const petFriendlyIds = await fetchPetFriendlyContentIds(BUSAN_AREA_CODE);
-  console.log(`   반려동물 동반 가능 contentId ${petFriendlyIds.size}건`);
-
   const seenContentIds = new Set<string>();
   let created = 0;
   let skippedDuplicate = 0;
   let skippedNoCoords = 0;
-  let petMatched = 0;
 
   for (const contentTypeId of Object.keys(CONTENT_TYPE_CONFIG).map(Number)) {
     console.log(`\n3) contentTypeId=${contentTypeId} 목록 조회 (최대 ${ROWS_PER_TYPE}건)`);
@@ -128,9 +122,6 @@ async function main() {
         nameKo: item.title,
       });
 
-      const isPetFriendly = petFriendlyIds.has(item.contentid);
-      if (isPetFriendly) petMatched++;
-
       await prisma.place.create({
         data: {
           nameKo: item.title,
@@ -154,18 +145,6 @@ async function main() {
           contentId: item.contentid,
           dataSource: "TOURAPI",
           imageUrl: item.firstimage || null,
-          petPolicy: isPetFriendly
-            ? {
-                create: {
-                  allowed: true,
-                  indoorAllowed: true,
-                  outdoorAllowed: true,
-                  sizeLimit: "MEDIUM", // 반려동물 서비스의 세부 크기 필드는 이번 임포트 범위 밖 — 보수적 기본값
-                  extraFee: 0,
-                  freshnessGrade: "AGING", // 실제 확인일 데이터가 없어 "확인 필요" 쪽에 가깝게 표기
-                },
-              }
-            : undefined,
         },
       });
       created++;
@@ -176,7 +155,6 @@ async function main() {
   console.log(`생성: ${created}건`);
   console.log(`MANUAL과 중복으로 스킵: ${skippedDuplicate}건`);
   console.log(`좌표 없음으로 스킵: ${skippedNoCoords}건`);
-  console.log(`반려동물 동반 매칭: ${petMatched}건`);
 }
 
 main()

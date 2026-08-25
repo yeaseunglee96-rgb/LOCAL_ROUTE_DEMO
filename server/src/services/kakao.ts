@@ -2,6 +2,21 @@ const KAKAO_MOBILITY_URL = "https://apis-navi.kakaomobility.com/v1/directions";
 const TRANSIT_SPEED_KMH = 20;
 const CAR_SPEED_KMH = 30; // 시내 평균 추정 속도(하버사인 폴백용)
 
+/**
+ * .env의 KAKAO_REST_API_KEY는 실제로는 REST API 키가 아니라 JavaScript 키다(2026-08-25 실측 확인:
+ * Authorization 헤더만으로 호출하면 dapi.kakao.com/v2/local/search 같은 기본 API조차 401
+ * "KA Header is required"로 거부되고, os/javascript + 등록된 origin을 담은 KA 헤더를 실어 보내면
+ * 통과한다 — 즉 이 키는 KAKAO_JS_ORIGIN에 등록된 도메인에서만 허용되는 JS 키다).
+ * 카카오 로컬 검색·대중교통(publictraffic)은 이 방식으로 우회 가능하지만,
+ * 카카오모빌리티 자동차 길찾기(KAKAO_MOBILITY_URL)는 별도 상품이라 이 우회가 통하지 않는다
+ * (KA 헤더를 어떤 형태로 보내도 동일하게 401). 프로덕션 배포 전에는 Kakao Developers 콘솔에서
+ * 발급한 진짜 REST API 키로 교체하고 이 워크어라운드를 제거해야 한다.
+ */
+const KAKAO_JS_ORIGIN = process.env.KAKAO_JS_ORIGIN || "http://localhost:5173";
+function kakaoJsHeaders(apiKey: string): Record<string, string> {
+  return { Authorization: `KakaoAK ${apiKey}`, KA: `sdk/1.0.0 os/javascript lang/ko-KR origin/${KAKAO_JS_ORIGIN}` };
+}
+
 export interface TravelEstimate {
   distanceM: number;
   durationMin: number;
@@ -14,7 +29,7 @@ export interface EmbeddedRoute {
   durationMin: number;
   fare: number | null;
   transfers: number | null;
-  steps: { guidance: string; durationMin: number; distanceM: number; vehicle: string | null }[];
+  steps: { guidance: string; durationMin: number; distanceM: number; vehicle: string | null; destinationStop?: string | null; path: [number, number][] }[];
   path: [number, number][];
   isEstimate: boolean;
   source: "KAKAO_MAP" | "KAKAO_MOBILITY" | "ESTIMATE";
@@ -28,7 +43,7 @@ export interface TransitAlternative {
   durationMin: number;
   fare: number | null;
   transfers: number | null;
-  steps: { guidance: string; durationMin: number; distanceM: number; vehicle: string | null }[];
+  steps: { guidance: string; durationMin: number; distanceM: number; vehicle: string | null; destinationStop?: string | null; path: [number, number][] }[];
   path: [number, number][];
   isEstimate: boolean;
 }
@@ -152,7 +167,7 @@ export async function getEmbeddedRoute(lat1: number, lng1: number, lat2: number,
     : [];
   const fallbackResult: EmbeddedRoute = {
     mode, distanceM: fallback.distanceM, durationMin: mode === "TRANSIT" ? Math.max(8, Math.round(fallback.durationMin * .55)) : fallback.durationMin,
-    fare: null, transfers: null, steps: [{ guidance: mode === "TRANSIT" ? "대중교통 경로 데이터를 확인할 수 없어 예상 시간으로 표시합니다." : "자동차 경로 데이터를 확인할 수 없어 예상 시간으로 표시합니다.", durationMin: fallback.durationMin, distanceM: fallback.distanceM, vehicle: null }],
+    fare: null, transfers: null, steps: [{ guidance: mode === "TRANSIT" ? "대중교통 경로 데이터를 확인할 수 없어 예상 시간으로 표시합니다." : "자동차 경로 데이터를 확인할 수 없어 예상 시간으로 표시합니다.", durationMin: fallback.durationMin, distanceM: fallback.distanceM, vehicle: null, path: fallbackPath }],
     path: fallbackPath, isEstimate: true, source: "ESTIMATE", alternatives: fallbackAlternatives,
   };
   if (!apiKey) return fallbackResult;
@@ -160,22 +175,27 @@ export async function getEmbeddedRoute(lat1: number, lng1: number, lat2: number,
   try {
     if (mode === "TRANSIT") {
       const query = new URLSearchParams({ start_x: String(lng1), start_y: String(lat1), end_x: String(lng2), end_y: String(lat2), input_coord: "WGS84", output_coord: "WGS84" });
-      const response = await fetch(`https://dapi.kakao.com/v2/routing/publictraffic?${query}`, { headers: { Authorization: `KakaoAK ${apiKey}` }, signal: AbortSignal.timeout(5000) });
+      const response = await fetch(`https://dapi.kakao.com/v2/routing/publictraffic?${query}`, { headers: kakaoJsHeaders(apiKey), signal: AbortSignal.timeout(5000) });
       if (!response.ok) throw new Error(`public traffic http ${response.status}`);
       const data = await response.json() as any;
       const route = data?.routes?.[0];
       if (data?.status !== "OK" || !route) throw new Error("no public route");
       const alternatives: TransitAlternative[] = (data.routes ?? []).slice(0, 5).map((candidate: any, index: number) => {
         const steps = (candidate.steps ?? []).map((step: any) => {
-          const vehicle = step.properties?.vehicles?.map((v: any) => {
-            const typeStr = /SUBWAY/i.test(v.type || "") ? "지하철" : /BUS/i.test(v.type || "") ? "버스" : "";
-            return [typeStr, v.name].filter(Boolean).join(" ");
-          }).filter(Boolean).join(", ") || null;
+          // step.properties.type이 실제 BUS/SUBWAY/WALK 구분값이다(vehicles[].type은 "일반"
+          // 같은 노선 등급이라 여기서 쓰면 안 된다 - 2026-08-25 실측으로 확인한 버그 수정).
+          const stepType = String(step.properties?.type || "").toUpperCase();
+          const typeStr = stepType.includes("SUBWAY") || stepType.includes("METRO") ? "지하철" : stepType.includes("BUS") ? "버스" : "";
+          const vehicle = step.properties?.vehicles?.map((v: any) => [typeStr, v.name].filter(Boolean).join(" ")).filter(Boolean).join(", ") || (typeStr || null);
+          const stops = (step.properties?.stops ?? []).map((s: any) => s.name).filter(Boolean);
           return {
             guidance: step.properties?.guidance ?? "이동",
             durationMin: Math.max(1, Math.round((step.properties?.time ?? 0) / 60)),
             distanceM: step.properties?.distance ?? 0,
-            vehicle
+            vehicle,
+            destinationStop: stops.length ? stops[stops.length - 1] : null,
+            // 구간별 좌표(실시간 GPS 진행률 계산·지도 표시용). 카카오 응답은 step마다 자체 path를 준다.
+            path: (step.path?.points ?? []) as [number, number][],
           };
         });
         const path = (candidate.steps ?? []).flatMap((step: any) => step.path?.points ?? []) as [number, number][];
@@ -208,7 +228,13 @@ export async function getEmbeddedRoute(lat1: number, lng1: number, lat2: number,
       for (let index = 0; index < vertices.length; index += 2) points.push([vertices[index], vertices[index + 1]]);
       return points;
     }));
-    const steps = (route.sections ?? []).flatMap((section: any) => (section.guides ?? []).map((guide: any) => ({ guidance: guide.guidance ?? guide.name ?? "경로를 따라 이동", durationMin: 0, distanceM: guide.distance ?? 0, vehicle: null })));
+    const allGuides = (route.sections ?? []).flatMap((section: any) => section.guides ?? []);
+    const steps = allGuides.map((guide: any, index: number) => {
+      // Mobility 가이드는 꺾이는 지점(x,y) 하나만 준다 - 다음 가이드 지점까지를 그 구간의 근사 경로로 쓴다.
+      const next = allGuides[index + 1];
+      const segment: [number, number][] = next ? [[guide.x, guide.y], [next.x, next.y]] : [[guide.x, guide.y]];
+      return { guidance: guide.guidance ?? guide.name ?? "경로를 따라 이동", durationMin: 0, distanceM: guide.distance ?? 0, vehicle: null, path: segment };
+    });
     return { mode, distanceM: summary.distance, durationMin: Math.max(1, Math.round(summary.duration / 60)), fare: summary.fare?.taxi ?? null, transfers: null, steps: steps.slice(0, 8), path: path.length ? path : fallbackResult.path, isEstimate: false, source: "KAKAO_MOBILITY" };
   } catch {
     return fallbackResult;
@@ -219,7 +245,7 @@ export async function searchKakaoLocations(query: string) {
   const apiKey = process.env.KAKAO_REST_API_KEY;
   if (!apiKey) return [];
   const params = new URLSearchParams({ query, size: "8" });
-  const response = await fetch(`https://dapi.kakao.com/v2/local/search/keyword.json?${params}`, { headers: { Authorization: `KakaoAK ${apiKey}` }, signal: AbortSignal.timeout(4000) });
+  const response = await fetch(`https://dapi.kakao.com/v2/local/search/keyword.json?${params}`, { headers: kakaoJsHeaders(apiKey), signal: AbortSignal.timeout(4000) });
   if (!response.ok) throw new Error(`location search http ${response.status}`);
   const data = await response.json() as any;
   return (data.documents ?? []).map((place: any) => ({ id: place.id, name: place.place_name, address: place.road_address_name || place.address_name, lat: Number(place.y), lng: Number(place.x), category: place.category_name }));
@@ -263,6 +289,19 @@ export function estimateTravelSync(
 }
 
 export { haversineDistanceM };
+
+/** 추정 경로용: 전체 좌표열을 각 step의 거리 비중대로 잘라 붙인다(지도 표시·GPS 근접판정을 위한 근사치일 뿐 실제 도로 형상은 아니다). */
+function attachSplitPaths<T extends { distanceM: number }>(steps: T[], fullPath: [number, number][]): (T & { path: [number, number][] })[] {
+  const totalDistance = steps.reduce((sum, s) => sum + Math.max(1, s.distanceM), 0);
+  let cursor = 0;
+  return steps.map((step) => {
+    const share = Math.max(1, step.distanceM) / totalDistance;
+    const count = Math.max(2, Math.round(fullPath.length * share));
+    const slice = fullPath.slice(cursor, Math.min(fullPath.length, cursor + count));
+    cursor += count;
+    return { ...step, path: slice.length ? slice : fullPath.slice(-2) };
+  });
+}
 
 function getFallbackAlternatives(
   lat1: number, lng1: number,
@@ -435,7 +474,7 @@ function getFallbackAlternatives(
       transfers: busTransfers,
       path: path,
       isEstimate: true,
-      steps: busSteps
+      steps: attachSplitPaths(busSteps, path)
     },
     {
       id: "estimated-subway",
@@ -446,7 +485,7 @@ function getFallbackAlternatives(
       transfers: subwayTransfers,
       path: path,
       isEstimate: true,
-      steps: subwaySteps
+      steps: attachSplitPaths(subwaySteps, path)
     }
   ];
 }

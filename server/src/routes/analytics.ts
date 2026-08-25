@@ -5,7 +5,7 @@ import { EVENT_TOPIC, EVENT_TYPES, isEventType, pseudonymize, recordEvent } from
 export const analyticsRouter = Router();
 
 analyticsRouter.get("/events/catalog", (_req, res) => {
-  res.json({ documentedCount: 27, enumeratedCount: EVENT_TYPES.length, discrepancy: "기획서 본문의 열거 항목은 실제 28종이므로 모두 지원합니다.", events: EVENT_TYPES.map((eventType) => ({ eventType, topic: EVENT_TOPIC[eventType] })) });
+  res.json({ documentedCount: EVENT_TYPES.length, enumeratedCount: EVENT_TYPES.length, discrepancy: "반려동물 정책 이벤트를 내비게이션 이벤트로 대체했습니다(v2 13장).", events: EVENT_TYPES.map((eventType) => ({ eventType, topic: EVENT_TOPIC[eventType] })) });
 });
 
 analyticsRouter.post("/events", async (req, res, next) => {
@@ -52,7 +52,7 @@ analyticsRouter.get("/analytics/kpis", async (req, res, next) => {
       tripFunnel: { searches, generated, confirmed, completed, generationRate: searches ? generated / searches : 0, completionRate: confirmed ? completed / confirmed : 0 },
       trendingPlaces: topIds.map(([id, score]) => ({ placeId: id, score, nameKo: placeMap.get(id)?.nameKo ?? "알 수 없는 장소", nameEn: placeMap.get(id)?.nameEn ?? null })),
       recommendation: { excluded: count("place_excluded"), satisfactionResponses: count("recommendation_satisfaction") },
-      petPolicy: { verified: count("pet_policy_verified"), entryDenied: count("pet_entry_denied") },
+      navigation: { routeGuideViewed: count("route_guide_viewed"), taxiCardGenerated: count("taxi_card_generated") },
       revenue: { adImpressions, adClicks, adCtr: adImpressions ? adClicks / adImpressions : 0, bookingStarts, bookingCompleted, bookingConversion: bookingStarts ? bookingCompleted / bookingStarts : 0 },
     });
   } catch (error) { next(error); }
