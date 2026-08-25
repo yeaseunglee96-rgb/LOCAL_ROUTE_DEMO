@@ -147,10 +147,31 @@ export async function getEmbeddedRoute(lat1: number, lng1: number, lat2: number,
       const route = data?.routes?.[0];
       if (data?.status !== "OK" || !route) throw new Error("no public route");
       const alternatives: TransitAlternative[] = (data.routes ?? []).slice(0, 5).map((candidate: any, index: number) => {
-        const steps = (candidate.steps ?? []).map((step: any) => ({ guidance: step.properties?.guidance ?? "이동", durationMin: Math.max(1, Math.round((step.properties?.time ?? 0) / 60)), distanceM: step.properties?.distance ?? 0, vehicle: step.properties?.vehicles?.map((vehicle: any) => vehicle.name).filter(Boolean).join(", ") || null }));
+        const steps = (candidate.steps ?? []).map((step: any) => {
+          const vehicle = step.properties?.vehicles?.map((v: any) => {
+            const typeStr = /SUBWAY/i.test(v.type || "") ? "지하철" : /BUS/i.test(v.type || "") ? "버스" : "";
+            return [typeStr, v.name].filter(Boolean).join(" ");
+          }).filter(Boolean).join(", ") || null;
+          return {
+            guidance: step.properties?.guidance ?? "이동",
+            durationMin: Math.max(1, Math.round((step.properties?.time ?? 0) / 60)),
+            distanceM: step.properties?.distance ?? 0,
+            vehicle
+          };
+        });
         const path = (candidate.steps ?? []).flatMap((step: any) => step.path?.points ?? []) as [number, number][];
-        const vehicles = steps.map((step: any) => step.vehicle ?? "").join(" ");
-        const label = /지하철|도시철도|subway/i.test(vehicles) ? "지하철 경로" : /버스|bus/i.test(vehicles) ? "버스 경로" : `대중교통 경로 ${index + 1}`;
+        const vehiclesList = steps
+          .map((s: any) => s.vehicle)
+          .filter((v: any) => !!v && v !== "도보" && !v.includes("도보"));
+        const uniqueVehicles: string[] = [];
+        for (const v of vehiclesList) {
+          if (uniqueVehicles.length === 0 || uniqueVehicles[uniqueVehicles.length - 1] !== v) {
+            uniqueVehicles.push(v);
+          }
+        }
+        const label = uniqueVehicles.length > 0
+          ? uniqueVehicles.join(" → ")
+          : `대중교통 경로 ${index + 1}`;
         return { id: `transit-${index + 1}`, label, distanceM: candidate.properties.totalDistance, durationMin: Math.max(1, Math.round(candidate.properties.totalTime / 60)), fare: candidate.properties.fare?.value ?? candidate.properties.fare?.min ?? null, transfers: candidate.properties.transfers ?? 0, steps, path: path.length ? path : fallbackResult.path, isEstimate: false };
       });
       const preferred = alternatives[0];
