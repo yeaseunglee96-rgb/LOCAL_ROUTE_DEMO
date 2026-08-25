@@ -37,7 +37,7 @@
     {
       "code": "BEST_BANG", "nameKo": "갓성비 코스", "nameEn": "Best Bang", "axis": "BUDGET",
       "summaryKo": "낸 돈 대비 만족이 가장 큰 곳",
-      "enabled": false, "disabledReason": "DATA_NOT_READY_SATISFACTION",
+      "enabled": true, "disabledReason": "DATA_NOT_READY_SATISFACTION",
       "budgetPerPersonPerDay": { "min": 50000, "max": 80000 },
       "hardFilters": [
         { "field": "priceLevel", "op": "lte", "value": 2 }
@@ -58,7 +58,7 @@
     {
       "code": "SPLURGE", "nameKo": "럭셔리 코스", "nameEn": "Splurge", "axis": "BUDGET",
       "summaryKo": "가격을 보지 않고 최고만",
-      "enabled": false, "disabledReason": "INVENTORY_UNVERIFIED_BUSAN",
+      "enabled": true, "disabledReason": "INVENTORY_UNVERIFIED_BUSAN",
       "budgetPerPersonPerDay": { "min": 200000, "max": null },
       "hardFilters": [
         { "field": "priceLevel", "op": "gte", "value": 4 }
@@ -108,7 +108,7 @@
     {
       "code": "PICTURE_PERFECT", "nameKo": "인생샷 코스", "nameEn": "Picture Perfect", "axis": "THEME",
       "summaryKo": "사진이 가장 잘 나오는 순간에 맞춰",
-      "enabled": false, "disabledReason": "DATA_NOT_READY_PHOTO_TIME_WINDOW",
+      "enabled": true, "disabledReason": "DATA_NOT_READY_PHOTO_TIME_WINDOW",
       "budgetPerPersonPerDay": { "min": 50000, "max": 90000 },
       "hardFilters": [
         { "field": "hasPhotoTag", "op": "eq", "value": true },
@@ -152,7 +152,7 @@
     {
       "code": "EASY_PACE", "nameKo": "효도 코스", "nameEn": "Easy Pace", "axis": "COMPANION",
       "summaryKo": "부모님과 무리 없이",
-      "enabled": false, "disabledReason": "DATA_NOT_READY_STEP_FREE",
+      "enabled": true, "disabledReason": "DATA_NOT_READY_STEP_FREE",
       "budgetPerPersonPerDay": { "min": 60000, "max": 100000 },
       "hardFilters": [
         { "field": "stepFree", "op": "eq", "value": true },
@@ -170,7 +170,7 @@
     {
       "code": "SOLO_FRIENDLY", "nameKo": "혼행 코스", "nameEn": "Solo Friendly", "axis": "COMPANION",
       "summaryKo": "혼자여도 어색하지 않은 곳",
-      "enabled": false, "disabledReason": "DATA_NOT_READY_SOLO_FLAG",
+      "enabled": true, "disabledReason": "DATA_NOT_READY_SOLO_FLAG",
       "budgetPerPersonPerDay": { "min": 40000, "max": 70000 },
       "hardFilters": [
         { "field": "soloFriendly", "op": "eq", "value": true },
