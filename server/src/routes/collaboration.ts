@@ -4,7 +4,7 @@ import { Router } from "express";
 import { prisma } from "../db.js";
 import { optionalSession, requireSession } from "../services/auth.js";
 import { createJob } from "../services/jobs.js";
-import { pseudonymize, recordEvent } from "../services/events.js";
+import { pseudonymize, recordEvent, recordEventBestEffort } from "../services/events.js";
 
 export const collaborationRouter = Router();
 const hash = (value: string) => createHash("sha256").update(value).digest("hex");
@@ -41,7 +41,7 @@ collaborationRouter.get("/s/:slug", async (req, res, next) => {
     if (!share || share.revokedAt) return res.status(404).json({ error_code: "SHARE_NOT_FOUND" });
     if (share.expiresAt <= new Date()) return res.status(410).json({ error_code: "SHARE_EXPIRED", message: "공유 링크가 만료되었습니다." });
     await prisma.itineraryShare.update({ where: { id: share.id }, data: { viewCount: { increment: 1 } } });
-    await recordEvent({ eventType: "share_viewed", entityType: "itinerary", entityId: share.itineraryId });
+    await recordEventBestEffort({ eventType: "share_viewed", entityType: "itinerary", entityId: share.itineraryId });
     const trip = share.itinerary.trip;
     res.json({ shareSlug: share.shareSlug, authorId: `traveler-${share.owner.id.slice(-6)}`, expiresAt: share.expiresAt, viewCount: share.viewCount + 1, cloneCount: share.cloneCount, trip: { startDate: trip.startDate, endDate: trip.endDate, partySize: trip.partySize, pace: trip.pace, language: trip.preference?.language ?? "KO" }, itinerary: { id: share.itinerary.id, mode: share.itinerary.mode, days: share.itinerary.days.map((day) => ({ dayIndex: day.dayIndex, visitDate: day.visitDate, items: day.items.sort((a,b)=>a.seqOrder-b.seqOrder).map((item) => ({ itemId: item.id, seqOrder: item.seqOrder, plannedArrival: item.plannedArrival, stayMinutes: item.stayMinutes, nameKo: item.place.nameKo, nameEn: item.place.nameEn, category: item.place.category, address: item.place.address, lat: item.place.lat, lng: item.place.lng })) })) } });
   } catch (error) { next(error); }

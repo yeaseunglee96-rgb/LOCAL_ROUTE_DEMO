@@ -10,7 +10,7 @@ import { localizeRoute, transferDifficultyFromCount } from "../services/navText.
 import { searchPlaceImage } from "../services/placeImages.js";
 import { applyCourseCategoryTasteTags, findCourseCategory, getCourseCategories } from "../services/courseCategories.js";
 import type { CreateTripRequest, ItineraryOutput, TripMeta } from "../types.js";
-import { recordEvent } from "../services/events.js";
+import { recordEvent, recordEventBestEffort } from "../services/events.js";
 import { optionalSession, requireItineraryEditor, requireTripEditor, requireTripViewer } from "../services/auth.js";
 
 export const tripsRouter = Router();
@@ -47,7 +47,7 @@ tripsRouter.get("/routes/directions", async (req, res, next) => {
     const route = await getEmbeddedRoute(startLat, startLng, endLat, endLng, mode);
     // F-NAV-01/03(v4 6.3장): 구글맵이 한국에서 지원하지 못하는 영어 턴바이턴 안내와
     // 환승 난이도 요약을 얹는다. 별도 DB 테이블 없이 매 요청 응답을 가공한다(v2 13.4장).
-    await recordEvent({ eventType: "route_guide_viewed", entityType: "route", entityId: `${startLat.toFixed(3)},${startLng.toFixed(3)}-${endLat.toFixed(3)},${endLng.toFixed(3)}`, language: lang, payload: { mode } });
+    await recordEventBestEffort({ eventType: "route_guide_viewed", entityType: "route", entityId: `${startLat.toFixed(3)},${startLng.toFixed(3)}-${endLat.toFixed(3)},${endLng.toFixed(3)}`, language: lang, payload: { mode } });
     return res.json({ ...localizeRoute(route, lang), transferDifficulty: transferDifficultyFromCount(route.transfers) });
   } catch (error) { next(error); }
 });
@@ -56,7 +56,7 @@ tripsRouter.get("/routes/taxi-card", async (req, res, next) => {
   try {
     const place = await prisma.place.findUnique({ where: { id: String(req.query.placeId ?? "") }, select: { id: true, nameKo: true, nameEn: true, address: true } });
     if (!place) return res.status(404).json({ error_code: "PLACE_NOT_FOUND" });
-    await recordEvent({ eventType: "taxi_card_generated", entityType: "place", entityId: place.id });
+    await recordEventBestEffort({ eventType: "taxi_card_generated", entityType: "place", entityId: place.id });
     // F-NAV-02(v4 6.3장): 한국어를 못 읽는 외국인이 택시 기사에게 그대로 보여줄 수 있는 카드.
     return res.json({ placeId: place.id, nameKo: place.nameKo, nameEn: place.nameEn, addressKo: place.address, phraseKo: `기사님, 여기로 가주세요: ${place.address}` });
   } catch (error) { next(error); }

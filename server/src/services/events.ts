@@ -74,6 +74,25 @@ export function sanitizeEventPayload(value: unknown): unknown {
   return value;
 }
 
+/**
+ * 조회 경로 전용 - 이벤트 기록 실패가 멀쩡한 응답을 망치지 않게 한다.
+ *
+ * GET 핸들러의 관찰용 이벤트(route_guide_viewed 등)는 사용자에게 돌려줄 결과가
+ * 이미 준비된 뒤에 기록된다. 여기서 던지면 성공한 조회가 500 으로 뒤바뀌므로,
+ * 실패는 경고 로그로만 남기고 삼킨다.
+ *
+ * 상태 변경을 기록하는 이벤트에는 쓰지 말 것. 그쪽은 이벤트 유실이 드러나야 하고,
+ * 웹훅처럼 호출자가 재시도해 복구할 수 있는 경로도 있다.
+ */
+export async function recordEventBestEffort(input: Parameters<typeof recordEvent>[0]) {
+  try {
+    return await recordEvent(input);
+  } catch (error) {
+    console.warn(`[events] 조회 경로 이벤트 기록 실패 (${input.eventType}):`, error instanceof Error ? error.message : error);
+    return null;
+  }
+}
+
 export async function recordEvent(input: {
   eventId?: string;
   eventType: EventType;
