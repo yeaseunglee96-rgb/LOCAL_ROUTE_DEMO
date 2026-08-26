@@ -77,6 +77,33 @@ model AnonymousSession {
   storyReports       StoryReport[]
   following          Follow[]          @relation("Follower")
   followers          Follow[]          @relation("Followee")
+  accountOwner       User?             @relation("UserOwnerSession")
+}
+
+model User {
+  id             String           @id @default(cuid())
+  email          String           @unique
+  name           String
+  passwordHash   String
+  passwordSalt   String
+  emailVerified  Boolean          @default(false)
+  ownerSession   AnonymousSession @relation("UserOwnerSession", fields: [ownerSessionId], references: [id])
+  ownerSessionId String           @unique
+  sessions       AccountSession[]
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+}
+
+model AccountSession {
+  id         String   @id @default(cuid())
+  tokenHash  String   @unique
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId     String
+  createdAt  DateTime @default(now())
+  lastSeenAt DateTime @default(now())
+  expiresAt  DateTime
+
+  @@index([userId, expiresAt])
 }
 
 model VisitVerification {

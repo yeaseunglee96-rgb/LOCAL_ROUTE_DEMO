@@ -192,6 +192,45 @@ function clientSessionId() {
 
 const tokenKey = "local-route-auth-token";
 const userKey = "local-route-auth-user";
+const accountKey = "local-route-account";
+const obsoleteDemoAccountKey = "local-route-demo-account";
+
+export interface AccountUser { id: string; email: string; name: string; emailVerified: boolean }
+
+function saveAccount(token: string, user: AccountUser) {
+  localStorage.setItem(tokenKey, token);
+  localStorage.setItem(accountKey, JSON.stringify(user));
+  localStorage.removeItem(obsoleteDemoAccountKey);
+}
+
+export function getStoredAccount(): AccountUser | null {
+  localStorage.removeItem(obsoleteDemoAccountKey);
+  try { const value = localStorage.getItem(accountKey); return value ? JSON.parse(value) as AccountUser : null; } catch { return null; }
+}
+
+export async function registerAccount(payload: { name: string; email: string; password: string; locale: "KO" | "EN" }) {
+  const res = await fetch("/api/auth/register", { method: "POST", headers: { "Content-Type": "application/json", ...(await authHeaders(payload.locale)) }, body: JSON.stringify(payload) });
+  const result = await handle<{ token: string; user: AccountUser }>(res);
+  saveAccount(result.token, result.user);
+  return result.user;
+}
+
+export async function loginAccount(payload: { email: string; password: string }) {
+  const res = await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+  const result = await handle<{ token: string; user: AccountUser }>(res);
+  saveAccount(result.token, result.user);
+  return result.user;
+}
+
+export async function logoutAccount() {
+  const token = localStorage.getItem(tokenKey);
+  if (token) await fetch("/api/auth/logout", { method: "POST", headers: { Authorization: `Bearer ${token}` } });
+  localStorage.removeItem(tokenKey);
+  localStorage.removeItem(userKey);
+  localStorage.removeItem(accountKey);
+  localStorage.removeItem(obsoleteDemoAccountKey);
+}
+
 export async function authHeaders(locale: "KO" | "EN" = "KO"): Promise<Record<string, string>> {
   let token = localStorage.getItem(tokenKey);
   if (!token) {

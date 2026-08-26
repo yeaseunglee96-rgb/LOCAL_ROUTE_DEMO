@@ -4,6 +4,7 @@ import { BrandLogo } from "../components/BrandLogo";
 import { getUiLanguage, setUiLanguage, subscribeUiLanguage } from "../i18n";
 import { markWelcomeSeen } from "../utils/visitor";
 import { paths } from "../routes/paths";
+import { getStoredAccount, logoutAccount, type AccountUser } from "../api/client";
 
 const FEATURES = [
   {
@@ -53,6 +54,7 @@ const FEATURES = [
 export function WelcomePage() {
   const navigate = useNavigate();
   const [lang, setLang] = useState<"KO" | "EN">(getUiLanguage());
+  const [account, setAccount] = useState<AccountUser | null>(getStoredAccount());
   const isEn = lang === "EN";
 
   useEffect(() => subscribeUiLanguage(setLang), []);
@@ -68,6 +70,21 @@ export function WelcomePage() {
     <div className="landing onboarding-view">
       <header className="landing-header">
         <BrandLogo />
+        <nav className="welcome-auth-nav" aria-label={isEn ? "Account" : "계정"}>
+          {account ? (
+            <>
+              <span>{account.name}</span>
+              <button type="button" onClick={async () => { await logoutAccount(); setAccount(null); }}>
+                {isEn ? "Sign out" : "로그아웃"}
+              </button>
+            </>
+          ) : (
+            <>
+              <button type="button" onClick={() => navigate(paths.login())}>{isEn ? "Sign in" : "로그인"}</button>
+              <button type="button" className="welcome-signup-btn" onClick={() => navigate(paths.signup())}>{isEn ? "Create account" : "회원가입"}</button>
+            </>
+          )}
+        </nav>
       </header>
 
       <section className="onboarding-lang-picker" aria-label={isEn ? "Choose your language" : "언어를 선택하세요"}>
@@ -113,6 +130,7 @@ export function WelcomePage() {
         <button type="button" className="primary-btn" onClick={start}>
           {isEn ? "Get Started" : "시작하기"}
         </button>
+        <small>{isEn ? "No sign-up required · Your trip is saved on this device" : "회원가입 없이 이용할 수 있으며, 여행은 현재 기기에 저장됩니다."}</small>
       </div>
     </div>
   );
