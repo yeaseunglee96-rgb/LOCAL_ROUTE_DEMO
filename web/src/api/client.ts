@@ -1,4 +1,4 @@
-import type { BookingOption, CourseCategory, CreateTripRequest, EmbeddedRoute, Festival, ItineraryJob, ItineraryOutput, LocationSearchResult, PaceForecast, PlaceAlternative, PlaceImageMatch, PlaceRecord, ReplanResult, RhythmProfile, SharedItinerary, SouvenirShop, SponsoredPlacement, StoryRecord, TaxiCard, WeatherForecast } from "../types";
+import type { ActivitySpot, BookingOption, CourseCategory, CreateTripRequest, EmbeddedRoute, Festival, ItineraryJob, ItineraryOutput, LocationSearchResult, PaceForecast, PlaceAlternative, PlaceImageMatch, PlaceRecord, ReplanResult, RhythmProfile, SharedItinerary, SouvenirShop, SponsoredPlacement, StoryRecord, TaxiCard, WeatherForecast } from "../types";
 
 /**
  * 백엔드가 떠 있지 않으면 fetch 는 TypeError("Failed to fetch") 로 실패한다.
@@ -245,6 +245,7 @@ export async function getFestivals(from: string, to: string): Promise<Festival[]
 export async function getEvents(from: string, to: string): Promise<Festival[]> { return (await handle<{ events: Festival[] }>(await fetch(`/api/events?from=${from}&to=${to}&region=BUSAN`))).events; }
 export async function addFestival(itineraryId: string, placeId: string) { return handle(await fetch(`/api/itineraries/${itineraryId}/festivals/${placeId}`, { method: "POST", headers: await authHeaders() })); }
 export async function getSouvenirShops(lat: number, lng: number): Promise<SouvenirShop[]> { return handle(await fetch(`/api/shops/souvenir?lat=${lat}&lng=${lng}&radius=12000`)); }
+export async function getActivities(lat: number, lng: number): Promise<ActivitySpot[]> { return handle(await fetch(`/api/activities?lat=${lat}&lng=${lng}&radius=15000`)); }
 export async function getWeather(date: string): Promise<WeatherForecast> { return handle(await fetch(`/api/weather?region=BUSAN&date=${date}`)); }
 export async function createShare(itineraryId: string) { return handle<{ shareSlug: string; url: string; expiresAt: string }>(await fetch(`/api/itineraries/${itineraryId}/share`, { method: "POST", headers: { "Content-Type": "application/json", ...(await authHeaders()) }, body: JSON.stringify({ visibility: "LINK", expiresInDays: 30 }) })); }
 export async function getSharedItinerary(slug: string): Promise<SharedItinerary> { return handle(await fetch(`/api/s/${slug}`)); }

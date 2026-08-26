@@ -34,6 +34,7 @@ export const EVENT_TOPIC = {
   festival_impression: "trip-events",
   festival_added: "trip-events",
   souvenir_layer_viewed: "place-interaction-events",
+  activity_layer_viewed: "place-interaction-events",
   share_created: "collab-events",
   share_viewed: "collab-events",
   itinerary_cloned: "collab-events",

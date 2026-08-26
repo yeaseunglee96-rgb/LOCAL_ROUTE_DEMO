@@ -72,6 +72,25 @@ experienceRouter.get("/shops/souvenir", async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
+experienceRouter.get("/activities", async (req, res, next) => {
+  try {
+    const lat = Number(req.query.lat); const lng = Number(req.query.lng); const radius = Math.min(30_000, Math.max(100, Number(req.query.radius ?? 15_000)));
+    if (![lat, lng, radius].every(Number.isFinite)) return res.status(400).json({ error_code: "INVALID_LOCATION" });
+    // FESTIVAL/SOUVENIR 카테고리는 각자 전용 탭이 있으니 액티비티 탭에서는 중복 노출하지 않는다.
+    const activities = (await prisma.place.findMany({ where: { tasteTags: { contains: "activity" }, category: { notIn: ["FESTIVAL", "SOUVENIR"] } } }))
+      .map((place) => ({ ...place, distanceM: haversineDistanceM(lat, lng, place.lat, place.lng) }))
+      .filter((place) => place.distanceM <= radius)
+      .sort((a, b) => (b.localScore - a.localScore) || (a.distanceM - b.distanceM));
+    await recordEventBestEffort({ eventType: "activity_layer_viewed", entityType: "map_area", entityId: `${lat.toFixed(2)}:${lng.toFixed(2)}`, payload: { count: activities.length, radius } });
+    res.json(activities.map((place) => ({
+      id: place.id, nameKo: place.nameKo, nameEn: place.nameEn, address: place.address, lat: place.lat, lng: place.lng,
+      distanceM: Math.round(place.distanceM), openTime: place.openTime, closeTime: place.closeTime,
+      priceTier: place.priceTier, localScore: place.localScore, imageUrl: place.imageUrl,
+      recommendedStayMin: place.recommendedStayMin,
+    })));
+  } catch (error) { next(error); }
+});
+
 const weatherCache = new Map<string, { expiresAt: number; value: object }>();
 experienceRouter.get("/weather", async (req, res) => {
   const date = req.query.date;
