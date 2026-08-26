@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { InfoCards } from "../../components/InfoCards";
+import { RegionalTipCard } from "../../components/RegionalTipCard";
 import { ShareBar } from "../../components/ShareBar";
 import { WeatherPrepWidget } from "../../components/WeatherPrepWidget";
 import { TripMemorySummary } from "../../components/TripMemorySummary";
@@ -39,26 +40,30 @@ export function TripPrepPage() {
         </div>
       </header>
 
-      <WeatherPrepWidget language={lang} />
-      <TripMemorySummary language={lang} daysCount={itinerary.days.length} />
-      <BusanDialectWidget language={lang} />
-
       {sponsored.length > 0 && (
         <section className="sponsored-strip" aria-label="광고">
-          <div>
-            <strong>여행 조건에 맞는 필수 서비스</strong>
-            <span>자연 추천 일정과 분리된 유료 노출입니다.</span>
+          <strong className="sponsored-strip-title">여행 조건에 맞는 필수 서비스</strong>
+          <div className="sponsored-strip-cards">
+            {sponsored.map((placement) => (
+              <article key={placement.campaignId}>
+                <span className="sponsored-label">{placement.label}</span>
+                <b>{itinerary.trip.language === "EN" ? placement.nameEn ?? placement.nameKo : placement.nameKo}</b>
+                <small>{placement.disclosure}</small>
+                <button type="button" onClick={() => void trackAd(placement.campaignId, "clicks")}>서비스 확인</button>
+              </article>
+            ))}
           </div>
-          {sponsored.map((placement) => (
-            <article key={placement.campaignId}>
-              <span className="sponsored-label">{placement.label}</span>
-              <b>{itinerary.trip.language === "EN" ? placement.nameEn ?? placement.nameKo : placement.nameKo}</b>
-              <small>{placement.disclosure}</small>
-              <button type="button" onClick={() => void trackAd(placement.campaignId, "clicks")}>서비스 확인</button>
-            </article>
-          ))}
         </section>
       )}
+
+      <RegionalTipCard language={lang} />
+
+      <InfoCards
+        itinerary={itinerary}
+        collaboration={<ShareBar itineraryId={itinerary.itineraryId} tripId={itinerary.tripId} language={itinerary.trip.language} />}
+      />
+
+      <TripMemorySummary language={lang} daysCount={itinerary.days.length} />
 
       {bookingOptions.length > 0 && (
         <section className="booking-strip" aria-label="숙소 예약 제휴">
@@ -75,10 +80,8 @@ export function TripPrepPage() {
         </section>
       )}
 
-      <InfoCards
-        itinerary={itinerary}
-        collaboration={<ShareBar itineraryId={itinerary.itineraryId} tripId={itinerary.tripId} language={itinerary.trip.language} />}
-      />
+      <BusanDialectWidget language={lang} />
+      <WeatherPrepWidget language={lang} />
 
       <div className="data-honesty-bar">
         <strong>데이터 안내</strong>

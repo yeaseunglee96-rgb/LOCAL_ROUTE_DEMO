@@ -17,12 +17,12 @@ async function main() {
   for (const place of places) await prisma.place.upsert({ where: { contentId: place.contentId }, create: { ...place, closedDays: "[]", parkingAvailable: false, reservationRequired: false, hasEnglishMenu: false, dataSource: "TOURAPI_DEMO" }, update: place });
   const lodging = await prisma.place.findFirst({ where: { category: "LODGING" }, orderBy: { localScore: "desc" } });
   if (!lodging) throw new Error("숙소 시드가 필요합니다.");
-  await prisma.adCampaign.updateMany({ where: { serviceCategory: { notIn: ["LODGING", "RENTAL_CAR", "TRAVEL_INSURANCE", "TAXI", "AIRPORT_TRANSFER"] } }, data: { status: "PAUSED" } });
+  await prisma.adCampaign.updateMany({ where: { serviceCategory: { notIn: ["LODGING", "RENTAL_CAR", "TRAVEL_INSURANCE", "TAXI", "AIRPORT_TRANSFER", "ESIM"] } }, data: { status: "PAUSED" } });
   await prisma.adCampaign.updateMany({ where: { place: { category: { in: ["CAFE", "RESTAURANT", "SOUVENIR"] } } }, data: { status: "PAUSED" } });
   const ownerSessionHash = createHash("sha256").update("local-route-essential-services").digest("hex").slice(0, 24);
   const business = await prisma.business.upsert({ where: { placeId: lodging.id }, create: { name: "LOCAL ROUTE 여행 필수 파트너", contactEmail: "essential@localroute.example", ownerSessionHash, status: "VERIFIED", placeId: lodging.id }, update: { status: "VERIFIED", name: "LOCAL ROUTE 여행 필수 파트너" } });
   const campaigns = [
-    ["안심 숙박 예약", "LODGING", 260], ["부산 렌터카", "RENTAL_CAR", 240], ["여행자 보험", "TRAVEL_INSURANCE", 180], ["부산 택시 호출", "TAXI", 160], ["공항 픽업", "AIRPORT_TRANSFER", 210],
+    ["안심 숙박 예약", "LODGING", 260], ["부산 렌터카", "RENTAL_CAR", 240], ["공항·기차역·항구 eSIM", "ESIM", 230], ["여행자 보험", "TRAVEL_INSURANCE", 180], ["부산 택시 호출", "TAXI", 160], ["공항 픽업", "AIRPORT_TRANSFER", 210],
   ] as const;
   for (const [name, serviceCategory, bidCpc] of campaigns) {
     const found = await prisma.adCampaign.findFirst({ where: { businessId: business.id, name } });

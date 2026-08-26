@@ -1,4 +1,6 @@
+import { Link } from "react-router-dom";
 import { BrandLogo } from "./BrandLogo";
+import { paths } from "../routes/paths";
 
 export type DashboardTab = "home" | "schedule" | "discover" | "together" | "prep";
 
@@ -22,9 +24,9 @@ export function Sidebar({ placeCount, language = "KO", activeTab, onTabChange, s
   const en = language === "EN";
   return (
     <aside className="sidebar">
-      <div className="sidebar-brand">
+      <Link to={paths.welcome()} className="sidebar-brand" title={en ? "About LOCAL ROUTE" : "서비스 소개 다시 보기"}>
         <BrandLogo />
-      </div>
+      </Link>
       <p className="brand-tagline">
         {en ? "Places locals return to," : "현지인이 다시 가는 곳으로,"}
         <br />

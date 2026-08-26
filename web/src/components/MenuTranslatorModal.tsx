@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { parseMenuText } from "../utils/menuOcr";
 
 export interface TranslatedMenuItem {
   id: string;
@@ -9,6 +10,8 @@ export interface TranslatedMenuItem {
   allergensKo: string[];
   dietTagsEn: string[];
   spicyLevel: number;
+  /** false면 사전에 없는 문구를 원문 그대로 보여준 것 — 임의로 지어낸 번역이 아님을 표시한다. */
+  matched?: boolean;
 }
 
 export const DEMO_MENUS: { title: string; image: string; items: TranslatedMenuItem[] }[] = [
@@ -44,22 +47,48 @@ export function MenuTranslatorModal({ isOpen, onClose, language = "KO" }: Props)
   const [selectedDemoIndex, setSelectedDemoIndex] = useState(0);
   const [customImage, setCustomImage] = useState<string | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
+  const [ocrItems, setOcrItems] = useState<TranslatedMenuItem[]>([]);
+  const [ocrError, setOcrError] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
   const currentMenu = DEMO_MENUS[selectedDemoIndex];
+  const displayedItems = customImage ? ocrItems : currentMenu.items;
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      setAnalyzing(true);
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        setCustomImage(event.target?.result as string);
-        setTimeout(() => setAnalyzing(false), 1200);
-      };
-      reader.readAsDataURL(file);
-    }
+    if (!file) return;
+
+    setAnalyzing(true);
+    setOcrError(null);
+    setOcrItems([]);
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const dataUrl = event.target?.result as string;
+      setCustomImage(dataUrl);
+      try {
+        const { createWorker } = await import("tesseract.js");
+        const worker = await createWorker("kor+eng");
+        try {
+          const { data } = await worker.recognize(dataUrl);
+          const items = parseMenuText(data.text, isEn);
+          setOcrItems(items);
+          if (items.length === 0) {
+            setOcrError(isEn
+              ? "Couldn't recognize any menu text. Try a clearer, well-lit, front-facing photo."
+              : "메뉴 텍스트를 인식하지 못했어요. 더 밝고 정면에서 찍은 선명한 사진으로 다시 시도해주세요.");
+          }
+        } finally {
+          await worker.terminate();
+        }
+      } catch {
+        setOcrError(isEn ? "Text recognition failed. Please try again." : "텍스트 인식에 실패했어요. 다시 시도해주세요.");
+      } finally {
+        setAnalyzing(false);
+      }
+    };
+    reader.readAsDataURL(file);
   };
 
   const playAudio = (text: string) => {
@@ -94,7 +123,7 @@ export function MenuTranslatorModal({ isOpen, onClose, language = "KO" }: Props)
                 key={demo.title}
                 type="button"
                 className={`demo-chip ${selectedDemoIndex === idx && !customImage ? "active" : ""}`}
-                onClick={() => { setCustomImage(null); setSelectedDemoIndex(idx); }}
+                onClick={() => { setCustomImage(null); setOcrItems([]); setOcrError(null); setSelectedDemoIndex(idx); }}
               >
                 {demo.title}
               </button>
@@ -105,20 +134,26 @@ export function MenuTranslatorModal({ isOpen, onClose, language = "KO" }: Props)
         {analyzing ? (
           <div className="analyzing-state">
             <span className="spinner" />
-            <p>{isEn ? "Analyzing Korean text and translating menu items..." : "메뉴판 텍스트 분석 및 영문 번역 중..."}</p>
+            <p>{isEn ? "Reading Korean text from your photo and translating menu items..." : "사진 속 한글 텍스트를 인식하고 영문으로 번역하는 중..."}</p>
           </div>
         ) : (
           <div className="menu-translator-body">
             <div className="menu-image-container">
               <img src={customImage ?? currentMenu.image} alt="Menu preview" />
-              <span className="ocr-overlay-badge">✓ AI OCR Text Detected</span>
+              {(!customImage || ocrItems.length > 0) && (
+                <span className="ocr-overlay-badge">✓ AI OCR Text Detected</span>
+              )}
+              {customImage && ocrItems.length === 0 && (
+                <span className="ocr-overlay-badge ocr-overlay-badge-warn">⚠ {isEn ? "No text detected" : "텍스트 인식 실패"}</span>
+              )}
             </div>
 
             <div className="translated-items-list">
               <h3>{isEn ? "Translated Menu Items" : "영문 번역 및 성분 분석 결과"}</h3>
+              {ocrError && <p className="ocr-error-text">{ocrError}</p>}
               <div className="items-grid">
-                {currentMenu.items.map((item) => (
-                  <div key={item.id} className="translated-item-card">
+                {displayedItems.map((item) => (
+                  <div key={item.id} className={`translated-item-card ${item.matched === false ? "unmatched" : ""}`}>
                     <div className="item-header">
                       <div>
                         <strong className="name-ko">{item.nameKo}</strong>
@@ -127,18 +162,24 @@ export function MenuTranslatorModal({ isOpen, onClose, language = "KO" }: Props)
                       <span className="item-price">{item.price}</span>
                     </div>
                     <p className="name-en">🇬🇧 {item.nameEn}</p>
-                    <div className="item-badges">
-                      {item.allergensEn.map((allergy) => (
-                        <span key={allergy} className="allergy-badge">
-                          ⚠️ {allergy}
-                        </span>
-                      ))}
-                      {item.spicyLevel > 0 && (
-                        <span className="spicy-badge">
-                          🌶️ {"🌶️".repeat(item.spicyLevel)} {isEn ? `Spicy Lvl ${item.spicyLevel}` : `맵기 ${item.spicyLevel}`}
-                        </span>
-                      )}
-                    </div>
+                    {item.matched === false ? (
+                      <div className="item-badges">
+                        <span className="unmatched-badge">{isEn ? "Not in dictionary yet" : "사전에 없는 메뉴"}</span>
+                      </div>
+                    ) : (
+                      <div className="item-badges">
+                        {item.allergensEn.map((allergy) => (
+                          <span key={allergy} className="allergy-badge">
+                            ⚠️ {allergy}
+                          </span>
+                        ))}
+                        {item.spicyLevel > 0 && (
+                          <span className="spicy-badge">
+                            🌶️ {"🌶️".repeat(item.spicyLevel)} {isEn ? `Spicy Lvl ${item.spicyLevel}` : `맵기 ${item.spicyLevel}`}
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

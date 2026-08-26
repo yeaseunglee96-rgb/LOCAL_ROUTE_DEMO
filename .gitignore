@@ -10,6 +10,7 @@ __pycache__/
 server/prisma/dev.db
 server/prisma/dev.db-journal
 web/dist/
+*.traineddata
 
 # IDE 설정
 .idea/
