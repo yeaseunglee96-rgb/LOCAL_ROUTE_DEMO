@@ -35,6 +35,8 @@ model Place {
   contentId          String?  @unique // TourAPI contentid (수기 시드 데이터는 null)
   dataSource         String   @default("MANUAL") // MANUAL | TOURAPI
   imageUrl           String?
+  nightImageUrl      String? // 야경 탭 전용 사진. imageUrl은 다른 탭(자연/산책 등)에서 낮 사진으로 계속 쓰이므로
+                              // 같은 장소라도 야경 탭에는 이 필드가 있을 때만 사진을 보여주고, 없으면 낮 사진 대신 플레이스홀더를 쓴다.
   kakaoPlaceId       String?  @unique
   kakaoPlaceUrl      String?
   kakaoRating        Float?
