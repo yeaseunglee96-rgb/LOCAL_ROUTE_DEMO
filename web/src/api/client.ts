@@ -1,4 +1,4 @@
-import type { BookingOption, CourseCategory, CreateTripRequest, EmbeddedRoute, Festival, ItineraryJob, ItineraryOutput, LocationSearchResult, PaceForecast, PlaceAlternative, PlaceImageMatch, PlaceRecord, ReplanResult, RhythmProfile, SharedItinerary, SouvenirShop, SponsoredPlacement, StoryRecord, TaxiCard, WeatherForecast } from "../types";
+import type { ActivitySpot, BookingOption, CourseCategory, CreateTripRequest, EmbeddedRoute, Festival, ItineraryJob, ItineraryOutput, LocationSearchResult, PaceForecast, PlaceAlternative, PlaceImageMatch, PlaceRecord, ReplanResult, RhythmProfile, SharedItinerary, SouvenirShop, SponsoredPlacement, StoryRecord, TaxiCard, WeatherForecast } from "../types";
 
 /**
  * 백엔드가 떠 있지 않으면 fetch 는 TypeError("Failed to fetch") 로 실패한다.
@@ -10,6 +10,10 @@ export class ApiUnavailableError extends Error {
     super("백엔드 서버(http://localhost:4000)에 연결할 수 없습니다. 프로젝트 루트에서 npm run dev 로 서버와 웹을 함께 실행해 주세요.");
     this.name = "ApiUnavailableError";
   }
+}
+
+export class ApiResponseError extends Error {
+  constructor(message: string, public readonly status: number) { super(message); this.name = "ApiResponseError"; }
 }
 
 const rawFetch = globalThis.fetch.bind(globalThis);
@@ -25,7 +29,7 @@ async function fetch(input: RequestInfo | URL, init?: RequestInit): Promise<Resp
 async function handle<T>(res: Response): Promise<T> {
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(body.message ?? `요청 실패 (${res.status})`);
+    throw new ApiResponseError(body.message ?? `요청 실패 (${res.status})`, res.status);
   }
   return res.json() as Promise<T>;
 }
@@ -39,6 +43,9 @@ export async function createTrip(payload: CreateTripRequest): Promise<{ tripId: 
   });
   return handle(res);
 }
+
+export interface MyTripSummary { id: string; origin: string; startDate: string; endDate: string; partySize: number; pace: "RELAXED" | "NORMAL" | "PACKED"; status: string; itineraryId: string | null; placeCount: number; storyCount: number; coverImage: string | null; highlights: string[]; createdAt: string }
+export async function getMyTrips() { return (await handle<{ trips: MyTripSummary[] }>(await fetch("/api/trips", { headers: await authHeaders() }))).trips; }
 
 export async function generateItinerary(tripId: string, onProgress?: (job: ItineraryJob) => void, mode?: string): Promise<ItineraryOutput> {
   const res = await fetch(`/api/trips/${tripId}/itineraries:generate`, {
@@ -192,6 +199,62 @@ function clientSessionId() {
 
 const tokenKey = "local-route-auth-token";
 const userKey = "local-route-auth-user";
+const accountKey = "local-route-account";
+const obsoleteDemoAccountKey = "local-route-demo-account";
+
+export interface AccountUser {
+  id: string; email: string; name: string; emailVerified: boolean;
+  locale: "KO" | "EN"; nationality: string | null;
+  dietType: "NONE" | "VEGETARIAN" | "VEGAN" | "HALAL"; allergies: string[];
+  travelStyle: "RELAXED" | "BALANCED" | "PACKED"; defaultTransport: "TRANSIT" | "CAR" | "WALK";
+  avatarImage: string | null; avatarColor: "LAVENDER" | "SKY" | "MINT" | "PEACH" | "CHARCOAL";
+}
+
+function saveAccount(token: string, user: AccountUser) {
+  localStorage.setItem(tokenKey, token);
+  localStorage.setItem(accountKey, JSON.stringify(user));
+  localStorage.removeItem(obsoleteDemoAccountKey);
+  window.dispatchEvent(new Event("local-route-account-changed"));
+}
+
+export function getStoredAccount(): AccountUser | null {
+  localStorage.removeItem(obsoleteDemoAccountKey);
+  try { const value = localStorage.getItem(accountKey); return value ? JSON.parse(value) as AccountUser : null; } catch { return null; }
+}
+
+export async function registerAccount(payload: { name: string; email: string; password: string; locale: "KO" | "EN" }) {
+  const res = await fetch("/api/auth/register", { method: "POST", headers: { "Content-Type": "application/json", ...(await authHeaders(payload.locale)) }, body: JSON.stringify(payload) });
+  const result = await handle<{ token: string; user: AccountUser }>(res);
+  saveAccount(result.token, result.user);
+  return result.user;
+}
+
+export async function loginAccount(payload: { email: string; password: string }) {
+  const res = await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+  const result = await handle<{ token: string; user: AccountUser }>(res);
+  saveAccount(result.token, result.user);
+  return result.user;
+}
+
+export async function logoutAccount() {
+  const token = localStorage.getItem(tokenKey);
+  if (token) await fetch("/api/auth/logout", { method: "POST", headers: { Authorization: `Bearer ${token}` } });
+  localStorage.removeItem(tokenKey);
+  localStorage.removeItem(userKey);
+  localStorage.removeItem(accountKey);
+  localStorage.removeItem(obsoleteDemoAccountKey);
+  window.dispatchEvent(new Event("local-route-account-changed"));
+}
+
+export async function updateAccountProfile(payload: Pick<AccountUser, "name" | "locale" | "nationality" | "dietType" | "allergies" | "travelStyle" | "defaultTransport" | "avatarImage" | "avatarColor">) {
+  const token = localStorage.getItem(tokenKey);
+  if (!token) throw new Error("로그인이 필요합니다.");
+  const result = await handle<{ user: AccountUser }>(await fetch("/api/auth/me", { method: "PATCH", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify(payload) }));
+  localStorage.setItem(accountKey, JSON.stringify(result.user));
+  window.dispatchEvent(new Event("local-route-account-changed"));
+  return result.user;
+}
+
 export async function authHeaders(locale: "KO" | "EN" = "KO"): Promise<Record<string, string>> {
   let token = localStorage.getItem(tokenKey);
   if (!token) {
@@ -206,6 +269,10 @@ export async function getFestivals(from: string, to: string): Promise<Festival[]
 export async function getEvents(from: string, to: string): Promise<Festival[]> { return (await handle<{ events: Festival[] }>(await fetch(`/api/events?from=${from}&to=${to}&region=BUSAN`))).events; }
 export async function addFestival(itineraryId: string, placeId: string) { return handle(await fetch(`/api/itineraries/${itineraryId}/festivals/${placeId}`, { method: "POST", headers: await authHeaders() })); }
 export async function getSouvenirShops(lat: number, lng: number): Promise<SouvenirShop[]> { return handle(await fetch(`/api/shops/souvenir?lat=${lat}&lng=${lng}&radius=12000`)); }
+export async function getActivities(lat: number, lng: number): Promise<ActivitySpot[]> { return handle(await fetch(`/api/activities?lat=${lat}&lng=${lng}&radius=15000`)); }
+export async function getWalkTrails(lat: number, lng: number): Promise<ActivitySpot[]> { return handle(await fetch(`/api/walk-trails?lat=${lat}&lng=${lng}&radius=15000`)); }
+export async function getNatureSpots(lat: number, lng: number): Promise<ActivitySpot[]> { return handle(await fetch(`/api/nature-spots?lat=${lat}&lng=${lng}&radius=15000`)); }
+export async function getNightViews(lat: number, lng: number): Promise<ActivitySpot[]> { return handle(await fetch(`/api/night-views?lat=${lat}&lng=${lng}&radius=15000`)); }
 export async function getWeather(date: string): Promise<WeatherForecast> { return handle(await fetch(`/api/weather?region=BUSAN&date=${date}`)); }
 export async function createShare(itineraryId: string) { return handle<{ shareSlug: string; url: string; expiresAt: string }>(await fetch(`/api/itineraries/${itineraryId}/share`, { method: "POST", headers: { "Content-Type": "application/json", ...(await authHeaders()) }, body: JSON.stringify({ visibility: "LINK", expiresInDays: 30 }) })); }
 export async function getSharedItinerary(slug: string): Promise<SharedItinerary> { return handle(await fetch(`/api/s/${slug}`)); }
@@ -214,6 +281,8 @@ export async function acceptInvite(inviteToken: string) { return handle<{ tripId
 export async function getCollaboration(itineraryId: string) { return handle<{ version: number; myRole: string; members: unknown[] }>(await fetch(`/api/itineraries/${itineraryId}/collaboration`, { headers: await authHeaders() })); }
 export async function createStory(payload: { placeId: string; itineraryItemId?: string; content: string; images: string[]; visibility: string; publishMode: "NOW" | "AFTER_TRIP" }) { return handle<{ storyId: string; delayed: boolean; exifRemoved: boolean }>(await fetch("/api/stories", { method: "POST", headers: { "Content-Type": "application/json", ...(await authHeaders()) }, body: JSON.stringify(payload) })); }
 export async function getStories(options: boolean | { mine?: boolean; following?: boolean } = false): Promise<StoryRecord[]> { const params = new URLSearchParams(); if (typeof options === "boolean" ? options : options.mine) params.set("mine", "true"); if (typeof options !== "boolean" && options.following) params.set("following", "true"); return handle(await fetch(`/api/stories${params.size ? `?${params}` : ""}`, { headers: await authHeaders() })); }
+export async function updateStory(id: string, payload: { content: string; images: string[]; visibility: string; publishNow?: boolean }) { return handle(await fetch(`/api/stories/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json", ...(await authHeaders()) }, body: JSON.stringify(payload) })); }
+export async function deleteStory(id: string) { const response = await fetch(`/api/stories/${id}`, { method: "DELETE", headers: await authHeaders() }); if (!response.ok) await handle(response); }
 export async function reportStory(id: string, reason = "PRIVACY") { return handle(await fetch(`/api/stories/${id}/report`, { method: "POST", headers: { "Content-Type": "application/json", ...(await authHeaders()) }, body: JSON.stringify({ reason }) })); }
 export async function followUser(id: string, following: boolean) { return handle(await fetch(`/api/users/${id}/follow`, { method: following ? "DELETE" : "POST", headers: await authHeaders() })); }
 

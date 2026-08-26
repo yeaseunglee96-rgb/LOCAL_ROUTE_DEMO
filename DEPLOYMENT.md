@@ -3,7 +3,7 @@
 ## 로컬 검증
 
 1. `npm ci`
-2. `cd server && npx prisma migrate deploy && npm run seed && npm run seed:pet-safety && npm run seed:translations && npm run seed:commerce && npm run seed:v2`
+2. `cd server && npx prisma migrate deploy && npm run seed && npm run seed:translations && npm run seed:commerce && npm run seed:v2 && npm run seed:discover-tags`
 3. 루트에서 `npm run dev:server`, 다른 터미널에서 `npm run dev:web`
 4. 서버가 실행된 상태에서 `npm run load:test --workspace server`
 

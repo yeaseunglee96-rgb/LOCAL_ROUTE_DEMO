@@ -35,7 +35,7 @@ const STEPS = ["기본 정보", "취향·모드", "최종 확인"];
 const TASTE_STEPS = [
   { titleKo: "어떤 부산을 만나고 싶나요?", titleEn: "What kind of Busan do you want?", hintKo: "하나만 고르면 다음으로 넘어가요.", hintEn: "Pick one and we'll move on." },
   { titleKo: "꼭 먹어보고 싶은 음식이 있나요?", titleEn: "Anything you must eat?", hintKo: "고른 음식을 파는 검증된 식당을 일정에 넣어드려요. 없으면 건너뛰어도 좋아요.", hintEn: "We'll slot in verified restaurants that serve them. Skipping is fine." },
-  { titleKo: "꼭 가고 싶은 장소가 있나요?", titleEn: "Any place you must visit?", hintKo: "날짜까지 정해두면 그 날 일정에 반드시 넣습니다. 없으면 건너뛰어도 좋아요.", hintEn: "Pin a day and we'll always include it. Skipping is fine." },
+  { titleKo: "꼭 가고 싶은 장소가 있나요?", titleEn: "Any place you must visit?", hintKo: "추가해 두면 일정에 반드시 넣습니다. 어느 날짜에 넣을지는 자동으로 정해요. 없으면 건너뛰어도 좋아요.", hintEn: "We'll always include it and pick the day for you. Skipping is fine." },
 ] as const;
 const PACE_LABEL_KO: Record<Pace, string> = { RELAXED: "여유롭게", NORMAL: "균형 있게", PACKED: "알차게" };
 const PACE_LABEL_EN: Record<Pace, string> = { RELAXED: "Relaxed", NORMAL: "Normal", PACKED: "Packed" };
@@ -103,7 +103,7 @@ export function TripFormPage({ onSubmit, submitting, errorMessage, placeCount, i
   const [dietType, setDietType] = useState<DietType>(initialValues?.dietType ?? "NONE");
   const [desiredFoods, setDesiredFoods] = useState<string[]>(initialValues?.desiredFoods ?? ["milmyeon", "dwaeji_gukbap"]);
   const [desiredPlaces, setDesiredPlaces] = useState<DesiredPlace[]>(
-    (initialValues?.mustVisitAssignments ?? []).map((a) => ({ placeId: a.placeId, name: a.placeId, address: "", dayIndex: a.dayIndex }))
+    (initialValues?.mustVisitAssignments ?? []).map((a) => ({ placeId: a.placeId, name: a.placeId, address: "" }))
   );
   // 무드 카드로 고른 값인지, 사용자가 세부 설정을 직접 만진 값인지 구분한다.
   const [selectedMoodId, setSelectedMoodId] = useState<string | null>(null);
@@ -114,7 +114,6 @@ export function TripFormPage({ onSubmit, submitting, errorMessage, placeCount, i
   const advanceTimer = useRef<number | null>(null);
   useEffect(() => () => { if (advanceTimer.current !== null) window.clearTimeout(advanceTimer.current); }, []);
   const nights = Math.max(0, Math.round((new Date(`${endDate}T00:00:00`).getTime() - new Date(`${startDate}T00:00:00`).getTime()) / 86400000));
-  const numDays = nights + 1;
   const selectedMode = MODES.find((item) => item.value === mode)!;
   const recommendationRatios = mode === "ESSENTIAL"
     ? { landmarkRatio: 70, localRatio: 20, easyRatio: 10 }
@@ -200,9 +199,8 @@ export function TripFormPage({ onSubmit, submitting, errorMessage, placeCount, i
     allergies: allergyText.split(",").map((value) => value.trim()).filter(Boolean), dietType,
     desiredFoods,
     mustVisitPlaceIds: desiredPlaces.map((place) => place.placeId),
-    mustVisitAssignments: desiredPlaces.map((place) => ({ placeId: place.placeId, dayIndex: Math.min(Math.max(place.dayIndex, 1), numDays) })),
     ...recommendationRatios,
-  }), [origin, startDate, endDate, partySize, totalBudget, hasCar, pace, selectedTags, selectedCourse, courseCategory, mode, dayStart, dayEnd, language, allergyText, dietType, desiredFoods, desiredPlaces, numDays]);
+  }), [origin, startDate, endDate, partySize, totalBudget, hasCar, pace, selectedTags, selectedCourse, courseCategory, mode, dayStart, dayEnd, language, allergyText, dietType, desiredFoods, desiredPlaces]);
 
   const submit = (event: React.FormEvent) => {
     event.preventDefault();
@@ -426,7 +424,8 @@ export function TripFormPage({ onSubmit, submitting, errorMessage, placeCount, i
 
           {tasteStep === 1 && <DesiredFoodPicker selectedFoods={desiredFoods} onChange={setDesiredFoods} language={language} />}
 
-          {tasteStep === 2 && <DesiredPlacesPicker numDays={numDays} value={desiredPlaces} onChange={setDesiredPlaces} />}
+          {/* main 에서 장소별 날짜 지정(numDays/dayIndex)이 빠졌으므로 그 인자도 넘기지 않는다. */}
+          {tasteStep === 2 && <DesiredPlacesPicker value={desiredPlaces} onChange={setDesiredPlaces} />}
           </div>
         </section>}
 

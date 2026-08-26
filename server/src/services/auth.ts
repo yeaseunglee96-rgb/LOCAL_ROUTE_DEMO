@@ -12,8 +12,11 @@ export async function optionalSession(req: Request) {
   const token = sessionToken(req);
   if (!token) return null;
   const session = await prisma.anonymousSession.findUnique({ where: { tokenHash: hashSessionToken(token) } });
-  if (!session || session.expiresAt <= new Date()) return null;
-  return session;
+  if (session && session.expiresAt > new Date()) return session;
+  const account = await prisma.accountSession.findUnique({ where: { tokenHash: hashSessionToken(token) }, include: { user: { include: { ownerSession: true } } } });
+  if (!account || account.expiresAt <= new Date()) return null;
+  await prisma.accountSession.update({ where: { id: account.id }, data: { lastSeenAt: new Date() } });
+  return account.user.ownerSession;
 }
 
 export async function requireSession(req: Request, res: Response) {

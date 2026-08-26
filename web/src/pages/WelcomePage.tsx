@@ -4,42 +4,44 @@ import { BrandLogo } from "../components/BrandLogo";
 import { getUiLanguage, setUiLanguage, subscribeUiLanguage } from "../i18n";
 import { markWelcomeSeen } from "../utils/visitor";
 import { paths } from "../routes/paths";
+import { getStoredAccount, logoutAccount, type AccountUser } from "../api/client";
 
 const FEATURES = [
   {
-    icon: "🗺️",
-    titleKo: "운영시간·이동시간까지 계산한 일정",
-    titleEn: "Itineraries that account for hours & travel time",
-    bodyKo: "장소만 나열하지 않고 영업시간, 이동 거리, 예산과 동반 조건을 함께 계산해 실제로 따라갈 수 있는 일정을 만들어요.",
-    bodyEn: "We don't just list places — opening hours, travel time, budget, and accessibility are calculated together into a plan you can actually follow.",
+    titleKo: "맞춤 일정 생성",
+    titleEn: "Custom Itinerary",
+    bodyKo: "예산 · 이동시간 · 영업시간",
+    bodyEn: "Budget · Travel Time · Hours",
   },
   {
-    icon: "📍",
-    titleKo: "현지인이 다시 가는 로컬 장소",
-    titleEn: "Local spots Busan residents return to",
-    bodyKo: "관광 필수 코스와 숨은 로컬 명소 중 원하는 스타일을 골라 나만의 부산을 만나보세요.",
-    bodyEn: "Choose between essential tourist sights and hidden local favorites to explore Busan your way.",
+    titleKo: "로컬 추천 코스",
+    titleEn: "Local Recommendations",
+    bodyKo: "관광 코스 · 로컬 코스",
+    bodyEn: "Essential Sights · Hidden Local",
   },
   {
-    icon: "🌐",
-    titleKo: "외국인 여행자를 위한 도구",
-    titleEn: "Built-in tools for foreign travelers",
-    bodyKo: "📷 메뉴판 사진 번역, 🎙️ 양방향 음성 통역, 🗣️ 부산 사투리 학습까지 여행 중 바로 사용할 수 있어요.",
-    bodyEn: "Translate menu photos, get bi-directional voice interpretation, and even learn local Busan dialect — all built in.",
+    titleKo: "외국인 여행 도구",
+    titleEn: "Traveler Tools",
+    bodyKo: "메뉴 번역 · 음성 통역 · 사투리",
+    bodyEn: "Menu Translation · Voice · Dialect",
   },
   {
-    icon: "🤝",
-    titleKo: "동행자와 함께 계획하고 기록",
-    titleEn: "Plan and record memories together",
-    bodyKo: "일정을 링크로 공유하고 동행자를 초대해 함께 편집하며, 방문 후 기록도 남길 수 있어요.",
-    bodyEn: "Share your itinerary by link, invite companions to co-edit, and record memories after your visit.",
+    titleKo: "실시간 내비게이션",
+    titleEn: "Live Navigation",
+    bodyKo: "GPS 안내 · 택시 카드",
+    bodyEn: "GPS Guide · Taxi Card",
   },
   {
-    icon: "🧳",
-    titleKo: "여행 준비까지 한 번에",
-    titleEn: "Everything you need to prepare",
-    bodyKo: "날씨별 준비물 안내, 예상 경비 상세, 숙박·렌터카·eSIM 등 필수 서비스 예약까지 한 곳에서 확인해요.",
-    bodyEn: "Check weather-based packing tips, a detailed cost breakdown, and book essentials like lodging, rental cars, and eSIM — all in one place.",
+    titleKo: "동행 & 기록",
+    titleEn: "Share & Record",
+    bodyKo: "일정 공유 · 공동 편집",
+    bodyEn: "Share · Co-edit",
+  },
+  {
+    titleKo: "여행 준비 지원",
+    titleEn: "Trip Prep",
+    bodyKo: "날씨 · 경비 · 예약",
+    bodyEn: "Weather · Costs · Booking",
   },
 ];
 
@@ -52,6 +54,7 @@ const FEATURES = [
 export function WelcomePage() {
   const navigate = useNavigate();
   const [lang, setLang] = useState<"KO" | "EN">(getUiLanguage());
+  const [account, setAccount] = useState<AccountUser | null>(getStoredAccount());
   const isEn = lang === "EN";
 
   useEffect(() => subscribeUiLanguage(setLang), []);
@@ -67,6 +70,21 @@ export function WelcomePage() {
     <div className="landing onboarding-view">
       <header className="landing-header">
         <BrandLogo />
+        <nav className="welcome-auth-nav" aria-label={isEn ? "Account" : "계정"}>
+          {account ? (
+            <>
+              <span>{account.name}</span>
+              <button type="button" onClick={async () => { await logoutAccount(); setAccount(null); }}>
+                {isEn ? "Sign out" : "로그아웃"}
+              </button>
+            </>
+          ) : (
+            <>
+              <button type="button" onClick={() => navigate(paths.login())}>{isEn ? "Sign in" : "로그인"}</button>
+              <button type="button" className="welcome-signup-btn" onClick={() => navigate(paths.signup())}>{isEn ? "Create account" : "회원가입"}</button>
+            </>
+          )}
+        </nav>
       </header>
 
       <section className="onboarding-lang-picker" aria-label={isEn ? "Choose your language" : "언어를 선택하세요"}>
@@ -78,7 +96,7 @@ export function WelcomePage() {
             aria-pressed={lang === "KO"}
             onClick={() => chooseLanguage("KO")}
           >
-            🇰🇷 한국어
+            한국어
           </button>
           <button
             type="button"
@@ -86,23 +104,22 @@ export function WelcomePage() {
             aria-pressed={lang === "EN"}
             onClick={() => chooseLanguage("EN")}
           >
-            🇺🇸 English
+            English
           </button>
         </div>
       </section>
 
       <section className="landing-hero onboarding-hero">
         <span className="section-eyebrow">{isEn ? "LOCAL-RECOMMENDED TRAVEL" : "현지인 추천 기반 여행"}</span>
-        <h1>{isEn ? "Explore Busan like a local, without the guesswork" : "가이드북 없이도, 현지인처럼 부산을 즐기세요"}</h1>
+        <h1>{isEn ? "Enjoy Busan, recommended by locals" : "현지인이 추천해주는 부산을 즐기세요"}</h1>
         <p>{isEn
-          ? "LOCAL ROUTE builds a Busan itinerary around your schedule, budget, and needs — then helps you communicate once you're there."
-          : "로컬 루트는 여행 일정과 예산, 이용 조건에 맞춰 부산 일정을 짜드리고, 현지에서 소통까지 도와드려요."}</p>
+          ? "From planning to communicating on the ground — all in one place."
+          : "일정 계산부터 현지 소통까지, 한 번에 도와드려요."}</p>
       </section>
 
       <section className="onboarding-features">
         {FEATURES.map((feature) => (
           <article key={feature.titleKo} className="onboarding-feature-card">
-            <span className="onboarding-feature-icon" aria-hidden="true">{feature.icon}</span>
             <strong>{isEn ? feature.titleEn : feature.titleKo}</strong>
             <p>{isEn ? feature.bodyEn : feature.bodyKo}</p>
           </article>
@@ -113,6 +130,7 @@ export function WelcomePage() {
         <button type="button" className="primary-btn" onClick={start}>
           {isEn ? "Get Started" : "시작하기"}
         </button>
+        <small>{isEn ? "No sign-up required · Your trip is saved on this device" : "회원가입 없이 이용할 수 있으며, 여행은 현재 기기에 저장됩니다."}</small>
       </div>
     </div>
   );
