@@ -28,6 +28,13 @@ const FEATURES = [
     bodyEn: "Translate menu photos, get bi-directional voice interpretation, and even learn local Busan dialect — all built in.",
   },
   {
+    icon: "🧭",
+    titleKo: "실시간 길찾기 내비게이션",
+    titleEn: "Real-time turn-by-turn navigation",
+    bodyKo: "구글맵이 잘 안내하지 못하는 국내 대중교통·도보 경로를 실시간 GPS로 안내하고, 택시 기사님께 보여줄 한글 목적지 카드도 만들어드려요.",
+    bodyEn: "Get real-time GPS-guided transit and walking directions where Google Maps falls short in Korea, plus a Korean destination card to show taxi drivers.",
+  },
+  {
     icon: "🤝",
     titleKo: "동행자와 함께 계획하고 기록",
     titleEn: "Plan and record memories together",
