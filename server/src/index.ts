@@ -21,14 +21,18 @@ app.use(helmet({ contentSecurityPolicy: false, strictTransportSecurity: process.
 app.use(cors({ origin(origin, callback) { callback(null, !origin || allowedOrigins.has(origin)); }, methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"], allowedHeaders: ["Content-Type", "Authorization", "Idempotency-Key", "X-Request-Id", "X-Session-Token", "X-Booking-Webhook-Secret", "X-Admin-Token"] }));
 app.use("/api/stories", express.json({ limit: "3mb" }));
 app.use(express.json({ limit: "256kb" }));
-app.use("/api", rateLimit({
-  windowMs: 15 * 60_000,
-  limit: 300,
-  standardHeaders: "draft-7",
-  legacyHeaders: false,
-  skip: (req) => req.path === "/course-categories",
-  message: { error_code: "RATE_LIMITED", message: "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요." }
-}));
+// 로컬 개발에서는 dev 서버 프록시를 거치며 모든 트래픽(실제 사용 + 자동화 테스트)이 같은 IP로
+// 잡혀 한도를 공유한다. 실사용 중 갑자기 막히는 걸 막기 위해 운영 환경에서만 적용한다.
+if (process.env.NODE_ENV === "production") {
+  app.use("/api", rateLimit({
+    windowMs: 15 * 60_000,
+    limit: 300,
+    standardHeaders: "draft-7",
+    legacyHeaders: false,
+    skip: (req) => req.path === "/course-categories",
+    message: { error_code: "RATE_LIMITED", message: "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요." }
+  }));
+}
 
 app.get("/health", (_req, res) => res.json({ status: "ok" }));
 app.use("/api", tripsRouter);
