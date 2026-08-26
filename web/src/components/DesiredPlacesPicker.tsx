@@ -2,10 +2,9 @@ import { useState } from "react";
 import { searchPlaces } from "../api/client";
 import type { PlaceRecord } from "../types";
 
-export interface DesiredPlace { placeId: string; name: string; address: string; dayIndex: number }
+export interface DesiredPlace { placeId: string; name: string; address: string }
 
 interface Props {
-  numDays: number;
   value: DesiredPlace[];
   onChange: (next: DesiredPlace[]) => void;
 }
@@ -15,7 +14,7 @@ interface Props {
  * 안에서만 찾는다(OriginPicker와 다른 이유: mustVisitPlaceIds는 이 카탈로그의 Place.id를
  * 기대하므로, 임의의 외부 POI id를 저장하면 스케줄러가 절대 찾지 못한다).
  */
-export function DesiredPlacesPicker({ numDays, value, onChange }: Props) {
+export function DesiredPlacesPicker({ value, onChange }: Props) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<PlaceRecord[]>([]);
   const [searching, setSearching] = useState(false);
@@ -37,16 +36,15 @@ export function DesiredPlacesPicker({ numDays, value, onChange }: Props) {
   };
 
   const add = (place: PlaceRecord) => {
-    onChange([...value, { placeId: place.id, name: place.nameKo ?? place.id, address: place.address ?? "", dayIndex: 1 }]);
+    onChange([...value, { placeId: place.id, name: place.nameKo ?? place.id, address: place.address ?? "" }]);
     setResults((prev) => prev.filter((p) => p.id !== place.id));
   };
   const remove = (placeId: string) => onChange(value.filter((p) => p.placeId !== placeId));
-  const setDay = (placeId: string, dayIndex: number) => onChange(value.map((p) => p.placeId === placeId ? { ...p, dayIndex } : p));
 
   return (
     <div className="desired-places">
       <span>가고 싶은 곳 (선택)</span>
-      <small>이미 정해둔 장소가 있으면 검색해서 며칠째 방문할지 골라두세요. 나머지 시간은 추천 모드가 자동으로 채웁니다.</small>
+      <small>이미 정해둔 장소가 있으면 검색해서 추가해 두세요. 어느 날짜에 넣을지는 추천 모드가 자동으로 정합니다.</small>
       <div className="desired-places-search">
         <input
           aria-label="가고 싶은 장소 검색"
@@ -74,14 +72,6 @@ export function DesiredPlacesPicker({ numDays, value, onChange }: Props) {
           {value.map((place) => (
             <li key={place.placeId}>
               <div><strong>{place.name}</strong><span>{place.address}</span></div>
-              <label>
-                <span>며칠째</span>
-                <select aria-label={`${place.name} 방문 날짜`} value={place.dayIndex} onChange={(event) => setDay(place.placeId, Number(event.target.value))}>
-                  {Array.from({ length: Math.max(1, numDays) }, (_, i) => i + 1).map((day) => (
-                    <option key={day} value={day}>{day}일차</option>
-                  ))}
-                </select>
-              </label>
               <button type="button" onClick={() => remove(place.placeId)} aria-label={`${place.name} 삭제`}>✕</button>
             </li>
           ))}

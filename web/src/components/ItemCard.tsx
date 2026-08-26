@@ -112,5 +112,23 @@ export function ItemCard({ item, pinned, busy, onTogglePin, onExclude, onReplace
 export function TravelSegment({ item, hasCar, language = "KO" }: { item: ItineraryItemOutput; hasCar: boolean; language?: "KO" | "EN" }) {
   if (item.travelMinToNext === null) return null;
   const en = language === "EN";
-  return <div className="travel-segment"><span className="travel-line" aria-hidden="true" /><div><strong>{en ? (hasCar ? "Drive" : "Public transit") : (hasCar ? "자차" : "대중교통")} {item.travelMinToNext}{en ? " min" : "분"} · {item.distanceToNextM ? `${(item.distanceToNextM / 1000).toFixed(1)}km` : (en ? "distance pending" : "거리 확인 중")}</strong><small>{en ? (item.travelIsEstimate ? "Estimated travel time · actual route may differ" : "Kakao route") : (item.travelIsEstimate ? "예상 이동시간 · 실제 경로와 다를 수 있음" : "카카오 경로 기준")}</small></div></div>;
+  const modeIcon = hasCar ? "🚗" : "🚌";
+  const modeLabel = en ? (hasCar ? "Drive" : "Public transit") : (hasCar ? "자차" : "대중교통");
+  return (
+    <div className="travel-segment">
+      <div className="travel-track" aria-hidden="true">
+        <span className="travel-track-line" />
+        <span className="travel-track-icon">{modeIcon}</span>
+        <span className="travel-track-line" />
+      </div>
+      <div className="travel-info">
+        <div className="travel-info-main">
+          <strong>{item.travelMinToNext}{en ? " min" : "분"}</strong>
+          <span className="tag-chip-sm travel-mode-chip">{modeLabel}</span>
+          <span className="tag-chip-sm">{item.distanceToNextM ? `${(item.distanceToNextM / 1000).toFixed(1)}km` : (en ? "distance pending" : "거리 확인 중")}</span>
+        </div>
+        <small>{en ? (item.travelIsEstimate ? "Estimated travel time · actual route may differ" : "Kakao route") : (item.travelIsEstimate ? "예상 이동시간 · 실제 경로와 다를 수 있음" : "카카오 경로 기준")}</small>
+      </div>
+    </div>
+  );
 }

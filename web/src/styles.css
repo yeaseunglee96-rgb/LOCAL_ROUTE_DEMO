@@ -230,9 +230,14 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .place-details dt { color: var(--muted); }.place-details dd { margin: 0; }
 .taxi-card { margin-top: 10px; padding: 12px; background: #f2f5f3; border-radius: 8px; display: grid; gap: 6px; }
 .taxi-card span { font-size: 10px; color: var(--muted); }.taxi-card b { line-height: 1.5; }.taxi-card button { justify-self: start; }
-.travel-segment { display: flex; gap: 12px; align-items: center; margin: 4px 0 4px 28px; padding: 10px 14px; color: #53615b; border-left: 2px dashed #b9c8c1; }
-.travel-segment > span { font-size: 20px; color: var(--brand); }.travel-segment div { display: flex; flex-direction: column; gap: 2px; }
-.travel-segment strong { font-size: 12px; }.travel-segment small { color: var(--muted); font-size: 10px; }
+.travel-segment { display: flex; gap: 12px; align-items: center; margin: 2px 0; padding: 6px 14px; color: #53615b; }
+.travel-track { display: flex; flex-direction: column; align-items: center; width: 28px; flex-shrink: 0; }
+.travel-track-line { width: 2px; flex: 1; min-height: 10px; background: repeating-linear-gradient(180deg, #b9c8c1 0 4px, transparent 4px 8px); }
+.travel-track-icon { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: #eef3f0; border: 1px solid #cfe0d7; font-size: 13px; margin: 2px 0; }
+.travel-info { display: flex; flex-direction: column; gap: 4px; }
+.travel-info-main { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.travel-info-main strong { font-size: 14px; }
+.travel-segment small { color: var(--muted); font-size: 10px; }
 .map-day-controls { display: flex; gap: 6px; padding: 10px 14px 0; overflow-x: auto; }
 .map-day-controls button { border: 1px solid var(--line); background: #fff; border-radius: 999px; padding: 6px 10px; font-size: 10px; white-space: nowrap; }
 .map-day-controls button.active { background: var(--brand); color: #fff; border-color: var(--brand); }

@@ -94,13 +94,12 @@ export function TripFormPage({ onSubmit, submitting, errorMessage, placeCount, i
   const [dietType, setDietType] = useState<DietType>(initialValues?.dietType ?? "NONE");
   const [desiredFoods, setDesiredFoods] = useState<string[]>(initialValues?.desiredFoods ?? ["milmyeon", "dwaeji_gukbap"]);
   const [desiredPlaces, setDesiredPlaces] = useState<DesiredPlace[]>(
-    (initialValues?.mustVisitAssignments ?? []).map((a) => ({ placeId: a.placeId, name: a.placeId, address: "", dayIndex: a.dayIndex }))
+    (initialValues?.mustVisitAssignments ?? []).map((a) => ({ placeId: a.placeId, name: a.placeId, address: "" }))
   );
   // 무드 카드로 고른 값인지, 사용자가 세부 설정을 직접 만진 값인지 구분한다.
   const [selectedMoodId, setSelectedMoodId] = useState<string | null>(null);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const nights = Math.max(0, Math.round((new Date(`${endDate}T00:00:00`).getTime() - new Date(`${startDate}T00:00:00`).getTime()) / 86400000));
-  const numDays = nights + 1;
   const selectedMode = MODES.find((item) => item.value === mode)!;
   const recommendationRatios = mode === "ESSENTIAL"
     ? { landmarkRatio: 70, localRatio: 20, easyRatio: 10 }
@@ -160,9 +159,8 @@ export function TripFormPage({ onSubmit, submitting, errorMessage, placeCount, i
     allergies: allergyText.split(",").map((value) => value.trim()).filter(Boolean), dietType,
     desiredFoods,
     mustVisitPlaceIds: desiredPlaces.map((place) => place.placeId),
-    mustVisitAssignments: desiredPlaces.map((place) => ({ placeId: place.placeId, dayIndex: Math.min(Math.max(place.dayIndex, 1), numDays) })),
     ...recommendationRatios,
-  }), [origin, startDate, endDate, partySize, totalBudget, hasCar, pace, selectedTags, selectedCourse, courseCategory, mode, dayStart, dayEnd, language, allergyText, dietType, desiredFoods, desiredPlaces, numDays]);
+  }), [origin, startDate, endDate, partySize, totalBudget, hasCar, pace, selectedTags, selectedCourse, courseCategory, mode, dayStart, dayEnd, language, allergyText, dietType, desiredFoods, desiredPlaces]);
 
   const submit = (event: React.FormEvent) => {
     event.preventDefault();
@@ -350,7 +348,7 @@ export function TripFormPage({ onSubmit, submitting, errorMessage, placeCount, i
               <small>{desiredPlaces.length ? (language === "EN" ? `${desiredPlaces.length} added` : `${desiredPlaces.length}곳 추가됨`) : (language === "EN" ? "Optional" : "선택 사항")}</small>
             </summary>
             <div className="advanced-body">
-              <DesiredPlacesPicker numDays={numDays} value={desiredPlaces} onChange={setDesiredPlaces} />
+              <DesiredPlacesPicker value={desiredPlaces} onChange={setDesiredPlaces} />
             </div>
           </details>
         </section>}
