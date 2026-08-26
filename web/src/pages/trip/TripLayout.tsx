@@ -3,9 +3,10 @@ import { Outlet, useLocation, useNavigate, useParams, useSearchParams } from "re
 import { DashboardShell } from "../../components/DashboardShell";
 import { getAlternatives, getCollaboration, getItinerary, generateItinerary, reoptimizeDay, reorderDay, undoItineraryChange } from "../../api/client";
 import type { ItineraryItemOutput, ItineraryOutput, PlaceAlternative } from "../../types";
-import { getUiLanguage, setUiLanguage, subscribeUiLanguage } from "../../i18n";
+import { applyTripLanguage, getUiLanguage, subscribeUiLanguage } from "../../i18n";
 import { useAppShell } from "../../routes/AppShell";
 import { TAB_TO_PATH, paths, tabFromPathname } from "../../routes/paths";
+import { setLastVisitedTripId } from "../../utils/visitor";
 import { TripContext } from "./TripContext";
 import type { TripContextValue } from "./TripContext";
 
@@ -55,9 +56,10 @@ export function TripLayout() {
 
   useEffect(() => {
     if (!itinerary) return;
-    setUiLanguage(itinerary.trip.language);
+    applyTripLanguage(itinerary.trip.language);
     document.documentElement.dataset.allergies = JSON.stringify(itinerary.trip.allergies);
     document.documentElement.dataset.diet = itinerary.trip.dietType;
+    setLastVisitedTripId(itinerary.tripId);
   }, [itinerary]);
 
   useEffect(() => {

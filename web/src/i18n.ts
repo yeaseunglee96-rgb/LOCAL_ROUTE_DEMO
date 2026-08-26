@@ -1,4 +1,5 @@
 const KO_EN: Record<string, string> = {
+  "현지인 추천 기반 여행": "Local-recommended travel", "부산을 마음껏 즐기세요": "Enjoy Busan to the fullest",
   "검증 가능한 여행 설계": "Verifiable trip planning",
   "부산에서 바로 실행할 수 있는 일정을 만들어요": "Build a trip you can actually follow in Busan",
   "장소를 나열하는 대신 운영시간, 이동시간, 예산과 동반 조건을 함께 계산합니다.": "We calculate opening hours, travel time, budget, and accessibility together.",
@@ -76,7 +77,18 @@ const KO_EN: Record<string, string> = {
 
 const EN_KO = Object.fromEntries(Object.entries(KO_EN).map(([ko, en]) => [en, ko]));
 let observer: MutationObserver | null = null;
-let current: "KO" | "EN" = "KO";
+
+const LANG_STORAGE_KEY = "local-route-ui-lang";
+
+function readStoredLanguage(): "KO" | "EN" {
+  try {
+    return localStorage.getItem(LANG_STORAGE_KEY) === "EN" ? "EN" : "KO";
+  } catch {
+    return "KO";
+  }
+}
+
+let current: "KO" | "EN" = readStoredLanguage();
 
 function translate(root: Node) {
   const dictionary = current === "EN" ? KO_EN : EN_KO;
@@ -141,13 +153,34 @@ export function subscribeUiLanguage(listener: (lang: "KO" | "EN") => void) {
   return () => { listeners.delete(listener); };
 }
 
-export function setUiLanguage(language: "KO" | "EN") {
+function applyLanguage(language: "KO" | "EN") {
   current = language;
   document.documentElement.lang = language === "EN" ? "en" : "ko";
   translate(document.body);
   observer?.disconnect();
   observer = new MutationObserver((records) => records.forEach((record) => { record.addedNodes.forEach(translate); if (record.type === "characterData") translate(record.target); }));
   observer.observe(document.body, { childList: true, characterData: true, subtree: true });
+}
+
+// 새로고침/재방문 시에도 마지막으로 고른 언어가 즉시 반영되도록 부팅 시 한 번 적용한다.
+applyLanguage(current);
+
+/**
+ * 사용자가 직접 고른 언어를 전역 기본값으로 저장한다 (온보딩·헤더 언어 전환·위저드의 화면 언어 선택 등).
+ * 다음 방문에도 이어지도록 로컬 저장소에 남긴다.
+ */
+export function setUiLanguage(language: "KO" | "EN") {
+  applyLanguage(language);
+  try { localStorage.setItem(LANG_STORAGE_KEY, language); } catch { /* 프라이빗 모드 등에서는 세션 동안만 유지 */ }
+  listeners.forEach((fn) => fn(language));
+}
+
+/**
+ * 특정 일정(예: 다른 사람이 만든 트립이나 공유 링크)이 저장해 둔 언어를 이번 화면에만 반영한다.
+ * 사용자가 직접 고른 전역 기본값(로컬 저장소)은 건드리지 않는다 — setUiLanguage 와의 차이.
+ */
+export function applyTripLanguage(language: "KO" | "EN") {
+  applyLanguage(language);
   listeners.forEach((fn) => fn(language));
 }
 

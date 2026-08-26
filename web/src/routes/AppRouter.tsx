@@ -3,6 +3,7 @@ import { AppShell } from "./AppShell";
 
 import { HomePage } from "../pages/HomePage";
 import { OnboardingPage } from "../pages/OnboardingPage";
+import { WelcomePage } from "../pages/WelcomePage";
 import { PlanWizardPage } from "../pages/PlanWizardPage";
 import { GeneratingPage } from "../pages/GeneratingPage";
 import { InviteAcceptPage } from "../pages/InviteAcceptPage";
@@ -42,6 +43,7 @@ import { PrivacyPage } from "../pages/legal/PrivacyPage";
 import { OpenSourcePage } from "../pages/legal/OpenSourcePage";
 
 import { paths } from "./paths";
+import { getLastVisitedTripId, hasSeenWelcome } from "../utils/visitor";
 
 /** /s/:slug 라우트에서 slug 를 읽어 기존 화면에 넘긴다. */
 function SharedItineraryRoute() {
@@ -75,6 +77,13 @@ function LegacyQueryRedirect() {
     return <Navigate to={mode ? `${target}?mode=${mode}` : target} replace />;
   }
 
+  // 재방문 사용자(진행 중인 일정이 있음)는 홈/웰컴 화면을 건너뛰고 자신의 일정으로 바로 들어간다.
+  const lastTripId = getLastVisitedTripId();
+  if (lastTripId) return <Navigate to={paths.tripOverview(lastTripId)} replace />;
+
+  // 첫 방문 사용자는 언어 선택과 서비스 소개를 먼저 본다.
+  if (!hasSeenWelcome()) return <Navigate to={paths.welcome()} replace />;
+
   return <HomePage />;
 }
 
@@ -88,6 +97,7 @@ export function AppRouter() {
     <Routes>
       <Route element={<AppShell />}>
         <Route path="/" element={<LegacyQueryRedirect />} />
+        <Route path="/welcome" element={<WelcomePage />} />
         <Route path="/onboarding" element={<OnboardingPage />} />
 
         <Route path="/plan" element={<Navigate to={paths.plan("basic")} replace />} />

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { DashboardShell } from "../components/DashboardShell";
 import type { CourseCategory, CreateTripRequest, DietType, Pace, PlaceRecord, RecommendationMode } from "../types";
 import { getCourseCategories } from "../api/client";
-import { setUiLanguage } from "../i18n";
+import { getUiLanguage, setUiLanguage } from "../i18n";
 import { OriginPicker } from "../components/OriginPicker";
 import { DesiredPlacesPicker, type DesiredPlace } from "../components/DesiredPlacesPicker";
 import type { LocationSearchResult } from "../types";
@@ -64,7 +64,7 @@ export function TripFormPage({ onSubmit, submitting, errorMessage, placeCount, i
   const [mode, setMode] = useState<RecommendationMode>(initialValues?.recommendationMode === "ESSENTIAL" ? "ESSENTIAL" : "LOCAL");
   const [courseCategories, setCourseCategories] = useState<CourseCategory[]>([]);
   const [courseCategory, setCourseCategory] = useState(initialValues?.courseCategory ?? "");
-  const [language, setLanguage] = useState<"KO" | "EN">(initialValues?.language ?? "KO");
+  const [language, setLanguage] = useState<"KO" | "EN">(initialValues?.language ?? getUiLanguage());
   useEffect(() => setUiLanguage(language), [language]);
   useEffect(() => { getCourseCategories().then(setCourseCategories).catch(() => setCourseCategories([])); }, []);
   const [allergyText, setAllergyText] = useState((initialValues?.allergies ?? []).join(", "));

@@ -5,6 +5,7 @@
  */
 export const paths = {
   home: () => "/",
+  welcome: () => "/welcome",
   onboarding: () => "/onboarding",
 
   plan: (step: "basic" | "taste" | "confirm" = "basic") => `/plan/${step}`,
