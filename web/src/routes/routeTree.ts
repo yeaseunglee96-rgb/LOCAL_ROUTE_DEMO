@@ -253,7 +253,7 @@ export const ROUTE_TREE: RouteNode[] = [
     children: [
       { id: "me.trips", path: "trips", expoPath: "app/me/trips.tsx", titleKo: "내 여행 목록", titleEn: "My trips", purpose: "이 기기에서 만든 여행을 다시 열고 이어서 편집한다.", platform: "BOTH", access: "SESSION", apis: ["GET /api/trips/:id/itinerary"], owners: ["FE", "BE"], milestone: "M2_APP", status: "TODO" },
       { id: "me.local", path: "local", expoPath: "app/me/local.tsx", titleKo: "내 로컬 등급", titleEn: "Local status", purpose: "방문 인증·리뷰로 쌓인 로컬 점수와 등급, 다음 등급 조건을 보여준다.", platform: "BOTH", access: "SESSION", apis: ["GET /api/local-profile"], owners: ["FE", "BE"], milestone: "M4_LATER", status: "TODO" },
-      { id: "me.settings", path: "settings", expoPath: "app/me/settings.tsx", titleKo: "설정", titleEn: "Settings", purpose: "언어(한/영), 알림, 데이터 삭제 요청을 처리한다. 계정 삭제 경로는 스토어 심사 필수 항목이다.", platform: "BOTH", access: "SESSION", apis: ["PATCH /api/trips/:id/preferences"], owners: ["FE", "INFRA"], milestone: "M3_REVIEW", status: "TODO" },
+      { id: "me.settings", path: "settings", expoPath: "app/me/settings.tsx", titleKo: "프로필·여행 설정", titleEn: "Profile & travel settings", purpose: "이름·언어와 일정 생성에 재사용할 식단·알레르기·여행 스타일·이동수단을 관리한다.", platform: "BOTH", access: "SESSION", apis: ["GET /api/auth/me", "PATCH /api/auth/me"], owners: ["FE", "BE"], milestone: "M2_APP", status: "DONE" },
     ],
   },
   {

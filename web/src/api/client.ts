@@ -195,12 +195,18 @@ const userKey = "local-route-auth-user";
 const accountKey = "local-route-account";
 const obsoleteDemoAccountKey = "local-route-demo-account";
 
-export interface AccountUser { id: string; email: string; name: string; emailVerified: boolean }
+export interface AccountUser {
+  id: string; email: string; name: string; emailVerified: boolean;
+  locale: "KO" | "EN"; nationality: string | null;
+  dietType: "NONE" | "VEGETARIAN" | "VEGAN" | "HALAL"; allergies: string[];
+  travelStyle: "RELAXED" | "BALANCED" | "PACKED"; defaultTransport: "TRANSIT" | "CAR" | "WALK";
+}
 
 function saveAccount(token: string, user: AccountUser) {
   localStorage.setItem(tokenKey, token);
   localStorage.setItem(accountKey, JSON.stringify(user));
   localStorage.removeItem(obsoleteDemoAccountKey);
+  window.dispatchEvent(new Event("local-route-account-changed"));
 }
 
 export function getStoredAccount(): AccountUser | null {
@@ -229,6 +235,16 @@ export async function logoutAccount() {
   localStorage.removeItem(userKey);
   localStorage.removeItem(accountKey);
   localStorage.removeItem(obsoleteDemoAccountKey);
+  window.dispatchEvent(new Event("local-route-account-changed"));
+}
+
+export async function updateAccountProfile(payload: Pick<AccountUser, "name" | "locale" | "nationality" | "dietType" | "allergies" | "travelStyle" | "defaultTransport">) {
+  const token = localStorage.getItem(tokenKey);
+  if (!token) throw new Error("로그인이 필요합니다.");
+  const result = await handle<{ user: AccountUser }>(await fetch("/api/auth/me", { method: "PATCH", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify(payload) }));
+  localStorage.setItem(accountKey, JSON.stringify(result.user));
+  window.dispatchEvent(new Event("local-route-account-changed"));
+  return result.user;
 }
 
 export async function authHeaders(locale: "KO" | "EN" = "KO"): Promise<Record<string, string>> {

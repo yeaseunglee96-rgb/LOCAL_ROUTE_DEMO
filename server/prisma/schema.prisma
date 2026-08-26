@@ -87,6 +87,12 @@ model User {
   passwordHash   String
   passwordSalt   String
   emailVerified  Boolean          @default(false)
+  locale         String           @default("KO")
+  nationality    String?
+  dietType       String           @default("NONE")
+  allergies      String           @default("[]")
+  travelStyle    String           @default("BALANCED")
+  defaultTransport String         @default("TRANSIT")
   ownerSession   AnonymousSession @relation("UserOwnerSession", fields: [ownerSessionId], references: [id])
   ownerSessionId String           @unique
   sessions       AccountSession[]
