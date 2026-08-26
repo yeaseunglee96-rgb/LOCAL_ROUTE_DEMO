@@ -64,6 +64,8 @@ export function TripPrepPage() {
         collaboration={<ShareBar itineraryId={itinerary.itineraryId} tripId={itinerary.tripId} language={itinerary.trip.language} />}
       />
 
+      <TripMemorySummary language={lang} daysCount={itinerary.days.length} />
+
       {bookingOptions.length > 0 && (
         <section className="booking-strip" aria-label="숙소 예약 제휴">
           <div>
@@ -80,7 +82,6 @@ export function TripPrepPage() {
       )}
 
       <BusanDialectWidget language={lang} />
-      <TripMemorySummary language={lang} daysCount={itinerary.days.length} />
       <WeatherPrepWidget language={lang} />
 
       <div className="data-honesty-bar">

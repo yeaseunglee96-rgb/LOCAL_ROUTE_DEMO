@@ -941,7 +941,6 @@ button {
   border: 1px solid var(--border, #e2e8f0);
   border-radius: 16px;
   padding: 24px;
-  margin-bottom: 24px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
 }
 .widget-tag {
@@ -1107,7 +1106,6 @@ button {
   border: 1px solid var(--border, #e2e8f0);
   border-radius: 16px;
   padding: 24px;
-  margin-bottom: 24px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
 }
 .memory-banner {
@@ -1898,7 +1896,6 @@ button {
   border: 1px solid #e2e8f0;
   border-radius: 16px;
   padding: 24px;
-  margin-top: 24px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
 }
 .busan-dialect-header h2 {
