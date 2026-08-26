@@ -44,6 +44,8 @@ export const EVENT_TOPIC = {
   companion_invited: "collab-events",
   itinerary_edited: "collab-events",
   story_created: "social-events",
+  story_updated: "social-events",
+  story_deleted: "social-events",
   story_reported: "social-events",
   user_followed: "social-events",
   user_unfollowed: "social-events",

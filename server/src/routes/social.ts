@@ -64,8 +64,40 @@ socialRouter.get("/stories", async (req, res, next) => {
     const following = session ? (await prisma.follow.findMany({ where: { followerSessionId: session.id, status: "ACTIVE" }, select: { followeeSessionId: true } })).map((row) => row.followeeSessionId) : [];
     const where: Prisma.StoryWhereInput = mine ? { authorSessionId: session!.id } : followingOnly ? { authorSessionId: { in: following }, publishAt: { lte: new Date() }, moderationStatus: "PUBLISHED", visibility: { in: ["PUBLIC", "FOLLOWERS"] } } : { publishAt: { lte: new Date() }, moderationStatus: "PUBLISHED", OR: [{ visibility: "PUBLIC" }, ...(session ? [{ authorSessionId: session.id }, { visibility: "FOLLOWERS", authorSessionId: { in: following } }] : [])] };
     if (typeof req.query.placeId === "string") where.placeId = req.query.placeId;
-    const stories = await prisma.story.findMany({ where, include: { place: { select: { nameKo: true, nameEn: true } }, _count: { select: { reports: true } } }, orderBy: { createdAt: "desc" }, take: 50 });
-    res.json(stories.map((story) => ({ id: story.id, authorId: story.authorSessionId, authorLabel: `여행자 ${story.authorSessionId.slice(-4)}`, placeId: story.placeId, placeName: story.place.nameKo, placeNameEn: story.place.nameEn, content: story.content, images: JSON.parse(story.imageDataJson), rating: story.rating, visibility: story.visibility, visitVerified: story.visitVerified, areaLabel: story.areaLabel, publishAt: story.publishAt, moderationStatus: story.moderationStatus, createdAt: story.createdAt, reportCount: story._count.reports, isFollowing: following.includes(story.authorSessionId), mine: session?.id === story.authorSessionId })));
+    const stories = await prisma.story.findMany({ where, include: { place: { select: { nameKo: true, nameEn: true } }, itinerary: { select: { tripId: true } }, _count: { select: { reports: true } } }, orderBy: { createdAt: "desc" }, take: 50 });
+    res.json(stories.map((story) => ({ id: story.id, authorId: story.authorSessionId, authorLabel: `여행자 ${story.authorSessionId.slice(-4)}`, placeId: story.placeId, placeName: story.place.nameKo, placeNameEn: story.place.nameEn, tripId: story.itinerary?.tripId ?? null, content: story.content, images: JSON.parse(story.imageDataJson), rating: story.rating, visibility: story.visibility, visitVerified: story.visitVerified, areaLabel: story.areaLabel, publishAt: story.publishAt, moderationStatus: story.moderationStatus, createdAt: story.createdAt, reportCount: story._count.reports, isFollowing: following.includes(story.authorSessionId), mine: session?.id === story.authorSessionId })));
+  } catch (error) { next(error); }
+});
+
+socialRouter.patch("/stories/:id", async (req, res, next) => {
+  try {
+    const session = await requireSession(req, res); if (!session) return;
+    const story = await prisma.story.findUnique({ where: { id: req.params.id } });
+    if (!story) return res.status(404).json({ error_code: "STORY_NOT_FOUND", message: "기록을 찾을 수 없습니다." });
+    if (story.authorSessionId !== session.id) return res.status(403).json({ error_code: "STORY_EDIT_FORBIDDEN", message: "내 기록만 수정할 수 있습니다." });
+    const content = String(req.body?.content ?? "").trim();
+    const visibility = ["PUBLIC", "FOLLOWERS", "PRIVATE"].includes(req.body?.visibility) ? req.body.visibility : story.visibility;
+    const images = Array.isArray(req.body?.images) ? req.body.images : JSON.parse(story.imageDataJson);
+    if (content.length < 1 || content.length > 500) return res.status(400).json({ error_code: "INVALID_STORY_CONTENT", message: "기록은 1~500자로 입력해주세요." });
+    if (images.length > 3) return res.status(400).json({ error_code: "IMAGE_LIMIT_EXCEEDED", message: "사진은 최대 3장까지 올릴 수 있습니다." });
+    let sanitizedImages: string[];
+    try { sanitizedImages = images.map(sanitizeImage); } catch { return res.status(400).json({ error_code: "INVALID_IMAGE", message: "JPEG·PNG·WebP 이미지만 장당 750KB 이하로 올릴 수 있습니다." }); }
+    const publishAt = req.body?.publishNow === true ? new Date() : story.publishAt;
+    const updated = await prisma.story.update({ where: { id: story.id }, data: { content, visibility, imageDataJson: JSON.stringify(sanitizedImages), publishAt } });
+    await recordEvent({ eventType: "story_updated", actorId: pseudonymize(session.id), entityType: "story", entityId: story.id, payload: { visibility, imageCount: sanitizedImages.length } });
+    res.json({ id: updated.id, content: updated.content, visibility: updated.visibility, images: sanitizedImages, publishAt: updated.publishAt, updatedAt: updated.updatedAt });
+  } catch (error) { next(error); }
+});
+
+socialRouter.delete("/stories/:id", async (req, res, next) => {
+  try {
+    const session = await requireSession(req, res); if (!session) return;
+    const story = await prisma.story.findUnique({ where: { id: req.params.id } });
+    if (!story) return res.status(404).json({ error_code: "STORY_NOT_FOUND", message: "기록을 찾을 수 없습니다." });
+    if (story.authorSessionId !== session.id) return res.status(403).json({ error_code: "STORY_DELETE_FORBIDDEN", message: "내 기록만 삭제할 수 있습니다." });
+    await prisma.story.delete({ where: { id: story.id } });
+    await recordEvent({ eventType: "story_deleted", actorId: pseudonymize(session.id), entityType: "story", entityId: story.id });
+    res.status(204).end();
   } catch (error) { next(error); }
 });
 

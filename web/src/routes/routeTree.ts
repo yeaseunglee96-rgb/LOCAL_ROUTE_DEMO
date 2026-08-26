@@ -217,9 +217,9 @@ export const ROUTE_TREE: RouteNode[] = [
     apis: ["GET /api/stories"],
     owners: ["FE", "BE"],
     milestone: "M2_APP",
-    status: "PARTIAL",
+    status: "DONE",
     children: [
-      { id: "stories.new", path: "new", expoPath: "app/stories/new.tsx", titleKo: "스토리 작성", titleEn: "New story", purpose: "사진과 짧은 글을 올린다. 업로드 전 EXIF 를 제거하고 위치는 지역 단위로만 저장한다.", platform: "BOTH", access: "SESSION", apis: ["POST /api/stories"], owners: ["FE", "BE"], milestone: "M2_APP", status: "PARTIAL" },
+      { id: "stories.new", path: "new", expoPath: "app/stories/new.tsx", titleKo: "스토리 작성", titleEn: "New story", purpose: "일정 장소에 사진과 글을 남기고 나중에도 수정·삭제한다. 위치는 지역 단위로만 공개한다.", platform: "BOTH", access: "SESSION", apis: ["POST /api/stories", "PATCH /api/stories/:id", "DELETE /api/stories/:id"], owners: ["FE", "BE"], milestone: "M2_APP", status: "DONE" },
       { id: "stories.detail", path: ":storyId", expoPath: "app/stories/[storyId].tsx", titleKo: "스토리 상세", titleEn: "Story detail", purpose: "스토리 한 건과 연결된 장소를 보고, 신고하거나 작성자를 팔로우한다.", platform: "BOTH", access: "PUBLIC", apis: ["GET /api/stories", "POST /api/stories/:id/report", "POST /api/users/:id/follow"], owners: ["FE"], milestone: "M2_APP", status: "TODO" },
     ],
   },
