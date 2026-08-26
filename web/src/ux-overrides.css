@@ -686,14 +686,8 @@ button,input,select,textarea{max-width:100%}
 .mood-check{position:absolute;top:14px;right:15px;color:#625a7a;font-size:13px;font-weight:850}
 .mood-summary{margin:14px 0 0;color:#6b6c74;font-size:12px;text-align:center}
 
-.advanced-block{margin-top:16px;border:1px solid #e2e3e7;border-radius:11px;background:#fbfbfc;overflow:hidden}
-.advanced-block>summary{display:flex;align-items:baseline;gap:10px;padding:14px 17px;cursor:pointer;list-style:none;user-select:none}
-.advanced-block>summary::-webkit-details-marker{display:none}
-.advanced-block>summary::before{content:"▸";color:#9a9ba3;font-size:11px;transition:transform .12s}
-.advanced-block[open]>summary::before{transform:rotate(90deg)}
-.advanced-block>summary b{color:#3a3b41;font-size:13px;font-weight:750}
-.advanced-block>summary small{margin-left:auto;color:#8b8c94;font-size:11px}
-.advanced-body{border-top:1px solid #e9eaee;background:#fff;padding:18px 17px}
+/* 직접 고르기 화면 본문 - 접힌 바에서 전용 화면으로 바뀌면서 테두리·여백은 뺐다 */
+.advanced-body{background:#fff}
 .advanced-body .course-category-section{margin-top:22px;padding-top:20px}
 .advanced-body .desired-food-picker{margin:0}
 
@@ -704,3 +698,178 @@ button,input,select,textarea{max-width:100%}
   .mood-grid{grid-template-columns:1fr}
   .mood-card{min-height:0}
 }
+
+.confirm-tweak{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:16px 0 0;color:#74757d;font-size:12px}
+.confirm-tweak button{border:1px solid #dedfe3;border-radius:7px;background:#fff;color:#4b4560;font-size:11px;font-weight:700;padding:7px 12px;cursor:pointer}
+.confirm-tweak button:hover{border-color:#b8b3c8}
+
+/* STEP 2 질문 전환 - 카드를 고르면 다음 질문이 오른쪽에서 미끄러져 들어온다 */
+.taste-progress{display:flex;gap:6px;margin:0 0 18px}
+.taste-progress>i{height:3px;flex:1;border-radius:99px;background:#e7e8ec;transition:background .25s ease}
+.taste-progress>i.done{background:#b6b1c7}
+.taste-progress>i.current{background:#77708f}
+.taste-panel{animation:taste-enter .3s cubic-bezier(.22,.68,.32,1) both}
+@keyframes taste-enter{
+  from{opacity:0;transform:translateX(22px)}
+  to{opacity:1;transform:none}
+}
+/* 선택 순간의 반응. 눌렀다는 감각을 주고 나서 화면이 넘어간다.
+   호버로 이미 떠 있는 상태(-3px)를 기준으로 움직여야 눌렀을 때 카드가 툭 떨어지지 않는다. */
+.mood-card.selected{animation:mood-pick .22s ease-out}
+@keyframes mood-pick{
+  0%{transform:translateY(-3px) scale(1)}
+  45%{transform:translateY(-5px) scale(1.02)}
+  100%{transform:translateY(-3px) scale(1)}
+}
+/* 움직임을 줄이도록 설정한 사용자에게는 전환 효과를 걷어낸다 */
+@media (prefers-reduced-motion: reduce){
+  .taste-panel,.mood-card.selected{animation:none}
+  .mood-card{transition:none}
+  .mood-card:active{transform:none}
+}
+
+/* "직접 고를래요" 카드 - 무드 카드와 같은 크기지만 성격이 다름을 점선으로 구분한다 */
+.mood-card-custom{border-style:dashed;background:#fbfbfc}
+.mood-card-custom>strong{color:#5f6068}
+.mood-card-custom.selected{border-style:solid}
+/* 직접 고르기 화면에서 무드 카드로 되돌아가는 링크 */
+.taste-back-link{display:inline-flex;align-items:center;gap:4px;border:0;background:transparent;color:#77708f;font-size:12px;font-weight:700;padding:0 0 14px;cursor:pointer}
+.taste-back-link:hover{color:#554d70;text-decoration:underline}
+
+/* ── STEP 2 팔레트 통일 ─────────────────────────────────────────────────────
+   음식 카드와 추천 모드 카드가 옛 브랜드 색(--brand #0f7a68 녹색, --line #dce5e0)에
+   남아 있어, 1/3(무드) → 2/3(음식)로 넘어가면 화면 색이 통째로 바뀌었다.
+   무드·코스 카드와 같은 슬레이트 톤(선 #dedfe3, 선택 #77708f/#f5f3f9)으로 맞춘다. */
+
+/* 음식 카드 - 이제 한 화면을 통째로 쓰므로 안쪽 상자를 걷어내고 무드 그리드와 같은 결로 둔다 */
+.desired-food-picker{margin:0;border:0;border-radius:0;background:transparent;padding:0}
+.desired-food-picker .picker-heading{display:grid;gap:0;margin-bottom:16px}
+.desired-food-picker .picker-eyebrow{color:#7a7290;font-size:10px;font-weight:850;letter-spacing:.09em}
+.desired-food-picker h4{margin:5px 0 0;color:#2b2c31;font-size:19px;letter-spacing:-.03em}
+.desired-food-picker .picker-desc{margin:6px 0 0;color:#74757d;font-size:12px;line-height:1.6}
+.food-grid{grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:9px}
+.food-chip{border:1px solid #dedfe3;border-radius:11px;padding:14px 15px;transition:border-color .12s,background .12s,transform .12s ease}
+.food-chip:hover{border-color:#b8b3c8}
+.food-chip:active{transform:scale(.99)}
+.food-chip.active{border:1px solid #77708f;background:#f5f3f9;padding:14px 15px;box-shadow:inset 0 0 0 1px #77708f}
+.food-chip .food-info strong{color:#2b2c31}
+.food-chip .food-info small{color:#74757d}
+.food-check{color:#625a7a;font-weight:850}
+
+/* 추천 모드 카드 - 선택 시 테두리 두께가 변해 글자가 밀리던 것도 함께 잡는다 */
+.mode-grid button{border-color:#dedfe3}
+.mode-grid button:hover{border-color:#b8b3c8}
+.mode-grid button.selected{border:1px solid #77708f;background:#f5f3f9;padding:20px;box-shadow:inset 0 0 0 1px #77708f}
+.mode-grid button.selected>strong{color:#3e394f}
+
+/* 취향 태그 - 선택 안 된 상태의 선 색만 카드와 맞춘다(선택 시 보라 그라데이션은 유지) */
+.planner-card .tag-chip{border-color:#dedfe3;color:#5f6068}
+.planner-card .tag-chip:hover{border-color:#b8b3c8}
+
+/* 가고 싶은 곳 - 안쪽 상자를 걷어내 다른 질문 화면과 같은 폭·여백으로 */
+.desired-places{margin:0;border:0;border-radius:0;background:transparent;padding:0;gap:0}
+.desired-places>span{color:#2b2c31;font-size:19px;font-weight:750;letter-spacing:-.03em}
+.desired-places>small{margin-top:6px;color:#74757d;font-size:12px;line-height:1.6}
+.desired-places-search{margin-top:16px}
+.desired-places-search button{border-radius:9px;background:#292a30}
+.desired-places-search button:hover{background:#111217}
+
+/* STEP 2 안의 작은 버튼들 - 사이트 기준 토큰에 맞춘다
+   (주 버튼 = .primary-btn 의 #292a30, 보조 버튼 = .edit-btn 의 흰 배경 + #dcdde2 선) */
+.course-preset-notice-actions button{border:1px solid #292a30;border-radius:7px;background:#292a30;color:#fff;font-size:11px;font-weight:750;padding:7px 13px}
+.course-preset-notice-actions button:hover{background:#111217;border-color:#111217}
+.course-preset-notice-actions button.ghost{border-color:#dcdde2;background:#fff;color:#65666e}
+.course-preset-notice-actions button.ghost:hover{background:#f6f6f8;border-color:#c9cad1}
+.confirm-tweak button{border-color:#dcdde2;color:#65666e}
+.confirm-tweak button:hover{background:#f6f6f8;border-color:#c9cad1}
+
+/* ── 선택 카드에 입체감 주기 ────────────────────────────────────────────────
+   1px 테두리 + 흰 배경만으로는 "테두리 친 상자"로 보인다.
+   옅은 그림자로 바닥에서 살짝 띄우고, 호버 때 더 뜨게 해 만질 수 있는 것으로 읽히게 한다.
+   무드·코스·음식·모드 카드에 같은 규칙을 적용해 화면이 바뀌어도 감각이 유지되게 한다. */
+.mood-card,
+.food-chip,
+.mode-grid button,
+.course-category-grid button{
+  border:1px solid #e6e7ec;
+  box-shadow:0 1px 2px rgba(22,22,34,.04),0 5px 14px rgba(22,22,34,.05);
+  transition:transform .16s cubic-bezier(.2,.7,.3,1),box-shadow .16s ease,border-color .16s ease,background .16s ease;
+}
+.mood-card:hover,
+.food-chip:hover,
+.mode-grid button:hover,
+.course-category-grid button:hover{
+  transform:translateY(-3px);
+  border-color:#d3cfe4;
+  box-shadow:0 2px 5px rgba(22,22,34,.05),0 14px 28px rgba(74,64,120,.13);
+}
+.mood-card:active,
+.food-chip:active,
+.mode-grid button:active,
+.course-category-grid button:active{transform:translateY(-1px)}
+.mood-card.selected,
+.food-chip.active,
+.mode-grid button.selected,
+.course-category-grid button.selected{
+  border-color:#77708f;
+  background:linear-gradient(162deg,#faf8ff,#fff 62%);
+  box-shadow:0 2px 5px rgba(22,22,34,.05),0 14px 30px rgba(74,64,120,.17),inset 0 0 0 1px #77708f;
+}
+
+/* 이모지를 동그란 칩에 담아 카드에 중심을 만든다 */
+.mood-emoji,
+.food-emoji{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:44px;height:44px;flex:0 0 44px;
+  border-radius:13px;background:#f4f2fa;
+  font-size:21px;line-height:1;
+}
+.mood-card.selected .mood-emoji,
+.food-chip.active .food-emoji{background:#ebe7f8}
+.mood-card{min-height:150px;border-radius:15px;padding:18px}
+.food-chip{border-radius:15px}
+
+/* 선택 표시를 동그란 배지로 */
+.mood-check,
+.food-check{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:20px;height:20px;border-radius:50%;
+  background:#77708f;color:#fff;font-size:10px;font-weight:850;
+}
+.food-check{flex:0 0 20px}
+
+/* 장소 검색 - 입력창과 높이를 맞추고 같은 카드 결로 */
+.desired-places-search input{height:48px;border-radius:11px;border-color:#e6e7ec;box-shadow:0 1px 2px rgba(22,22,34,.04)}
+.desired-places-search input:focus{outline:0;border-color:#a9a2c4;box-shadow:0 0 0 3px rgba(119,112,143,.14)}
+.desired-places-search button{height:48px;min-width:88px;border-radius:11px;font-size:13px;box-shadow:0 5px 14px rgba(22,22,34,.14)}
+
+@media (prefers-reduced-motion: reduce){
+  .mood-card,.food-chip,.mode-grid button,.course-category-grid button{transition:none}
+  .mood-card:hover,.food-chip:hover,.mode-grid button:hover,.course-category-grid button:hover,
+  .mood-card:active,.food-chip:active,.mode-grid button:active,.course-category-grid button:active{transform:none}
+}
+
+/* ── 무드 카드를 음식 카드와 같은 가로형으로 ────────────────────────────────
+   세로형(이모지 위, 글자 아래)과 가로형이 섞여 있어 화면마다 다른 것처럼 보였다.
+   이모지 칩 왼쪽 · 글자 오른쪽 · 체크 끝 순서로 통일한다. */
+.mood-grid{grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:9px}
+.mood-card{
+  flex-direction:row;align-items:center;gap:12px;
+  min-height:0;padding:14px 15px;border-radius:15px;
+}
+.mood-info{display:flex;flex-direction:column;flex:1;min-width:0}
+.mood-info strong{margin:0;color:#2b2c31;font-size:13px;letter-spacing:-.01em}
+.mood-info small{margin:2px 0 0;color:#74757d;font-size:11px;line-height:1.45}
+.mood-card.selected .mood-info strong{color:#3e394f}
+/* 가로형이 되면서 체크는 더 이상 모서리에 띄울 필요가 없다 */
+.mood-check{position:static;top:auto;right:auto;flex:0 0 20px}
+
+/* 질문 제목이 이미 화면 위에 있으므로 컴포넌트 자체 제목은 감춘다(같은 말 두 번) */
+.taste-panel .desired-food-picker .picker-heading,
+.taste-panel .desired-places>span,
+.taste-panel .desired-places>small{display:none}
+.taste-panel .desired-places-search{margin-top:0}
+
+/* 직접 고르기 카드는 성격이 달라 글자를 한 톤 죽여 둔다(가로형 전환으로 셀렉터가 바뀜) */
+.mood-card-custom .mood-info strong{color:#5f6068}
+.mood-card-custom .mood-emoji{background:#f2f2f4}
