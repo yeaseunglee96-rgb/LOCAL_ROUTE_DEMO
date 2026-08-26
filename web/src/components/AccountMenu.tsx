@@ -20,7 +20,7 @@ export function AccountMenu() {
 
   return (
     <details className="account-menu" ref={detailsRef}>
-      <summary aria-label="내 계정 메뉴"><span>{account.name.slice(0, 1)}</span>{account.name}</summary>
+      <summary aria-label="내 계정 메뉴"><span className={`account-avatar avatar-${account.avatarColor?.toLowerCase() ?? "lavender"}`}>{account.avatarImage ? <img src={account.avatarImage} alt="" /> : account.name.slice(0, 1)}</span>{account.name}</summary>
       <div className="account-menu-popover">
         <strong>{account.name}</strong><small>{account.email}</small>
         <button type="button" onClick={() => move(paths.settings())}>프로필·여행 설정</button>

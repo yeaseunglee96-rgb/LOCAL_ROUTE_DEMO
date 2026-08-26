@@ -1,8 +1,21 @@
-import { FormEvent, useMemo, useState } from "react";
+import { ChangeEvent, FormEvent, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getStoredAccount, updateAccountProfile } from "../../api/client";
 import { setUiLanguage } from "../../i18n";
 import { paths } from "../../routes/paths";
+
+const AVATAR_COLORS = ["LAVENDER", "SKY", "MINT", "PEACH", "CHARCOAL"] as const;
+
+async function resizeAvatar(file: File) {
+  if (!file.type.startsWith("image/")) throw new Error("이미지 파일만 선택할 수 있어요.");
+  if (file.size > 5 * 1024 * 1024) throw new Error("사진은 5MB 이하로 선택해주세요.");
+  const source = await new Promise<string>((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result)); reader.onerror = () => reject(new Error("사진을 읽지 못했습니다.")); reader.readAsDataURL(file); });
+  const image = await new Promise<HTMLImageElement>((resolve, reject) => { const element = new Image(); element.onload = () => resolve(element); element.onerror = () => reject(new Error("사진을 읽지 못했습니다.")); element.src = source; });
+  const size = Math.min(image.naturalWidth, image.naturalHeight);
+  const canvas = document.createElement("canvas"); canvas.width = 256; canvas.height = 256;
+  canvas.getContext("2d")?.drawImage(image, (image.naturalWidth - size) / 2, (image.naturalHeight - size) / 2, size, size, 0, 0, 256, 256);
+  return canvas.toDataURL("image/jpeg", .78);
+}
 
 export function SettingsPage() {
   const navigate = useNavigate();
@@ -14,6 +27,8 @@ export function SettingsPage() {
   const [allergies, setAllergies] = useState((account?.allergies ?? []).join(", "));
   const [travelStyle, setTravelStyle] = useState(account?.travelStyle ?? "BALANCED");
   const [defaultTransport, setDefaultTransport] = useState(account?.defaultTransport ?? "TRANSIT");
+  const [avatarImage, setAvatarImage] = useState<string | null>(account?.avatarImage ?? null);
+  const [avatarColor, setAvatarColor] = useState(account?.avatarColor ?? "LAVENDER");
   const [status, setStatus] = useState<"idle" | "saving" | "saved">("idle");
   const [error, setError] = useState("");
 
@@ -22,16 +37,29 @@ export function SettingsPage() {
   const submit = async (event: FormEvent) => {
     event.preventDefault(); setStatus("saving"); setError("");
     try {
-      await updateAccountProfile({ name, nationality: nationality || null, locale, dietType, allergies: allergies.split(",").map((value) => value.trim()).filter(Boolean), travelStyle, defaultTransport });
+      await updateAccountProfile({ name, nationality: nationality || null, locale, dietType, allergies: allergies.split(",").map((value) => value.trim()).filter(Boolean), travelStyle, defaultTransport, avatarImage, avatarColor });
       setUiLanguage(locale); setStatus("saved");
     } catch (reason) { setError(reason instanceof Error ? reason.message : "저장하지 못했습니다."); setStatus("idle"); }
+  };
+
+  const chooseAvatar = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]; if (!file) return;
+    try { setError(""); setAvatarImage(await resizeAvatar(file)); setStatus("idle"); }
+    catch (reason) { setError(reason instanceof Error ? reason.message : "사진을 불러오지 못했습니다."); }
+    event.target.value = "";
   };
 
   return (
     <main className="settings-page">
       <header><button type="button" onClick={() => navigate(-1)}>← 돌아가기</button><span>MY PROFILE</span><h1>프로필·여행 설정</h1><p>자주 쓰는 조건을 저장해 두면 다음 일정에서 다시 입력할 필요가 없어요.</p></header>
       <form onSubmit={submit}>
-        <section><h2>기본 정보</h2><div className="settings-grid">
+        <section><h2>기본 정보</h2>
+          <div className="profile-avatar-editor">
+            <div className={`profile-avatar-preview avatar-${avatarColor.toLowerCase()}`}>{avatarImage ? <img src={avatarImage} alt="현재 프로필" /> : name.slice(0, 1) || "?"}</div>
+            <div><strong>프로필 이미지</strong><p>사진을 올리지 않으면 이름 첫 글자로 표시돼요.</p><div className="profile-avatar-actions"><label className="avatar-upload">사진 선택<input type="file" accept="image/jpeg,image/png,image/webp" onChange={chooseAvatar} /></label>{avatarImage && <button type="button" onClick={() => { setAvatarImage(null); setStatus("idle"); }}>기본 이미지로</button>}</div></div>
+          </div>
+          {!avatarImage && <fieldset className="avatar-color-picker"><legend>기본 이미지 색상</legend>{AVATAR_COLORS.map((color) => <button key={color} type="button" className={`avatar-${color.toLowerCase()} ${avatarColor === color ? "selected" : ""}`} onClick={() => { setAvatarColor(color); setStatus("idle"); }} aria-label={`${color} 색상`} aria-pressed={avatarColor === color} />)}</fieldset>}
+          <div className="settings-grid">
           <label>이름<input value={name} onChange={(e) => setName(e.target.value)} maxLength={50} required /></label>
           <label>이메일<input value={account.email} disabled /><small>이메일 변경은 추후 지원할 예정입니다.</small></label>
           <label>국가·지역<input value={nationality} onChange={(e) => setNationality(e.target.value)} placeholder="예: 대한민국, Japan" maxLength={50} /></label>

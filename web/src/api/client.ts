@@ -200,6 +200,7 @@ export interface AccountUser {
   locale: "KO" | "EN"; nationality: string | null;
   dietType: "NONE" | "VEGETARIAN" | "VEGAN" | "HALAL"; allergies: string[];
   travelStyle: "RELAXED" | "BALANCED" | "PACKED"; defaultTransport: "TRANSIT" | "CAR" | "WALK";
+  avatarImage: string | null; avatarColor: "LAVENDER" | "SKY" | "MINT" | "PEACH" | "CHARCOAL";
 }
 
 function saveAccount(token: string, user: AccountUser) {
@@ -238,7 +239,7 @@ export async function logoutAccount() {
   window.dispatchEvent(new Event("local-route-account-changed"));
 }
 
-export async function updateAccountProfile(payload: Pick<AccountUser, "name" | "locale" | "nationality" | "dietType" | "allergies" | "travelStyle" | "defaultTransport">) {
+export async function updateAccountProfile(payload: Pick<AccountUser, "name" | "locale" | "nationality" | "dietType" | "allergies" | "travelStyle" | "defaultTransport" | "avatarImage" | "avatarColor">) {
   const token = localStorage.getItem(tokenKey);
   if (!token) throw new Error("로그인이 필요합니다.");
   const result = await handle<{ user: AccountUser }>(await fetch("/api/auth/me", { method: "PATCH", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify(payload) }));

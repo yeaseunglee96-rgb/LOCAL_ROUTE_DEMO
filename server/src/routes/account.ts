@@ -8,10 +8,10 @@ import { createPasswordRecord, normalizeEmail, PASSWORD_RULE, validEmail, verify
 export const accountRouter = Router();
 const accountLifetimeMs = 30 * 24 * 60 * 60 * 1000;
 
-function publicUser(user: { id: string; email: string; name: string; emailVerified: boolean; locale: string; nationality: string | null; dietType: string; allergies: string; travelStyle: string; defaultTransport: string }) {
+function publicUser(user: { id: string; email: string; name: string; emailVerified: boolean; locale: string; nationality: string | null; dietType: string; allergies: string; travelStyle: string; defaultTransport: string; avatarImage: string | null; avatarColor: string }) {
   let allergies: string[] = [];
   try { allergies = JSON.parse(user.allergies); } catch { allergies = []; }
-  return { id: user.id, email: user.email, name: user.name, emailVerified: user.emailVerified, locale: user.locale, nationality: user.nationality, dietType: user.dietType, allergies, travelStyle: user.travelStyle, defaultTransport: user.defaultTransport };
+  return { id: user.id, email: user.email, name: user.name, emailVerified: user.emailVerified, locale: user.locale, nationality: user.nationality, dietType: user.dietType, allergies, travelStyle: user.travelStyle, defaultTransport: user.defaultTransport, avatarImage: user.avatarImage, avatarColor: user.avatarColor };
 }
 
 const allowed = {
@@ -19,6 +19,7 @@ const allowed = {
   dietType: new Set(["NONE", "VEGETARIAN", "VEGAN", "HALAL"]),
   travelStyle: new Set(["RELAXED", "BALANCED", "PACKED"]),
   defaultTransport: new Set(["TRANSIT", "CAR", "WALK"]),
+  avatarColor: new Set(["LAVENDER", "SKY", "MINT", "PEACH", "CHARCOAL"]),
 };
 
 async function currentAccount(req: Parameters<typeof sessionToken>[0]) {
@@ -81,11 +82,12 @@ accountRouter.patch("/auth/me", async (req, res, next) => {
     const name = typeof req.body?.name === "string" ? req.body.name.trim().slice(0, 50) : "";
     const nationality = typeof req.body?.nationality === "string" ? req.body.nationality.trim().slice(0, 50) || null : null;
     const allergies = Array.isArray(req.body?.allergies) ? req.body.allergies.filter((item: unknown): item is string => typeof item === "string").map((item: string) => item.trim()).filter(Boolean).slice(0, 10) : [];
+    const avatarImage = req.body?.avatarImage === null ? null : typeof req.body?.avatarImage === "string" && /^data:image\/(jpeg|png|webp);base64,/.test(req.body.avatarImage) && req.body.avatarImage.length <= 190_000 ? req.body.avatarImage : null;
     if (!name) return res.status(400).json({ error_code: "NAME_REQUIRED", message: "이름을 입력해주세요." });
-    if (!allowed.locale.has(req.body?.locale) || !allowed.dietType.has(req.body?.dietType) || !allowed.travelStyle.has(req.body?.travelStyle) || !allowed.defaultTransport.has(req.body?.defaultTransport)) {
+    if (!allowed.locale.has(req.body?.locale) || !allowed.dietType.has(req.body?.dietType) || !allowed.travelStyle.has(req.body?.travelStyle) || !allowed.defaultTransport.has(req.body?.defaultTransport) || !allowed.avatarColor.has(req.body?.avatarColor)) {
       return res.status(400).json({ error_code: "INVALID_PROFILE", message: "프로필 설정값을 확인해주세요." });
     }
-    const user = await prisma.user.update({ where: { id: account.userId }, data: { name, nationality, locale: req.body.locale, dietType: req.body.dietType, allergies: JSON.stringify(allergies), travelStyle: req.body.travelStyle, defaultTransport: req.body.defaultTransport } });
+    const user = await prisma.user.update({ where: { id: account.userId }, data: { name, nationality, locale: req.body.locale, dietType: req.body.dietType, allergies: JSON.stringify(allergies), travelStyle: req.body.travelStyle, defaultTransport: req.body.defaultTransport, avatarImage, avatarColor: req.body.avatarColor } });
     res.json({ user: publicUser(user) });
   } catch (error) { next(error); }
 });

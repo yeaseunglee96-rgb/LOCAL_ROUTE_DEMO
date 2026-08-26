@@ -93,6 +93,8 @@ model User {
   allergies      String           @default("[]")
   travelStyle    String           @default("BALANCED")
   defaultTransport String         @default("TRANSIT")
+  avatarImage    String?
+  avatarColor    String           @default("LAVENDER")
   ownerSession   AnonymousSession @relation("UserOwnerSession", fields: [ownerSessionId], references: [id])
   ownerSessionId String           @unique
   sessions       AccountSession[]
