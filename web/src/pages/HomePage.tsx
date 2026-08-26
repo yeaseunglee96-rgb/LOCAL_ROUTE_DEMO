@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { BrandLogo } from "../components/BrandLogo";
+import { AccountMenu } from "../components/AccountMenu";
 import { getCourseCategories } from "../api/client";
 import type { CourseCategory } from "../types";
 import { getUiLanguage, setUiLanguage, subscribeUiLanguage } from "../i18n";
@@ -38,6 +39,7 @@ export function HomePage() {
             <span aria-hidden="true">·</span>
             <button type="button" className={lang === "EN" ? "active" : ""} onClick={() => setUiLanguage("EN")}>English</button>
           </span>
+          <AccountMenu />
         </nav>
       </header>
 

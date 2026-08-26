@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { getUiLanguage, setUiLanguage, subscribeUiLanguage } from "../i18n";
 import { MenuTranslatorModal } from "./MenuTranslatorModal";
 import { VoiceTranslatorModal } from "./VoiceTranslatorModal";
+import { AccountMenu } from "./AccountMenu";
 
 export function LanguageSwitcher() {
   const [lang, setLang] = useState<"KO" | "EN">(getUiLanguage());
@@ -52,6 +53,8 @@ export function LanguageSwitcher() {
         >
           English
         </button>
+        <span className="lang-divider">|</span>
+        <AccountMenu />
       </div>
 
       <MenuTranslatorModal

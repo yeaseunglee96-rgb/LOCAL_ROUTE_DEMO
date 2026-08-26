@@ -40,6 +40,9 @@ export async function createTrip(payload: CreateTripRequest): Promise<{ tripId: 
   return handle(res);
 }
 
+export interface MyTripSummary { id: string; origin: string; startDate: string; endDate: string; partySize: number; pace: "RELAXED" | "NORMAL" | "PACKED"; status: string; itineraryId: string | null; placeCount: number; coverImage: string | null; highlights: string[]; createdAt: string }
+export async function getMyTrips() { return (await handle<{ trips: MyTripSummary[] }>(await fetch("/api/trips", { headers: await authHeaders() }))).trips; }
+
 export async function generateItinerary(tripId: string, onProgress?: (job: ItineraryJob) => void, mode?: string): Promise<ItineraryOutput> {
   const res = await fetch(`/api/trips/${tripId}/itineraries:generate`, {
     method: "POST",
@@ -195,12 +198,19 @@ const userKey = "local-route-auth-user";
 const accountKey = "local-route-account";
 const obsoleteDemoAccountKey = "local-route-demo-account";
 
-export interface AccountUser { id: string; email: string; name: string; emailVerified: boolean }
+export interface AccountUser {
+  id: string; email: string; name: string; emailVerified: boolean;
+  locale: "KO" | "EN"; nationality: string | null;
+  dietType: "NONE" | "VEGETARIAN" | "VEGAN" | "HALAL"; allergies: string[];
+  travelStyle: "RELAXED" | "BALANCED" | "PACKED"; defaultTransport: "TRANSIT" | "CAR" | "WALK";
+  avatarImage: string | null; avatarColor: "LAVENDER" | "SKY" | "MINT" | "PEACH" | "CHARCOAL";
+}
 
 function saveAccount(token: string, user: AccountUser) {
   localStorage.setItem(tokenKey, token);
   localStorage.setItem(accountKey, JSON.stringify(user));
   localStorage.removeItem(obsoleteDemoAccountKey);
+  window.dispatchEvent(new Event("local-route-account-changed"));
 }
 
 export function getStoredAccount(): AccountUser | null {
@@ -229,6 +239,16 @@ export async function logoutAccount() {
   localStorage.removeItem(userKey);
   localStorage.removeItem(accountKey);
   localStorage.removeItem(obsoleteDemoAccountKey);
+  window.dispatchEvent(new Event("local-route-account-changed"));
+}
+
+export async function updateAccountProfile(payload: Pick<AccountUser, "name" | "locale" | "nationality" | "dietType" | "allergies" | "travelStyle" | "defaultTransport" | "avatarImage" | "avatarColor">) {
+  const token = localStorage.getItem(tokenKey);
+  if (!token) throw new Error("로그인이 필요합니다.");
+  const result = await handle<{ user: AccountUser }>(await fetch("/api/auth/me", { method: "PATCH", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify(payload) }));
+  localStorage.setItem(accountKey, JSON.stringify(result.user));
+  window.dispatchEvent(new Event("local-route-account-changed"));
+  return result.user;
 }
 
 export async function authHeaders(locale: "KO" | "EN" = "KO"): Promise<Record<string, string>> {

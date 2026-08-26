@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { TripFormPage } from "./TripFormPage";
-import { createTrip } from "../api/client";
+import { createTrip, getStoredAccount } from "../api/client";
 import type { CreateTripRequest } from "../types";
 import { useAppShell } from "../routes/AppShell";
 import { paths } from "../routes/paths";
@@ -21,6 +21,7 @@ export function PlanWizardPage() {
   const { placeCount, lodgings } = useAppShell();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const account = getStoredAccount();
 
   const stepIndex = Math.max(0, STEP_SLUGS.indexOf((stepParam ?? "basic") as StepSlug));
 
@@ -43,6 +44,13 @@ export function PlanWizardPage() {
       errorMessage={errorMessage}
       placeCount={placeCount}
       lodgings={lodgings}
+      initialValues={account ? {
+        language: account.locale,
+        dietType: account.dietType,
+        allergies: account.allergies,
+        pace: account.travelStyle === "BALANCED" ? "NORMAL" : account.travelStyle,
+        hasCar: account.defaultTransport === "CAR",
+      } : undefined}
       step={stepIndex}
       onStepChange={(next) => navigate(paths.plan(STEP_SLUGS[next] ?? "basic"), { replace: true })}
     />
