@@ -10,7 +10,7 @@ export type AdCandidate = {
   place: { id: string; nameKo: string; nameEn: string | null; category: string; localScore: number; imageUrl: string | null };
 };
 
-export const ALLOWED_AD_CATEGORIES = ["LODGING", "RENTAL_CAR", "TRAVEL_INSURANCE", "TAXI", "AIRPORT_TRANSFER"] as const;
+export const ALLOWED_AD_CATEGORIES = ["LODGING", "RENTAL_CAR", "TRAVEL_INSURANCE", "TAXI", "AIRPORT_TRANSFER", "ESIM"] as const;
 export function isAllowedAdCategory(value: string): value is typeof ALLOWED_AD_CATEGORIES[number] {
   return ALLOWED_AD_CATEGORIES.includes(value as typeof ALLOWED_AD_CATEGORIES[number]);
 }

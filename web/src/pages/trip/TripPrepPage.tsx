@@ -42,18 +42,20 @@ export function TripPrepPage() {
 
       {sponsored.length > 0 && (
         <section className="sponsored-strip" aria-label="광고">
-          <div>
+          <div className="sponsored-strip-intro">
             <strong>여행 조건에 맞는 필수 서비스</strong>
             <span>자연 추천 일정과 분리된 유료 노출입니다.</span>
           </div>
-          {sponsored.map((placement) => (
-            <article key={placement.campaignId}>
-              <span className="sponsored-label">{placement.label}</span>
-              <b>{itinerary.trip.language === "EN" ? placement.nameEn ?? placement.nameKo : placement.nameKo}</b>
-              <small>{placement.disclosure}</small>
-              <button type="button" onClick={() => void trackAd(placement.campaignId, "clicks")}>서비스 확인</button>
-            </article>
-          ))}
+          <div className="sponsored-strip-cards">
+            {sponsored.map((placement) => (
+              <article key={placement.campaignId}>
+                <span className="sponsored-label">{placement.label}</span>
+                <b>{itinerary.trip.language === "EN" ? placement.nameEn ?? placement.nameKo : placement.nameKo}</b>
+                <small>{placement.disclosure}</small>
+                <button type="button" onClick={() => void trackAd(placement.campaignId, "clicks")}>서비스 확인</button>
+              </article>
+            ))}
+          </div>
         </section>
       )}
 
