@@ -83,11 +83,14 @@ async function findNearbySpots(tag: string, lat: number, lng: number, radius: nu
     .sort((a, b) => (b.localScore - a.localScore) || (a.distanceM - b.distanceM));
 }
 
-function serializeSpot(place: { id: string; nameKo: string; nameEn: string | null; address: string; lat: number; lng: number; distanceM: number; openTime: string; closeTime: string; priceTier: number; localScore: number; imageUrl: string | null; recommendedStayMin: number }) {
+function serializeSpot(place: { id: string; nameKo: string; nameEn: string | null; address: string; lat: number; lng: number; distanceM: number; openTime: string; closeTime: string; priceTier: number; localScore: number; imageUrl: string | null; nightImageUrl: string | null; recommendedStayMin: number }, tag: string) {
+  // 야경 탭은 낮 사진(imageUrl)을 절대 쓰지 않는다 — 같은 장소가 자연/산책 탭에서 낮 사진으로도 쓰이므로,
+  // 야경용 사진(nightImageUrl)이 없으면 사진 없음(플레이스홀더)으로 둔다.
+  const imageUrl = tag === "nightview" ? place.nightImageUrl : place.imageUrl;
   return {
     id: place.id, nameKo: place.nameKo, nameEn: place.nameEn, address: place.address, lat: place.lat, lng: place.lng,
     distanceM: Math.round(place.distanceM), openTime: place.openTime, closeTime: place.closeTime,
-    priceTier: place.priceTier, localScore: place.localScore, imageUrl: place.imageUrl,
+    priceTier: place.priceTier, localScore: place.localScore, imageUrl,
     recommendedStayMin: place.recommendedStayMin,
   };
 }
@@ -103,7 +106,7 @@ function registerSpotRoute(path: string, tag: string, eventType: "activity_layer
       if (![lat, lng, radius].every(Number.isFinite)) return res.status(400).json({ error_code: "INVALID_LOCATION" });
       const spots = await findNearbySpots(tag, lat, lng, radius);
       await recordEventBestEffort({ eventType, entityType: "map_area", entityId: `${lat.toFixed(2)}:${lng.toFixed(2)}`, payload: { count: spots.length, radius } });
-      res.json(spots.map(serializeSpot));
+      res.json(spots.map((spot) => serializeSpot(spot, tag)));
     } catch (error) { next(error); }
   });
 }

@@ -9,19 +9,19 @@ npm install
 cd server
 npx prisma migrate deploy
 npm run seed
-npm run seed:pet-safety
 npm run seed:translations
 npm run seed:commerce
 npm run seed:v2
-npm run dev
-
-# 별도 터미널
-cd web
+npm run seed:discover-tags
+cd ..
 npm run dev
 ```
 
+`npm run dev`는 루트에서 서버(`:4000`)와 웹(`:5173`)을 한 번에 띄웁니다(`scripts/dev.mjs`). 서버가 죽어도 웹은 계속 떠 있으므로 화면 작업 중에는 편합니다. 각 프로세스를 따로 보고 싶으면 두 터미널에서 `npm run dev:server` / `npm run dev:web`을 나눠 실행하세요.
+
 - 웹: `http://localhost:5173`
 - API: `http://localhost:4000`
+- 화면이 안 뜨거나 API가 막히면 `npm run doctor`로 환경(포트 점유, `.env`, DB 마이그레이션 상태 등)을 먼저 점검하세요.
 - 카카오 키가 없으면 지도 대신 안내를 표시하고 일정·목록 기능은 유지합니다.
 - 외부 이동시간이나 날씨 원천이 없을 때는 반드시 `추정`으로 표시합니다.
 
@@ -45,7 +45,32 @@ GOOGLE_CUSTOM_SEARCH_CX=
 - 비동기 생성 job, SSE 진행률, 부분 재최적화, 대체 장소, 되돌리기
 - 카카오맵 경로, 반려동물 안전 정보, 다국어 UI와 구조화 번역 출처
 - 익명 세션, GPS 방문 인증, 리뷰, 로컬 등급·점수
+- 이메일 회원가입·로그인, 프로필(이름·아바타), 트립 히스토리
+- 여행 기록(스토리) 작성·수정·삭제와 개인 기록 보관함
+- 처음 방문 시 보여주는 Welcome 온보딩(언어 선택, 기능 요약)
+- 메뉴판 사진 번역, 양방향 음성 통역, 부산 사투리 카드 등 여행 중 실시간 보조 도구
+- 로컬 탭: 축제·야시장·전통시장·액티비티·산책·자연·야경·기념품샵 8종 카테고리
 - 이벤트 Outbox/Kafka 선택 연동, KPI, 광고·자연 추천 분리, 예약 제휴
+
+### 여행 중 실시간 보조 도구
+
+- **메뉴판 번역**: 브라우저에서 Tesseract.js로 사진 속 글자를 직접 인식하고, 수작업으로 정리한 한식 메뉴/알레르기 사전으로 번역·배지를 붙입니다. 외부 유료 OCR·번역 API를 쓰지 않으므로 네트워크 없이도 동작하고 비용이 들지 않습니다.
+- **음성 통역**: 브라우저 내장 `SpeechRecognition`/`SpeechSynthesis`로 동작하는 한국어 ↔ 외국어 양방향 통역입니다. 자주 쓰는 문장은 프리셋 버튼으로 바로 재생할 수 있습니다.
+- **부산 사투리 카드**: 여행 준비 탭에서 자주 쓰는 부산 사투리 표현을 카드로 익히고 확대 보기(플래시카드)로 복습할 수 있습니다.
+
+세 기능 모두 클라이언트 로직 또는 무료 브라우저 API로 동작하는 데모 수준 구현이며, 실제 클라우드 OCR/번역/음성 서비스로 교체하지 않았다는 점을 정직하게 남겨둡니다.
+
+### 로컬 탭 (부산 로컬 탐색)
+
+`/trips/:tripId/discover`의 로컬 탭은 8개 카테고리를 아코디언으로 보여줍니다.
+
+- 축제 · 야시장 · 전통시장(부산 전역 시장으로 확장) · 기념품샵은 기존 장소/이벤트 데이터를 그대로 씁니다.
+- 액티비티 · 산책 · 자연 · 야경은 `Place.tasteTags`에 `prisma/ensure-discover-tags.ts`가 얹는 세부 태그(`adventure_activity` / `walk_trail` / `nature_spot` / `nightview`)로 분류합니다. 기존 `activity` 태그는 일정 추천 엔진이 그대로 쓰므로 건드리지 않습니다.
+  - 액티비티: 요트·케이블카·서핑·사격장 등 예약형 체험
+  - 산책: ~길·~로드·~코스·공원 등 도보 동선
+  - 자연: 해수욕장·산 등 자연 경관
+  - 야경: 밤에 봐야 의미 있는 명소만 별도 큐레이션. 같은 장소라도 자연·산책 탭에서는 낮 사진(`Place.imageUrl`)을 쓰고, 야경 탭은 전용 `Place.nightImageUrl`(Wikimedia Commons 등 라이선스가 명확한 야경 사진)만 사용합니다. 야경 사진이 없는 곳은 낮 사진을 대신 보여주지 않고 플레이스홀더로 남겨둡니다.
+- 캠핑장류는 위 네 태그 어디에도 포함하지 않아 로컬 탭 어디에도 노출되지 않습니다.
 
 ### 카카오 식당 리뷰 추천
 
@@ -78,17 +103,19 @@ GOOGLE_CUSTOM_SEARCH_CX=
 
 ## 주요 API
 
+- `POST /api/auth/register` / `POST /api/auth/login` / `GET|PATCH /api/auth/me` / `POST /api/auth/logout`
 - `POST /api/itineraries/:id/items/:itemId/progress` — 방문 도착·출발 실측 기록
 - `GET /api/itineraries/:id/pace?dayIndex=&now=` — 지연 예보
 - `POST /api/itineraries/:id/days/:dayIndex/replan` — 현재 시각·위치 기준 남은 일정 재계산
 - `GET /api/trips/:tripId/rhythm` — 학습된 개인 체류 리듬
 - `GET /api/festivals?from=&to=` / `POST /api/itineraries/:id/festivals/:placeId`
 - `GET /api/shops/souvenir?lat=&lng=&radius=`
+- `GET /api/activities|walk-trails|nature-spots|night-views?lat=&lng=&radius=` — 로컬 탭 세부 카테고리
 - `GET /api/weather?region=BUSAN&date=`
 - `POST /api/itineraries/:id/share` / `GET /api/s/:slug` / `POST /api/s/:slug/clone`
 - `POST /api/trips/:tripId/members/invite` / `POST /api/collaboration/invites/:token/accept`
 - `GET /api/itineraries/:id/collaboration` / `PATCH /api/itineraries/:id/items/:itemId/collaborate`
-- `POST|GET /api/stories`, `POST /api/stories/:id/report`
+- `POST|GET /api/stories`, `PATCH|DELETE /api/stories/:id`, `POST /api/stories/:id/report`
 - `POST|DELETE /api/users/:id/follow`
 - `GET /api/moderation/stories` / `PATCH /api/moderation/reports/:id`
 
