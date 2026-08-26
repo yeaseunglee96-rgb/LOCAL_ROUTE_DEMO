@@ -47,6 +47,20 @@ function isOpenOnDay(place: ScoredPlace, dateStr: string): boolean {
   return !place.closedDays.includes(dateToDayAbbr(dateStr));
 }
 
+/**
+ * 카테고리별 체류시간 계수를 후보 목록에 미리 반영한다.
+ * 계수가 없으면 원본 배열을 그대로 돌려주어 기존 동작을 건드리지 않는다.
+ */
+function applyStayMinutesScale(places: ScoredPlace[], scale: Record<string, number> | undefined): ScoredPlace[] {
+  if (!scale || Object.keys(scale).length === 0) return places;
+  return places.map((place) => {
+    const factor = scale[place.category];
+    if (!factor || factor === 1) return place;
+    // 15분 미만으로 줄어들면 일정이 비현실적으로 촘촘해지므로 하한을 둔다.
+    return { ...place, recommendedStayMin: Math.max(15, Math.round(place.recommendedStayMin * factor)) };
+  });
+}
+
 function centroid(places: ScoredPlace[]): { lat: number; lng: number } {
   if (places.length === 0) return { lat: 0, lng: 0 };
   const lat = places.reduce((s, p) => s + p.lat, 0) / places.length;
@@ -70,6 +84,17 @@ export interface ScheduleInput {
   /** 사용자가 위저드에서 "며칠째"까지 직접 지정한 필수 방문 장소. dayIndex는 1부터 시작. */
   mustVisitAssignments?: { placeId: string; dayIndex: number }[];
   recommendationMode?: string;
+  /**
+   * 하루를 마치고 돌아갈 지점. 지정하지 않으면 originLat/originLng 로 복귀한다.
+   * 여행 중 재계산에서는 출발점이 "지금 서 있는 곳"이고 복귀점은 여전히 숙소이므로 둘을 분리해야 한다.
+   */
+  returnLat?: number;
+  returnLng?: number;
+  /**
+   * 카테고리별 체류시간 보정 계수(페이스 러닝).
+   * 예: { CAFE: 1.8 } 이면 카페 체류시간을 1.8배로 잡고 일정을 짠다.
+   */
+  stayMinutesScale?: Record<string, number>;
 }
 
 /**
@@ -78,10 +103,15 @@ export interface ScheduleInput {
  * 운영시간·예산·이동시간·필수장소 제약은 그대로 검증하되, 전역 최적해가 아닌 휴리스틱 해를 반환한다.
  */
 export async function buildItinerary(
-  scoredPlaces: ScoredPlace[],
+  rawScoredPlaces: ScoredPlace[],
   input: ScheduleInput
 ): Promise<{ days: ItineraryDayOutput[]; warnings: string[]; solverSource: "OR_TOOLS" | "HEURISTIC" }> {
   const warnings: string[] = [];
+  // 체류시간 보정은 여기서 한 번만 적용한다. 이후 OR-Tools·휴리스틱·시간표 확정이 모두
+  // recommendedStayMin 을 참조하므로, 입구에서 갈아끼우면 경로 전체에 일관되게 반영된다.
+  const scoredPlaces = applyStayMinutesScale(rawScoredPlaces, input.stayMinutesScale);
+  const returnLat = input.returnLat ?? input.originLat;
+  const returnLng = input.returnLng ?? input.originLng;
   const numDays = daysBetween(input.startDate, input.endDate);
   const dayBudget = input.totalBudget / numDays;
   const paceConfig = PACE_CONFIG[input.pace];
@@ -305,7 +335,7 @@ export async function buildItinerary(
     }
     const last = day.items.at(-1);
     if (last) {
-      const back = await getTravelEstimate(last.lat, last.lng, input.originLat, input.originLng, input.hasCar);
+      const back = await getTravelEstimate(last.lat, last.lng, returnLat, returnLng, input.hasCar);
       day.returnTravelMin = back.durationMin;
       day.returnDistanceM = back.distanceM;
       day.returnTravelIsEstimate = back.isEstimate;

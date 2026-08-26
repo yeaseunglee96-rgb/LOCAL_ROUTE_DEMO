@@ -3,13 +3,14 @@ import { prisma } from "../db.js";
 import { scorePlaces } from "../services/recommend.js";
 import { buildItinerary } from "../services/schedule.js";
 import { createJob, getJob, subscribeJob } from "../services/jobs.js";
-import { reoptimizeItineraryDay, reorderItineraryDay, undoLatestRevision } from "../services/reoptimize.js";
+import { loadRhythmProfile, reoptimizeItineraryDay, reorderItineraryDay, replanRemainingDay, undoLatestRevision, type ReplanStrategy } from "../services/reoptimize.js";
+import { computeDayPace, resolveStayMinutes, type PaceItem } from "../services/paceLearning.js";
 import { getEmbeddedRoute, haversineDistanceM, searchKakaoLocations } from "../services/kakao.js";
 import { localizeRoute, transferDifficultyFromCount } from "../services/navText.js";
 import { searchPlaceImage } from "../services/placeImages.js";
 import { applyCourseCategoryTasteTags, findCourseCategory, getCourseCategories } from "../services/courseCategories.js";
 import type { CreateTripRequest, ItineraryOutput, TripMeta } from "../types.js";
-import { recordEvent } from "../services/events.js";
+import { recordEvent, recordEventBestEffort } from "../services/events.js";
 import { optionalSession, requireItineraryEditor, requireTripEditor, requireTripViewer } from "../services/auth.js";
 
 export const tripsRouter = Router();
@@ -46,7 +47,7 @@ tripsRouter.get("/routes/directions", async (req, res, next) => {
     const route = await getEmbeddedRoute(startLat, startLng, endLat, endLng, mode);
     // F-NAV-01/03(v4 6.3장): 구글맵이 한국에서 지원하지 못하는 영어 턴바이턴 안내와
     // 환승 난이도 요약을 얹는다. 별도 DB 테이블 없이 매 요청 응답을 가공한다(v2 13.4장).
-    await recordEvent({ eventType: "route_guide_viewed", entityType: "route", entityId: `${startLat.toFixed(3)},${startLng.toFixed(3)}-${endLat.toFixed(3)},${endLng.toFixed(3)}`, language: lang, payload: { mode } });
+    await recordEventBestEffort({ eventType: "route_guide_viewed", entityType: "route", entityId: `${startLat.toFixed(3)},${startLng.toFixed(3)}-${endLat.toFixed(3)},${endLng.toFixed(3)}`, language: lang, payload: { mode } });
     return res.json({ ...localizeRoute(route, lang), transferDifficulty: transferDifficultyFromCount(route.transfers) });
   } catch (error) { next(error); }
 });
@@ -55,7 +56,7 @@ tripsRouter.get("/routes/taxi-card", async (req, res, next) => {
   try {
     const place = await prisma.place.findUnique({ where: { id: String(req.query.placeId ?? "") }, select: { id: true, nameKo: true, nameEn: true, address: true } });
     if (!place) return res.status(404).json({ error_code: "PLACE_NOT_FOUND" });
-    await recordEvent({ eventType: "taxi_card_generated", entityType: "place", entityId: place.id });
+    await recordEventBestEffort({ eventType: "taxi_card_generated", entityType: "place", entityId: place.id });
     // F-NAV-02(v4 6.3장): 한국어를 못 읽는 외국인이 택시 기사에게 그대로 보여줄 수 있는 카드.
     return res.json({ placeId: place.id, nameKo: place.nameKo, nameEn: place.nameEn, addressKo: place.address, phraseKo: `기사님, 여기로 가주세요: ${place.address}` });
   } catch (error) { next(error); }
@@ -212,6 +213,121 @@ tripsRouter.patch("/itineraries/:id/days/:dayIndex/reorder", async (req, res) =>
     const status = code.includes("NOT_FOUND") ? 404 : code === "INVALID_ORDER" ? 400 : 400;
     return res.status(status).json({ error_code: code, message: code === "INVALID_ORDER" ? "기존 항목과 같은 장소들의 순서만 바꿀 수 있습니다." : "순서 변경 요청을 처리하지 못했습니다." });
   }
+});
+
+// ── 페이스 러닝 ────────────────────────────────────────────────────────────────
+// 계획만 있던 일정에 "실제로 언제 도착했고 언제 떠났는지"를 붙이고, 그 차이로
+// (1) 지연 예보 (2) 남은 일정 재계산 (3) 개인 체류 리듬 학습 을 제공한다.
+
+const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+/** 방문 진행 기록 - 도착했을 때 arrivedAt, 떠날 때 departedAt 을 보낸다. */
+tripsRouter.post("/itineraries/:id/items/:itemId/progress", async (req, res) => {
+  try {
+    if (!await requireItineraryEditor(req, res, req.params.id)) return;
+    const { arrivedAt, departedAt } = req.body ?? {};
+    if (arrivedAt !== undefined && arrivedAt !== null && !TIME_PATTERN.test(String(arrivedAt))) {
+      return res.status(400).json({ error_code: "INVALID_TIME", message: "arrivedAt 은 HH:MM 형식이어야 합니다." });
+    }
+    if (departedAt !== undefined && departedAt !== null && !TIME_PATTERN.test(String(departedAt))) {
+      return res.status(400).json({ error_code: "INVALID_TIME", message: "departedAt 은 HH:MM 형식이어야 합니다." });
+    }
+    const item = await prisma.itineraryItem.findFirst({
+      where: { id: req.params.itemId, day: { itineraryId: req.params.id } },
+      include: { place: { select: { category: true, nameKo: true } } },
+    });
+    if (!item) return res.status(404).json({ error_code: "ITEM_NOT_FOUND", message: "일정 항목을 찾을 수 없습니다." });
+
+    const nextArrival = arrivedAt === undefined ? item.actualArrival : arrivedAt;
+    const nextDeparture = departedAt === undefined ? item.actualDeparture : departedAt;
+    // 출발 기록은 도착 기록이 있어야 의미가 있다. 체류시간은 둘이 모두 있을 때만 확정한다.
+    if (nextDeparture && !nextArrival) {
+      return res.status(400).json({ error_code: "ARRIVAL_REQUIRED", message: "도착 기록 없이 출발만 기록할 수 없습니다." });
+    }
+    const stayMinutes = nextArrival && nextDeparture ? resolveStayMinutes(nextArrival, nextDeparture) : null;
+
+    const updated = await prisma.itineraryItem.update({
+      where: { id: item.id },
+      data: { actualArrival: nextArrival, actualDeparture: nextDeparture, actualStayMinutes: stayMinutes },
+      select: { id: true, seqOrder: true, plannedArrival: true, stayMinutes: true, actualArrival: true, actualDeparture: true, actualStayMinutes: true },
+    });
+    await recordEvent({
+      eventType: "itinerary_progress_recorded",
+      entityType: "itinerary_item", entityId: item.id,
+      payload: { itineraryId: req.params.id, category: item.place.category, plannedStayMinutes: item.stayMinutes, actualStayMinutes: stayMinutes },
+    });
+    return res.json(updated);
+  } catch {
+    return res.status(400).json({ error_code: "PROGRESS_FAILED", message: "방문 기록을 저장하지 못했습니다." });
+  }
+});
+
+/** 지연 예보 - 지금 페이스로 하루가 어떻게 끝날지 계산한다. now 를 주지 않으면 서버 시각을 쓴다. */
+tripsRouter.get("/itineraries/:id/pace", async (req, res) => {
+  const dayIndex = Number(req.query.dayIndex ?? 1);
+  if (!Number.isInteger(dayIndex) || dayIndex < 1) {
+    return res.status(400).json({ error_code: "INVALID_REQUEST", message: "dayIndex 는 1 이상의 정수여야 합니다." });
+  }
+  const nowRaw = typeof req.query.now === "string" ? req.query.now : null;
+  if (nowRaw && !TIME_PATTERN.test(nowRaw)) {
+    return res.status(400).json({ error_code: "INVALID_TIME", message: "now 는 HH:MM 형식이어야 합니다." });
+  }
+  const day = await prisma.itineraryDay.findFirst({
+    where: { itineraryId: req.params.id, dayIndex },
+    include: { items: { include: { place: { select: { nameKo: true, nameEn: true, category: true, closeTime: true } } } } },
+  });
+  if (!day) return res.status(404).json({ error_code: "DAY_NOT_FOUND", message: "해당 날짜의 일정을 찾을 수 없습니다." });
+
+  const now = nowRaw ?? new Date().toTimeString().slice(0, 5);
+  const items: PaceItem[] = day.items.map((item) => ({
+    seqOrder: item.seqOrder, placeId: item.placeId,
+    nameKo: item.place.nameKo, nameEn: item.place.nameEn, category: item.place.category,
+    closeTime: item.place.closeTime, plannedArrival: item.plannedArrival, stayMinutes: item.stayMinutes,
+    travelMinToNext: item.travelMinToNext, actualArrival: item.actualArrival, actualDeparture: item.actualDeparture,
+  }));
+  const forecast = computeDayPace(items, Number(now.slice(0, 2)) * 60 + Number(now.slice(3, 5)));
+  return res.json({ dayIndex, visitDate: day.visitDate, now, ...forecast });
+});
+
+/** 여행 중 재계산 - 지금 이 시각·이 자리를 출발점으로 남은 일정만 다시 짠다. */
+tripsRouter.post("/itineraries/:id/days/:dayIndex/replan", async (req, res) => {
+  try {
+    if (!await requireItineraryEditor(req, res, req.params.id)) return;
+    const { currentTime, lat, lng, strategy, useRhythm } = req.body ?? {};
+    if (!TIME_PATTERN.test(String(currentTime))) {
+      return res.status(400).json({ error_code: "INVALID_TIME", message: "currentTime 은 HH:MM 형식이어야 합니다." });
+    }
+    if (typeof lat !== "number" || typeof lng !== "number" || !Number.isFinite(lat) || !Number.isFinite(lng)) {
+      return res.status(400).json({ error_code: "INVALID_REQUEST", message: "현재 위치(lat, lng)가 필요합니다." });
+    }
+    const allowed: ReplanStrategy[] = ["KEEP_ALL", "DROP_ONE", "DEFER_LAST"];
+    if (strategy !== undefined && !allowed.includes(strategy)) {
+      return res.status(400).json({ error_code: "INVALID_REQUEST", message: "지원하지 않는 재계산 방식입니다." });
+    }
+    const result = await replanRemainingDay(req.params.id, Number(req.params.dayIndex), { currentTime, lat, lng, strategy, useRhythm });
+    await recordEvent({
+      eventType: "itinerary_replanned_midtrip",
+      entityType: "itinerary", entityId: req.params.id,
+      payload: { dayIndex: Number(req.params.dayIndex), strategy: result.strategy, preservedCount: result.preservedCount, replacedCount: result.replacedCount, rhythmApplied: result.rhythmApplied },
+    });
+    return res.json(result);
+  } catch (error) {
+    const code = error instanceof Error ? error.message : "REPLAN_FAILED";
+    const status = code.includes("NOT_FOUND") ? 404 : code === "NO_FEASIBLE_ALTERNATIVE" ? 422 : 400;
+    const message = code === "NOTHING_TO_REPLAN" ? "남은 일정이 없어 다시 계산할 것이 없습니다."
+      : code === "DAY_ALREADY_OVER" ? "오늘 일정 시간이 이미 끝났습니다."
+      : code === "NO_FEASIBLE_ALTERNATIVE" ? "지금 시각과 위치에서 갈 수 있는 대안을 찾지 못했습니다."
+      : "남은 일정을 다시 계산하지 못했습니다.";
+    return res.status(status).json({ error_code: code, message });
+  }
+});
+
+/** 개인 체류 리듬 - 아침 브리핑에서 "어제 보니 카페에 84분 계셨어요"를 만들 재료. */
+tripsRouter.get("/trips/:tripId/rhythm", async (req, res) => {
+  if (!await requireTripViewer(req, res, req.params.tripId)) return;
+  const profile = await loadRhythmProfile(req.params.tripId);
+  if (!profile) return res.json({ hasProfile: false, scale: {}, observations: [], totalSamples: 0 });
+  return res.json(profile);
 });
 
 tripsRouter.post("/itineraries/:id/undo", async (req, res) => {
@@ -528,6 +644,10 @@ tripsRouter.get("/trips/:id/itinerary", async (req, res) => {
             itemId: it.id,
             seqOrder: it.seqOrder,
             placeId: it.placeId,
+            // 페이스 러닝: 화면이 계획과 실측을 함께 그릴 수 있도록 실측값을 같이 내려준다.
+            actualArrival: it.actualArrival,
+            actualDeparture: it.actualDeparture,
+            actualStayMinutes: it.actualStayMinutes,
             nameKo: it.place.nameKo,
             nameEn: it.place.nameEn,
             category: it.place.category,

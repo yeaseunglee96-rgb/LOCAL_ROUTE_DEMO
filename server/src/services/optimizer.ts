@@ -17,6 +17,43 @@ function parseTime(value: string) {
   return hour * 60 + minute;
 }
 
+export interface OrToolsRuntime {
+  python: string;
+  script: string;
+  /** 실행을 시도할 만한 환경인지. false 면 호출부는 곧바로 휴리스틱으로 폴백한다. */
+  available: boolean;
+  /** 어떤 경로로 파이썬을 정했는지(진단·테스트 메시지용). */
+  source: "ORTOOLS_PYTHON" | "PYTHON_EXECUTABLE" | "PROJECT_VENV" | "NONE";
+}
+
+/**
+ * OR-Tools 실행 환경을 한 곳에서 판별한다.
+ *
+ * 우선순위: 명시 지정(ORTOOLS_PYTHON → PYTHON_EXECUTABLE) → 프로젝트 venv.
+ * venv 경로는 플랫폼마다 다르다(Windows: .venv/Scripts/python.exe, 그 외: .venv/bin/python).
+ * OR-Tools 는 선택 의존성이므로 없으면 available:false 를 돌려주고 호출부가 휴리스틱을 쓴다.
+ */
+export function resolveOrToolsRuntime(): OrToolsRuntime {
+  const moduleRoot = fileURLToPath(new URL("../../", import.meta.url));
+  const serverRoot = [moduleRoot, process.cwd(), path.resolve(process.cwd(), "server")]
+    .find((candidate) => existsSync(path.resolve(candidate, "solver", "route_optimizer.py"))) ?? moduleRoot;
+  const script = path.resolve(serverRoot, "solver", "route_optimizer.py");
+  const hasScript = existsSync(script);
+
+  const explicit = process.env.ORTOOLS_PYTHON || process.env.PYTHON_EXECUTABLE || null;
+  if (explicit) {
+    const source = process.env.ORTOOLS_PYTHON ? "ORTOOLS_PYTHON" : "PYTHON_EXECUTABLE";
+    return { python: explicit, script, available: hasScript, source };
+  }
+
+  const venvPython = process.platform === "win32"
+    ? path.resolve(serverRoot, ".venv", "Scripts", "python.exe")
+    : path.resolve(serverRoot, ".venv", "bin", "python");
+  if (existsSync(venvPython)) return { python: venvPython, script, available: hasScript, source: "PROJECT_VENV" };
+
+  return { python: venvPython, script, available: false, source: "NONE" };
+}
+
 export async function optimizeDayWithOrTools(
   places: ScoredPlace[],
   options: {
@@ -71,11 +108,10 @@ export async function optimizeDayWithOrTools(
     timeoutMs: 1500,
   };
 
-  const moduleRoot = fileURLToPath(new URL("../../", import.meta.url));
-  const serverRoot = [moduleRoot, process.cwd(), path.resolve(process.cwd(), "server")]
-    .find((candidate) => existsSync(path.resolve(candidate, "solver", "route_optimizer.py"))) ?? moduleRoot;
-  const python = process.env.ORTOOLS_PYTHON ?? path.resolve(serverRoot, ".venv", "Scripts", "python.exe");
-  const script = path.resolve(serverRoot, "solver", "route_optimizer.py");
+  const runtime = resolveOrToolsRuntime();
+  // 실행 환경이 아예 없으면 프로세스를 띄워 ENOENT 를 기다릴 이유가 없다. 바로 폴백시킨다.
+  if (!runtime.available) return null;
+  const { python, script } = runtime;
   return new Promise((resolve) => {
     const child = spawn(python, [script], { stdio: ["pipe", "pipe", "pipe"], windowsHide: true });
     let stdout = "";

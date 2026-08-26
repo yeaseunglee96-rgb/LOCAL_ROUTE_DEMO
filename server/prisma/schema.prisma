@@ -385,6 +385,12 @@ model ItineraryItem {
   isPinned           Boolean  @default(false)
   version            Int      @default(1)
   stories            Story[]
+
+  // 페이스 러닝: 계획(plannedArrival/stayMinutes)과 짝을 이루는 실측값.
+  // 같은 행에 계획과 실제가 함께 있어야 "얼마나 밀렸는지"와 "이 사람의 체류 리듬"을 한 번에 계산할 수 있다.
+  actualArrival      String?  // "HH:MM" - 실제 도착 시각
+  actualDeparture    String?  // "HH:MM" - 실제 출발 시각
+  actualStayMinutes  Int?     // 실측 체류 시간(분)
 }
 
 model TripMember {

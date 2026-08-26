@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../db.js";
 import { haversineDistanceM } from "../services/kakao.js";
-import { recordEvent } from "../services/events.js";
+import { recordEvent, recordEventBestEffort } from "../services/events.js";
 import { requireItineraryEditor } from "../services/auth.js";
 
 export const experienceRouter = Router();
@@ -36,7 +36,7 @@ experienceRouter.get("/festivals", async (req, res, next) => {
       where: { category: "FESTIVAL", eventStartDate: { lte: to }, eventEndDate: { gte: from } },
       orderBy: [{ eventStartDate: "asc" }, { localScore: "desc" }],
     });
-    await recordEvent({ eventType: "festival_impression", entityType: "trip_period", entityId: `${from}:${to}`, payload: { count: festivals.length } });
+    await recordEventBestEffort({ eventType: "festival_impression", entityType: "trip_period", entityId: `${from}:${to}`, payload: { count: festivals.length } });
     return res.json({ festivals: festivals.map((place) => ({ placeId: place.id, title: place.nameKo, titleEn: place.nameEn, address: place.address, lat: place.lat, lng: place.lng, startDate: place.eventStartDate, endDate: place.eventEndDate, playTime: place.playTime, imageUrl: place.imageUrl, localScore: place.localScore })) });
   } catch (error) { next(error); }
 });
@@ -67,7 +67,7 @@ experienceRouter.get("/shops/souvenir", async (req, res, next) => {
       .map((place) => ({ ...place, distanceM: haversineDistanceM(lat, lng, place.lat, place.lng) }))
       .filter((place) => place.distanceM <= radius)
       .sort((a, b) => (b.localScore - a.localScore) || (a.distanceM - b.distanceM));
-    await recordEvent({ eventType: "souvenir_layer_viewed", entityType: "map_area", entityId: `${lat.toFixed(2)}:${lng.toFixed(2)}`, payload: { count: shops.length, radius } });
+    await recordEventBestEffort({ eventType: "souvenir_layer_viewed", entityType: "map_area", entityId: `${lat.toFixed(2)}:${lng.toFixed(2)}`, payload: { count: shops.length, radius } });
     res.json(shops.map((place) => ({ id: place.id, nameKo: place.nameKo, nameEn: place.nameEn, address: place.address, lat: place.lat, lng: place.lng, distanceM: Math.round(place.distanceM), items: JSON.parse(place.souvenirItems), openTime: place.openTime, closeTime: place.closeTime, cardPayment: place.foreignCardPayment, foreignAssistance: place.foreignAssistance, localScore: place.localScore, imageUrl: place.imageUrl, rankingBasis: "LOCAL_SCORE_AND_DISTANCE", sponsored: false })));
   } catch (error) { next(error); }
 });

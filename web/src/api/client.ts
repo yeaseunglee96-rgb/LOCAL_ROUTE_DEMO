@@ -1,4 +1,4 @@
-import type { BookingOption, CourseCategory, CreateTripRequest, EmbeddedRoute, Festival, ItineraryJob, ItineraryOutput, LocationSearchResult, PlaceAlternative, PlaceImageMatch, PlaceRecord, SharedItinerary, SouvenirShop, SponsoredPlacement, StoryRecord, TaxiCard, WeatherForecast } from "../types";
+import type { BookingOption, CourseCategory, CreateTripRequest, EmbeddedRoute, Festival, ItineraryJob, ItineraryOutput, LocationSearchResult, PaceForecast, PlaceAlternative, PlaceImageMatch, PlaceRecord, ReplanResult, RhythmProfile, SharedItinerary, SouvenirShop, SponsoredPlacement, StoryRecord, TaxiCard, WeatherForecast } from "../types";
 
 /**
  * 백엔드가 떠 있지 않으면 fetch 는 TypeError("Failed to fetch") 로 실패한다.
@@ -131,6 +131,32 @@ export async function reorderDay(itineraryId: string, dayIndex: number, itemIds:
 
 export async function undoItineraryChange(itineraryId: string) {
   return handle(await fetch(`/api/itineraries/${itineraryId}/undo`, { method: "POST", headers: await authHeaders() }));
+}
+
+// ── 페이스 러닝 ────────────────────────────────────────────────────────────────
+
+/** 방문 도착/출발을 기록한다. 이 실측값이 지연 예보와 리듬 학습의 유일한 재료다. */
+export async function recordItemProgress(itineraryId: string, itemId: string, payload: { arrivedAt?: string | null; departedAt?: string | null }) {
+  return handle<{ id: string; seqOrder: number; plannedArrival: string; stayMinutes: number; actualArrival: string | null; actualDeparture: string | null; actualStayMinutes: number | null }>(
+    await fetch(`/api/itineraries/${itineraryId}/items/${itemId}/progress`, { method: "POST", headers: { "Content-Type": "application/json", ...(await authHeaders()) }, body: JSON.stringify(payload) })
+  );
+}
+
+/** 지연 예보를 가져온다. now 를 생략하면 서버 시각 기준으로 계산한다. */
+export async function getPaceForecast(itineraryId: string, dayIndex: number, now?: string): Promise<PaceForecast> {
+  const query = new URLSearchParams({ dayIndex: String(dayIndex) });
+  if (now) query.set("now", now);
+  return handle(await fetch(`/api/itineraries/${itineraryId}/pace?${query}`, { headers: await authHeaders() }));
+}
+
+/** 지금 이 시각·이 자리를 출발점으로 남은 일정만 다시 짠다. */
+export async function replanRemainingDay(itineraryId: string, dayIndex: number, payload: { currentTime: string; lat: number; lng: number; strategy?: "KEEP_ALL" | "DROP_ONE" | "DEFER_LAST"; useRhythm?: boolean }): Promise<ReplanResult> {
+  return handle(await fetch(`/api/itineraries/${itineraryId}/days/${dayIndex}/replan`, { method: "POST", headers: { "Content-Type": "application/json", ...(await authHeaders()) }, body: JSON.stringify(payload) }));
+}
+
+/** 이 여행에서 학습된 개인 체류 리듬. */
+export async function getRhythmProfile(tripId: string): Promise<RhythmProfile> {
+  return handle(await fetch(`/api/trips/${tripId}/rhythm`, { headers: await authHeaders() }));
 }
 
 export async function getAlternatives(itineraryId: string, itemId: string): Promise<PlaceAlternative[]> {

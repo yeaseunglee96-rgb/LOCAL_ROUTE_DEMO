@@ -39,3 +39,21 @@ test("주소 검색은 짧은 검색어를 거부한다", async () => {
   const response = await request(app).get("/api/locations/search?query=부").expect(400);
   assert.equal(response.body.error_code, "QUERY_TOO_SHORT");
 });
+
+test("조회 경로는 이벤트 기록이 실패해도 정상 응답을 돌려준다", async () => {
+  // 이벤트 Outbox 기록은 조회 결과가 이미 준비된 뒤에 일어난다.
+  // DB 장애로 그 기록이 실패했다고 멀쩡한 길찾기 응답을 500 으로 바꿔서는 안 된다.
+  const { prisma } = await import("../src/db.js");
+  const original = prisma.eventOutbox.create;
+  (prisma.eventOutbox as { create: unknown }).create = async () => { throw new Error("이벤트 저장소 장애 시뮬레이션"); };
+  try {
+    const response = await request(app)
+      .get("/api/routes/directions")
+      .query({ startLat: 35.1152, startLng: 129.0403, endLat: 35.1587, endLng: 129.1604, mode: "TRANSIT" })
+      .expect(200);
+    assert.ok(response.body.durationMin > 0);
+    assert.ok(response.body.path.length >= 2);
+  } finally {
+    (prisma.eventOutbox as { create: unknown }).create = original;
+  }
+});
