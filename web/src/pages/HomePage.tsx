@@ -27,7 +27,9 @@ export function HomePage() {
   return (
     <div className="landing">
       <header className="landing-header">
-        <BrandLogo />
+        <Link to={paths.welcome()} className="landing-brand-link" title={isEn ? "About LOCAL ROUTE" : "서비스 소개 다시 보기"}>
+          <BrandLogo />
+        </Link>
         <nav className="landing-nav">
           <Link to={paths.stories()}>{isEn ? "Travel Log" : "여행 기록"}</Link>
           <Link to={paths.myTrips()}>{isEn ? "My Trips" : "내 여행"}</Link>
@@ -68,6 +70,7 @@ export function HomePage() {
       )}
 
       <footer className="landing-footer">
+        <Link to={paths.welcome()}>{isEn ? "About LOCAL ROUTE" : "서비스 소개"}</Link>
         <Link to={paths.terms()}>{isEn ? "Terms of Service" : "이용약관"}</Link>
         <Link to={paths.privacy()}>{isEn ? "Privacy Policy" : "개인정보 처리방침"}</Link>
         <Link to={paths.openSource()}>{isEn ? "Open Source Notices" : "오픈소스 고지"}</Link>
