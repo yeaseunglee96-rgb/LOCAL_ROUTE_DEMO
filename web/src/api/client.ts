@@ -40,6 +40,9 @@ export async function createTrip(payload: CreateTripRequest): Promise<{ tripId: 
   return handle(res);
 }
 
+export interface MyTripSummary { id: string; origin: string; startDate: string; endDate: string; partySize: number; pace: "RELAXED" | "NORMAL" | "PACKED"; status: string; itineraryId: string | null; placeCount: number; coverImage: string | null; highlights: string[]; createdAt: string }
+export async function getMyTrips() { return (await handle<{ trips: MyTripSummary[] }>(await fetch("/api/trips", { headers: await authHeaders() }))).trips; }
+
 export async function generateItinerary(tripId: string, onProgress?: (job: ItineraryJob) => void, mode?: string): Promise<ItineraryOutput> {
   const res = await fetch(`/api/trips/${tripId}/itineraries:generate`, {
     method: "POST",

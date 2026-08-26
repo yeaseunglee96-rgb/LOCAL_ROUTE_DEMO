@@ -11,9 +11,25 @@ import { searchPlaceImage } from "../services/placeImages.js";
 import { applyCourseCategoryTasteTags, findCourseCategory, getCourseCategories } from "../services/courseCategories.js";
 import type { CreateTripRequest, ItineraryOutput, TripMeta } from "../types.js";
 import { recordEvent, recordEventBestEffort } from "../services/events.js";
-import { optionalSession, requireItineraryEditor, requireTripEditor, requireTripViewer } from "../services/auth.js";
+import { optionalSession, requireItineraryEditor, requireSession, requireTripEditor, requireTripViewer } from "../services/auth.js";
 
 export const tripsRouter = Router();
+
+tripsRouter.get("/trips", async (req, res, next) => {
+  try {
+    const session = await requireSession(req, res); if (!session) return;
+    const trips = await prisma.trip.findMany({
+      where: { OR: [{ ownerSessionId: session.id }, { members: { some: { sessionId: session.id, joinedAt: { not: null }, revokedAt: null } } }] },
+      orderBy: { createdAt: "desc" },
+      include: { itineraries: { orderBy: { generatedAt: "desc" }, take: 1, include: { days: { orderBy: { dayIndex: "asc" }, include: { items: { orderBy: { seqOrder: "asc" }, include: { place: { select: { nameKo: true, imageUrl: true } } } } } } } } },
+    });
+    res.json({ trips: trips.map((trip) => {
+      const itinerary = trip.itineraries[0] ?? null;
+      const items = itinerary?.days.flatMap((day) => day.items) ?? [];
+      return { id: trip.id, origin: trip.origin, startDate: trip.startDate, endDate: trip.endDate, partySize: trip.partySize, pace: trip.pace, status: itinerary ? "READY" : trip.status, itineraryId: itinerary?.id ?? null, placeCount: items.length, coverImage: items.find((item) => item.place.imageUrl)?.place.imageUrl ?? null, highlights: items.slice(0, 3).map((item) => item.place.nameKo), createdAt: trip.createdAt };
+    }) });
+  } catch (error) { next(error); }
+});
 
 tripsRouter.get("/locations/search", async (req, res, next) => {
   try {
