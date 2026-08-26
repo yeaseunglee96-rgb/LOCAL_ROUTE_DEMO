@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { InfoCards } from "../../components/InfoCards";
+import { RegionalTipCard } from "../../components/RegionalTipCard";
 import { ShareBar } from "../../components/ShareBar";
 import { WeatherPrepWidget } from "../../components/WeatherPrepWidget";
 import { TripMemorySummary } from "../../components/TripMemorySummary";
@@ -39,10 +40,6 @@ export function TripPrepPage() {
         </div>
       </header>
 
-      <WeatherPrepWidget language={lang} />
-      <TripMemorySummary language={lang} daysCount={itinerary.days.length} />
-      <BusanDialectWidget language={lang} />
-
       {sponsored.length > 0 && (
         <section className="sponsored-strip" aria-label="광고">
           <div>
@@ -60,6 +57,13 @@ export function TripPrepPage() {
         </section>
       )}
 
+      <RegionalTipCard language={lang} />
+
+      <InfoCards
+        itinerary={itinerary}
+        collaboration={<ShareBar itineraryId={itinerary.itineraryId} tripId={itinerary.tripId} language={itinerary.trip.language} />}
+      />
+
       {bookingOptions.length > 0 && (
         <section className="booking-strip" aria-label="숙소 예약 제휴">
           <div>
@@ -75,10 +79,9 @@ export function TripPrepPage() {
         </section>
       )}
 
-      <InfoCards
-        itinerary={itinerary}
-        collaboration={<ShareBar itineraryId={itinerary.itineraryId} tripId={itinerary.tripId} language={itinerary.trip.language} />}
-      />
+      <BusanDialectWidget language={lang} />
+      <TripMemorySummary language={lang} daysCount={itinerary.days.length} />
+      <WeatherPrepWidget language={lang} />
 
       <div className="data-honesty-bar">
         <strong>데이터 안내</strong>
