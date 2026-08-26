@@ -36,6 +36,8 @@ export const EVENT_TOPIC = {
   souvenir_layer_viewed: "place-interaction-events",
   activity_layer_viewed: "place-interaction-events",
   nature_spot_layer_viewed: "place-interaction-events",
+  walk_trail_layer_viewed: "place-interaction-events",
+  night_view_layer_viewed: "place-interaction-events",
   share_created: "collab-events",
   share_viewed: "collab-events",
   itinerary_cloned: "collab-events",

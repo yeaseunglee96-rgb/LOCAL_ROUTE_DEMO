@@ -266,7 +266,9 @@ export async function getEvents(from: string, to: string): Promise<Festival[]> {
 export async function addFestival(itineraryId: string, placeId: string) { return handle(await fetch(`/api/itineraries/${itineraryId}/festivals/${placeId}`, { method: "POST", headers: await authHeaders() })); }
 export async function getSouvenirShops(lat: number, lng: number): Promise<SouvenirShop[]> { return handle(await fetch(`/api/shops/souvenir?lat=${lat}&lng=${lng}&radius=12000`)); }
 export async function getActivities(lat: number, lng: number): Promise<ActivitySpot[]> { return handle(await fetch(`/api/activities?lat=${lat}&lng=${lng}&radius=15000`)); }
+export async function getWalkTrails(lat: number, lng: number): Promise<ActivitySpot[]> { return handle(await fetch(`/api/walk-trails?lat=${lat}&lng=${lng}&radius=15000`)); }
 export async function getNatureSpots(lat: number, lng: number): Promise<ActivitySpot[]> { return handle(await fetch(`/api/nature-spots?lat=${lat}&lng=${lng}&radius=15000`)); }
+export async function getNightViews(lat: number, lng: number): Promise<ActivitySpot[]> { return handle(await fetch(`/api/night-views?lat=${lat}&lng=${lng}&radius=15000`)); }
 export async function getWeather(date: string): Promise<WeatherForecast> { return handle(await fetch(`/api/weather?region=BUSAN&date=${date}`)); }
 export async function createShare(itineraryId: string) { return handle<{ shareSlug: string; url: string; expiresAt: string }>(await fetch(`/api/itineraries/${itineraryId}/share`, { method: "POST", headers: { "Content-Type": "application/json", ...(await authHeaders()) }, body: JSON.stringify({ visibility: "LINK", expiresInDays: 30 }) })); }
 export async function getSharedItinerary(slug: string): Promise<SharedItinerary> { return handle(await fetch(`/api/s/${slug}`)); }

@@ -76,7 +76,8 @@ experienceRouter.get("/shops/souvenir", async (req, res, next) => {
 });
 
 async function findNearbySpots(tag: string, lat: number, lng: number, radius: number) {
-  return (await prisma.place.findMany({ where: { tasteTags: { contains: tag } } }))
+  // FESTIVAL/SOUVENIR 는 각자 전용 탭이 있으니 다른 로컬 탭에서는 중복 노출하지 않는다.
+  return (await prisma.place.findMany({ where: { tasteTags: { contains: tag }, category: { notIn: ["FESTIVAL", "SOUVENIR"] } } }))
     .map((place) => ({ ...place, distanceM: haversineDistanceM(lat, lng, place.lat, place.lng) }))
     .filter((place) => place.distanceM <= radius)
     .sort((a, b) => (b.localScore - a.localScore) || (a.distanceM - b.distanceM));
@@ -92,27 +93,25 @@ function serializeSpot(place: { id: string; nameKo: string; nameEn: string | nul
 }
 
 // "activity" 취향 태그는 일정 추천 엔진이 그대로 쓰고 있어 손대지 않았다. 로컬 탭에서는 그 안에서
-// 성격이 다른 두 묶음 — 예약/체험형 액티비티(adventure_activity)와 산책·자연 스팟(nature_walk) —
-// 을 구분해서 보여주기 위해 prisma/ensure-discover-tags.ts 로 얹어둔 세부 태그를 사용한다.
-experienceRouter.get("/activities", async (req, res, next) => {
-  try {
-    const lat = Number(req.query.lat); const lng = Number(req.query.lng); const radius = Math.min(30_000, Math.max(100, Number(req.query.radius ?? 15_000)));
-    if (![lat, lng, radius].every(Number.isFinite)) return res.status(400).json({ error_code: "INVALID_LOCATION" });
-    const activities = await findNearbySpots("adventure_activity", lat, lng, radius);
-    await recordEventBestEffort({ eventType: "activity_layer_viewed", entityType: "map_area", entityId: `${lat.toFixed(2)}:${lng.toFixed(2)}`, payload: { count: activities.length, radius } });
-    res.json(activities.map(serializeSpot));
-  } catch (error) { next(error); }
-});
+// 성격이 다른 여러 묶음 — 예약/체험형 액티비티, 산책로/공원, 해수욕장/산, 야경 명소 — 을 구분해서
+// 보여주기 위해 prisma/ensure-discover-tags.ts 로 얹어둔 세부 태그를 쓴다. 캠핑장류는 어느 세부
+// 태그에도 넣지 않아 로컬 탭 어디에도 노출되지 않는다.
+function registerSpotRoute(path: string, tag: string, eventType: "activity_layer_viewed" | "nature_spot_layer_viewed" | "walk_trail_layer_viewed" | "night_view_layer_viewed") {
+  experienceRouter.get(path, async (req, res, next) => {
+    try {
+      const lat = Number(req.query.lat); const lng = Number(req.query.lng); const radius = Math.min(30_000, Math.max(100, Number(req.query.radius ?? 15_000)));
+      if (![lat, lng, radius].every(Number.isFinite)) return res.status(400).json({ error_code: "INVALID_LOCATION" });
+      const spots = await findNearbySpots(tag, lat, lng, radius);
+      await recordEventBestEffort({ eventType, entityType: "map_area", entityId: `${lat.toFixed(2)}:${lng.toFixed(2)}`, payload: { count: spots.length, radius } });
+      res.json(spots.map(serializeSpot));
+    } catch (error) { next(error); }
+  });
+}
 
-experienceRouter.get("/nature-spots", async (req, res, next) => {
-  try {
-    const lat = Number(req.query.lat); const lng = Number(req.query.lng); const radius = Math.min(30_000, Math.max(100, Number(req.query.radius ?? 15_000)));
-    if (![lat, lng, radius].every(Number.isFinite)) return res.status(400).json({ error_code: "INVALID_LOCATION" });
-    const spots = await findNearbySpots("nature_walk", lat, lng, radius);
-    await recordEventBestEffort({ eventType: "nature_spot_layer_viewed", entityType: "map_area", entityId: `${lat.toFixed(2)}:${lng.toFixed(2)}`, payload: { count: spots.length, radius } });
-    res.json(spots.map(serializeSpot));
-  } catch (error) { next(error); }
-});
+registerSpotRoute("/activities", "adventure_activity", "activity_layer_viewed");
+registerSpotRoute("/walk-trails", "walk_trail", "walk_trail_layer_viewed");
+registerSpotRoute("/nature-spots", "nature_spot", "nature_spot_layer_viewed");
+registerSpotRoute("/night-views", "nightview", "night_view_layer_viewed");
 
 const weatherCache = new Map<string, { expiresAt: number; value: object }>();
 experienceRouter.get("/weather", async (req, res) => {
