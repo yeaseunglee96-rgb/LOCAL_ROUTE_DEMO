@@ -21,12 +21,13 @@ tripsRouter.get("/trips", async (req, res, next) => {
     const trips = await prisma.trip.findMany({
       where: { OR: [{ ownerSessionId: session.id }, { members: { some: { sessionId: session.id, joinedAt: { not: null }, revokedAt: null } } }] },
       orderBy: { createdAt: "desc" },
-      include: { itineraries: { orderBy: { generatedAt: "desc" }, take: 1, include: { days: { orderBy: { dayIndex: "asc" }, include: { items: { orderBy: { seqOrder: "asc" }, include: { place: { select: { nameKo: true, imageUrl: true } } } } } } } } },
+      include: { itineraries: { orderBy: { generatedAt: "desc" }, take: 1, include: { stories: { where: { authorSessionId: session.id }, orderBy: { createdAt: "desc" }, select: { imageDataJson: true } }, days: { orderBy: { dayIndex: "asc" }, include: { items: { orderBy: { seqOrder: "asc" }, include: { place: { select: { nameKo: true, imageUrl: true } } } } } } } } },
     });
     res.json({ trips: trips.map((trip) => {
       const itinerary = trip.itineraries[0] ?? null;
       const items = itinerary?.days.flatMap((day) => day.items) ?? [];
-      return { id: trip.id, origin: trip.origin, startDate: trip.startDate, endDate: trip.endDate, partySize: trip.partySize, pace: trip.pace, status: itinerary ? "READY" : trip.status, itineraryId: itinerary?.id ?? null, placeCount: items.length, coverImage: items.find((item) => item.place.imageUrl)?.place.imageUrl ?? null, highlights: items.slice(0, 3).map((item) => item.place.nameKo), createdAt: trip.createdAt };
+      const storyImages = itinerary?.stories.flatMap((story) => { try { return JSON.parse(story.imageDataJson) as string[]; } catch { return []; } }) ?? [];
+      return { id: trip.id, origin: trip.origin, startDate: trip.startDate, endDate: trip.endDate, partySize: trip.partySize, pace: trip.pace, status: itinerary ? "READY" : trip.status, itineraryId: itinerary?.id ?? null, placeCount: items.length, storyCount: itinerary?.stories.length ?? 0, coverImage: storyImages[0] ?? items.find((item) => item.place.imageUrl)?.place.imageUrl ?? null, highlights: items.slice(0, 3).map((item) => item.place.nameKo), createdAt: trip.createdAt };
     }) });
   } catch (error) { next(error); }
 });

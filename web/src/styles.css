@@ -2519,6 +2519,8 @@ button {
 .my-story-records small { color: #737a8b; }
 .my-story-records em { overflow: hidden; color: #515867; font-style: normal; text-overflow: ellipsis; white-space: nowrap; }
 .my-story-records b { color: #6554d9; font-size: 12px; }
+.my-trip-actions { display: flex; align-items: center; gap: 8px; }
+.my-trip-actions button:first-child:not(:last-child) { border: 1px solid #cbc5f7; background: #f7f5ff; color: #5f50d1; }
 .story-preview-grid, .viewer-gallery {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
