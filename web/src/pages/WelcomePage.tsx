@@ -34,6 +34,13 @@ const FEATURES = [
     bodyKo: "일정을 링크로 공유하고 동행자를 초대해 함께 편집하며, 방문 후 기록도 남길 수 있어요.",
     bodyEn: "Share your itinerary by link, invite companions to co-edit, and record memories after your visit.",
   },
+  {
+    icon: "🧳",
+    titleKo: "여행 준비까지 한 번에",
+    titleEn: "Everything you need to prepare",
+    bodyKo: "날씨별 준비물 안내, 예상 경비 상세, 숙박·렌터카·eSIM 등 필수 서비스 예약까지 한 곳에서 확인해요.",
+    bodyEn: "Check weather-based packing tips, a detailed cost breakdown, and book essentials like lodging, rental cars, and eSIM — all in one place.",
+  },
 ];
 
 /**
