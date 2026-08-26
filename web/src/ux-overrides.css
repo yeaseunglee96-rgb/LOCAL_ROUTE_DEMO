@@ -516,8 +516,9 @@ button,input,select,textarea{max-width:100%}
 .onboarding-feature-card{display:flex;flex-direction:column;gap:5px;padding:16px 18px;border:1px solid #e8e8eb;border-radius:14px;background:#fff}
 .onboarding-feature-card strong{font-size:14px;color:#232234}
 .onboarding-feature-card p{margin:0;color:#7c7d84;font-size:12px;line-height:1.5}
-.onboarding-cta{display:flex;justify-content:center;padding:0}
+.onboarding-cta{display:flex;flex-direction:column;align-items:center;gap:8px;padding:0;text-align:center}
 .onboarding-cta .primary-btn{padding:12px 36px;font-size:14px}
+.onboarding-cta small{color:#8b8b93;font-size:12px}
 @media(max-width:640px){
   .onboarding-lang-options{flex-direction:column;width:100%;max-width:280px}
   .onboarding-lang-chip{width:100%}
