@@ -82,9 +82,10 @@ socialRouter.patch("/stories/:id", async (req, res, next) => {
     if (images.length > 3) return res.status(400).json({ error_code: "IMAGE_LIMIT_EXCEEDED", message: "사진은 최대 3장까지 올릴 수 있습니다." });
     let sanitizedImages: string[];
     try { sanitizedImages = images.map(sanitizeImage); } catch { return res.status(400).json({ error_code: "INVALID_IMAGE", message: "JPEG·PNG·WebP 이미지만 장당 750KB 이하로 올릴 수 있습니다." }); }
-    const updated = await prisma.story.update({ where: { id: story.id }, data: { content, visibility, imageDataJson: JSON.stringify(sanitizedImages) } });
+    const publishAt = req.body?.publishNow === true ? new Date() : story.publishAt;
+    const updated = await prisma.story.update({ where: { id: story.id }, data: { content, visibility, imageDataJson: JSON.stringify(sanitizedImages), publishAt } });
     await recordEvent({ eventType: "story_updated", actorId: pseudonymize(session.id), entityType: "story", entityId: story.id, payload: { visibility, imageCount: sanitizedImages.length } });
-    res.json({ id: updated.id, content: updated.content, visibility: updated.visibility, images: sanitizedImages, updatedAt: updated.updatedAt });
+    res.json({ id: updated.id, content: updated.content, visibility: updated.visibility, images: sanitizedImages, publishAt: updated.publishAt, updatedAt: updated.updatedAt });
   } catch (error) { next(error); }
 });
 

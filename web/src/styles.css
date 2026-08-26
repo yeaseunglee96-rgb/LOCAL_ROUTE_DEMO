@@ -2572,7 +2572,9 @@ button {
 .story-edit-dialog footer { border-top: 1px solid #e5e7eb; padding-top: 18px; }
 .story-edit-dialog footer button { border: 1px solid #d8dce5; border-radius: 10px; padding: 10px 16px; background: #fff; cursor: pointer; }
 .story-edit-dialog footer div button:last-child { background: #17171d; color: #fff; border-color: #17171d; }
+.story-edit-dialog footer div .publish-now-button { color: #5f50d1; border-color: #cfc8fb; background: #f6f4ff; }
 .story-edit-dialog .story-delete-button { color: #c53b3b; border-color: #f0caca; }
+.publish-schedule-note { margin: 10px 0 0; color: #6758d5; font-size: 12px; }
 
 .stories-page, .story-start-page { min-height: 100vh; padding: 56px max(24px, calc((100vw - 1120px) / 2)); background: #f7f7f9; color: #17171d; }
 .stories-page > header, .story-start-page > header { margin-bottom: 26px; }
