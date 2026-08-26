@@ -30,6 +30,8 @@ export interface TripContextValue {
   requestReplace: (item: ItineraryItemOutput) => Promise<void>;
   /** 최근 변경 되돌리기 */
   undo: () => Promise<void>;
+  /** 서버에서 일정을 다시 읽어온다(재생성이 아니라 단순 갱신). 페이스 러닝이 실측 기록 후 호출한다. */
+  reloadItinerary: () => Promise<void>;
   /** 지도에서 선택된 장소 */
   selectedPlaceId: string | null;
   selectPlace: (placeId: string | null) => void;

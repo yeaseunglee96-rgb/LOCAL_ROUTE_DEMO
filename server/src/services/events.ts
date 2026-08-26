@@ -44,6 +44,10 @@ export const EVENT_TOPIC = {
   user_followed: "social-events",
   user_unfollowed: "social-events",
   weather_warning_viewed: "trip-events",
+  // 페이스 러닝
+  itinerary_progress_recorded: "place-interaction-events",
+  itinerary_replanned_midtrip: "trip-events",
+  rhythm_profile_applied: "recommendation-events",
 } as const;
 
 export type EventType = keyof typeof EVENT_TOPIC;

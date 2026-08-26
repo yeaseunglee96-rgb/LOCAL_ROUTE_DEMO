@@ -2,8 +2,14 @@ import { prisma } from "../db.js";
 import { scorePlaces } from "./recommend.js";
 import { buildItinerary, formatMinToTime, parseTimeToMin } from "./schedule.js";
 import { getTravelEstimate } from "./kakao.js";
+import { computeRhythmProfile, type RhythmSample } from "./paceLearning.js";
 
 type Action = "REMOVE" | "PIN" | "UNPIN" | "REPLACE";
+
+/** 되돌리기로 복원해도 실측 기록이 사라지면 안 되므로 actual* 는 항상 함께 실어 나른다. */
+function actualsOf(item: any) {
+  return { actualArrival: item.actualArrival ?? null, actualDeparture: item.actualDeparture ?? null, actualStayMinutes: item.actualStayMinutes ?? null };
+}
 
 function itemCreate(item: any, pinnedIds: string[]) {
   return {
@@ -12,13 +18,14 @@ function itemCreate(item: any, pinnedIds: string[]) {
     distanceToNextM: item.distanceToNextM, travelIsEstimate: item.travelIsEstimate,
     travelSource: item.travelSource, recommendReason: item.recommendReason,
     isPinned: pinnedIds.includes(item.placeId),
+    ...actualsOf(item),
   };
 }
 
 function snapshot(day: any, preference: { excludedPlaceIds: string; mustVisitPlaceIds: string }) {
   return JSON.stringify({
     day: { startTravelMin: day.startTravelMin, startDistanceM: day.startDistanceM, startTravelIsEstimate: day.startTravelIsEstimate, returnTravelMin: day.returnTravelMin, returnDistanceM: day.returnDistanceM, returnTravelIsEstimate: day.returnTravelIsEstimate },
-    items: day.items.map((item: any) => ({ placeId: item.placeId, seqOrder: item.seqOrder, plannedArrival: item.plannedArrival, stayMinutes: item.stayMinutes, estCost: item.estCost, travelMinToNext: item.travelMinToNext, distanceToNextM: item.distanceToNextM, travelIsEstimate: item.travelIsEstimate, travelSource: item.travelSource, recommendReason: item.recommendReason, isPinned: item.isPinned })),
+    items: day.items.map((item: any) => ({ placeId: item.placeId, seqOrder: item.seqOrder, plannedArrival: item.plannedArrival, stayMinutes: item.stayMinutes, estCost: item.estCost, travelMinToNext: item.travelMinToNext, distanceToNextM: item.distanceToNextM, travelIsEstimate: item.travelIsEstimate, travelSource: item.travelSource, recommendReason: item.recommendReason, isPinned: item.isPinned, ...actualsOf(item) })),
     preference: { excludedPlaceIds: preference.excludedPlaceIds, mustVisitPlaceIds: preference.mustVisitPlaceIds },
   });
 }
@@ -122,6 +129,7 @@ export async function reorderItineraryDay(itineraryId: string, dayIndex: number,
       stayMinutes: item.stayMinutes, estCost: item.estCost,
       travelMinToNext: null, distanceToNextM: null, travelIsEstimate: true, travelSource: "HAVERSINE",
       recommendReason: item.recommendReason, isPinned: item.isPinned,
+      ...actualsOf(item),
     });
     cursorMin = arrivalMin + item.stayMinutes;
     prevLat = item.place.lat;
@@ -138,7 +146,7 @@ export async function reorderItineraryDay(itineraryId: string, dayIndex: number,
   // 가짜 값을 넣으면 되돌리기 시 실제 필수/제외 장소 목록이 빈 배열로 잘못 초기화된다.
   const beforeJson = JSON.stringify({
     day: { startTravelMin: target.startTravelMin, startDistanceM: target.startDistanceM, startTravelIsEstimate: target.startTravelIsEstimate, returnTravelMin: target.returnTravelMin, returnDistanceM: target.returnDistanceM, returnTravelIsEstimate: target.returnTravelIsEstimate },
-    items: target.items.map((item) => ({ placeId: item.placeId, seqOrder: item.seqOrder, plannedArrival: item.plannedArrival, stayMinutes: item.stayMinutes, estCost: item.estCost, travelMinToNext: item.travelMinToNext, distanceToNextM: item.distanceToNextM, travelIsEstimate: item.travelIsEstimate, travelSource: item.travelSource, recommendReason: item.recommendReason, isPinned: item.isPinned })),
+    items: target.items.map((item) => ({ placeId: item.placeId, seqOrder: item.seqOrder, plannedArrival: item.plannedArrival, stayMinutes: item.stayMinutes, estCost: item.estCost, travelMinToNext: item.travelMinToNext, distanceToNextM: item.distanceToNextM, travelIsEstimate: item.travelIsEstimate, travelSource: item.travelSource, recommendReason: item.recommendReason, isPinned: item.isPinned, ...actualsOf(item) })),
   });
   const afterJson = JSON.stringify({
     day: {
@@ -161,6 +169,150 @@ export async function reorderItineraryDay(itineraryId: string, dayIndex: number,
   ]);
 
   return { changedDayIndex: dayIndex, items: nextItems, warnings };
+}
+
+export type ReplanStrategy = "KEEP_ALL" | "DROP_ONE" | "DEFER_LAST";
+
+/**
+ * 페이스 러닝 - 여행 중 "지금 이 시각, 이 자리"를 출발점으로 남은 일정만 다시 짠다.
+ *
+ * reoptimizeItineraryDay 와의 결정적 차이는 두 가지다.
+ *  1. 이미 다녀온 항목(actualDeparture 기록됨)은 손대지 않고 그대로 보존한다.
+ *  2. 출발점은 현재 위치·현재 시각이지만, 복귀점은 여전히 숙소다.
+ * 하루 전체를 dayStart 부터 다시 짜면 이미 다녀온 장소까지 갈아엎게 되므로 이 경로가 따로 필요하다.
+ */
+export async function replanRemainingDay(
+  itineraryId: string,
+  dayIndex: number,
+  body: { currentTime: string; lat: number; lng: number; strategy?: ReplanStrategy; useRhythm?: boolean }
+) {
+  const itinerary = await prisma.itinerary.findUnique({
+    where: { id: itineraryId },
+    include: { trip: { include: { preference: true, lodgingPlace: true } }, days: { include: { items: { include: { place: true } } } } },
+  });
+  if (!itinerary?.trip.preference) throw new Error("ITINERARY_NOT_FOUND");
+  const target = itinerary.days.find((day) => day.dayIndex === dayIndex);
+  if (!target) throw new Error("DAY_NOT_FOUND");
+
+  const ordered = [...target.items].sort((a, b) => a.seqOrder - b.seqOrder);
+  const visited = ordered.filter((item) => item.actualDeparture);
+  const staying = ordered.find((item) => item.actualArrival && !item.actualDeparture) ?? null;
+  // 머무는 중인 곳도 "이미 확정된 현실"이므로 보존 대상이다.
+  const preserved = staying ? [...visited, staying] : visited;
+  const preservedIds = new Set(preserved.map((item) => item.id));
+  const droppedCandidates = ordered.filter((item) => !preservedIds.has(item.id));
+  if (!droppedCandidates.length) throw new Error("NOTHING_TO_REPLAN");
+
+  const spentCost = preserved.reduce((sum, item) => sum + item.estCost, 0);
+  const remainingBudget = Math.max(0, target.dayBudget - spentCost);
+  const strategy: ReplanStrategy = body.strategy ?? "KEEP_ALL";
+
+  // 남은 자리 수. DROP_ONE 은 한 곳을 덜어내 여유를 만들고, DEFER_LAST 는 마지막 한 곳을 다음 날로 미룬다.
+  const targetCount = strategy === "KEEP_ALL" ? droppedCandidates.length : Math.max(1, droppedCandidates.length - 1);
+
+  const pref = itinerary.trip.preference;
+  const excluded = JSON.parse(pref.excludedPlaceIds) as string[];
+  const usedOtherDays = itinerary.days.filter((day) => day.id !== target.id).flatMap((day) => day.items.map((item) => item.placeId));
+  const places = await prisma.place.findMany({ where: { category: { in: ["TOURIST", "RESTAURANT", "CAFE"] } } });
+  const scored = scorePlaces(places, JSON.parse(pref.tasteTags), remainingBudget, itinerary.trip.partySize,
+    [...new Set([...excluded, ...usedOtherDays, ...preserved.map((item) => item.placeId)])], {
+      mode: itinerary.mode as any,
+      ratios: { landmark: pref.landmarkRatio, local: pref.localRatio, easy: pref.easyRatio },
+      allergies: JSON.parse(pref.allergies), dietType: pref.dietType,
+      courseCategory: pref.courseCategory,
+    });
+
+  const lodging = itinerary.trip.lodgingPlace ?? { lat: itinerary.trip.originLat, lng: itinerary.trip.originLng };
+  const rhythm = body.useRhythm === false ? null : await loadRhythmProfile(itinerary.tripId);
+  // 남은 시간이 하루 종료보다 늦으면 재계산할 여지가 없다.
+  const dayEndMin = parseTimeToMin(itinerary.trip.dayEnd);
+  const startMin = parseTimeToMin(body.currentTime);
+  if (startMin >= dayEndMin) throw new Error("DAY_ALREADY_OVER");
+
+  const result = await buildItinerary(scored, {
+    startDate: target.visitDate, endDate: target.visitDate,
+    originLat: body.lat, originLng: body.lng,          // 출발점 = 지금 서 있는 곳
+    returnLat: lodging.lat, returnLng: lodging.lng,    // 복귀점 = 숙소
+    totalBudget: remainingBudget,
+    partySize: itinerary.trip.partySize,
+    hasCar: itinerary.trip.hasCar,
+    pace: itinerary.trip.pace as any,
+    dayStart: body.currentTime,                        // 시작 시각 = 지금
+    dayEnd: itinerary.trip.dayEnd,
+    maxWalkingKm: itinerary.trip.maxWalkingKm,
+    mustVisitPlaceIds: [],
+    recommendationMode: itinerary.mode,
+    stayMinutesScale: rhythm?.hasProfile ? rhythm.scale : undefined,
+  });
+
+  const rebuilt = (result.days[0]?.items ?? []).slice(0, targetCount);
+  if (!rebuilt.length) throw new Error("NO_FEASIBLE_ALTERNATIVE");
+
+  const beforeJson = snapshot(target, pref);
+  const nextItems = [
+    ...preserved.map((item) => ({
+      placeId: item.placeId, seqOrder: item.seqOrder, plannedArrival: item.plannedArrival,
+      stayMinutes: item.stayMinutes, estCost: item.estCost, travelMinToNext: item.travelMinToNext,
+      distanceToNextM: item.distanceToNextM, travelIsEstimate: item.travelIsEstimate,
+      travelSource: item.travelSource, recommendReason: item.recommendReason, isPinned: item.isPinned,
+      actualArrival: item.actualArrival, actualDeparture: item.actualDeparture, actualStayMinutes: item.actualStayMinutes,
+    })),
+    ...rebuilt.map((item, index) => ({
+      placeId: item.placeId, seqOrder: preserved.length + index + 1, plannedArrival: item.plannedArrival,
+      stayMinutes: item.stayMinutes, estCost: item.estCost, travelMinToNext: item.travelMinToNext,
+      distanceToNextM: item.distanceToNextM, travelIsEstimate: item.travelIsEstimate,
+      travelSource: item.travelSource, recommendReason: item.recommendReason, isPinned: false,
+      actualArrival: null, actualDeparture: null, actualStayMinutes: null,
+    })),
+  ];
+  const afterJson = JSON.stringify({
+    day: { startTravelMin: target.startTravelMin, startDistanceM: target.startDistanceM, startTravelIsEstimate: target.startTravelIsEstimate, returnTravelMin: result.days[0]?.returnTravelMin ?? null, returnDistanceM: result.days[0]?.returnDistanceM ?? null, returnTravelIsEstimate: result.days[0]?.returnTravelIsEstimate ?? true },
+    items: nextItems,
+  });
+
+  await prisma.$transaction([
+    prisma.itineraryRevision.create({ data: { itineraryId, dayIndex, action: `REPLAN_${strategy}`, beforeJson, afterJson } }),
+    prisma.itineraryItem.deleteMany({ where: { dayId: target.id } }),
+    prisma.itineraryDay.update({
+      where: { id: target.id },
+      data: {
+        returnTravelMin: result.days[0]?.returnTravelMin ?? null,
+        returnDistanceM: result.days[0]?.returnDistanceM ?? null,
+        returnTravelIsEstimate: result.days[0]?.returnTravelIsEstimate ?? true,
+        items: { create: nextItems },
+      },
+    }),
+  ]);
+
+  return {
+    changedDayIndex: dayIndex,
+    strategy,
+    preservedCount: preserved.length,
+    replacedCount: rebuilt.length,
+    droppedCount: droppedCandidates.length - rebuilt.length,
+    rhythmApplied: rhythm?.hasProfile ?? false,
+    warnings: result.warnings,
+  };
+}
+
+/**
+ * 이 여행에서 지금까지 쌓인 실측 체류시간으로 개인 리듬 계수를 만든다.
+ *
+ * 계수를 만들 만큼 표본이 모이지 않아도 프로필 자체는 돌려준다(hasProfile: false).
+ * 그래야 "아직 N건 모았다"를 정직하게 보여줄 수 있다. 실측이 아예 없을 때만 null 이다.
+ */
+export async function loadRhythmProfile(tripId: string) {
+  const items = await prisma.itineraryItem.findMany({
+    where: { day: { itinerary: { tripId } }, actualStayMinutes: { not: null } },
+    select: { stayMinutes: true, actualStayMinutes: true, place: { select: { category: true } } },
+  });
+  if (!items.length) return null;
+  const samples: RhythmSample[] = items.map((item) => ({
+    category: item.place.category,
+    plannedStayMinutes: item.stayMinutes,
+    actualStayMinutes: item.actualStayMinutes!,
+  }));
+  return computeRhythmProfile(samples);
 }
 
 export async function undoLatestRevision(itineraryId: string) {

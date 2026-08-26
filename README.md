@@ -66,8 +66,22 @@ GOOGLE_CUSTOM_SEARCH_CX=
 - UGC 운영: 신고 즉시 검토 큐 이동, 관리자 삭제·기각 처리
 - 광고: 숙박·렌터카·여행보험·택시·공항이동·반려동물 이동만 등록·노출 허용. 음식점·카페·기념품샵은 API 단계에서 거부
 
+### 페이스 러닝 (여행 중 자가보정 일정)
+
+계획(`ItineraryItem.plannedArrival`/`stayMinutes`)과 실측(`actualArrival`/`actualDeparture`)을 같은 행에 두고, 그 차이로 세 가지를 제공합니다.
+
+1. **지연 예보** — 현재 페이스로 하루가 몇 시에 끝날지, 영업 종료 전에 못 갈 장소가 있는지 계산해 상단에 상시 표시합니다.
+2. **시간 앵커 재계산** — 지금 시각·현재 위치를 출발점으로 남은 일정만 다시 짭니다. 이미 다녀온 항목은 보존하고, 복귀 지점은 숙소로 유지합니다(`ScheduleInput.returnLat/returnLng`).
+3. **개인 체류 리듬** — 카테고리별 `실측 ÷ 계획` 비율을 학습해 다음 계산의 체류시간에 반영합니다(`ScheduleInput.stayMinutesScale`).
+
+리듬 계수는 카테고리당 최소 2건의 실측이 있을 때만 만들고 `[0.6, 2.0]`으로 가둡니다. 이동시간·체류시간 추정이 섞이므로 예보는 항상 `isEstimate: true`입니다.
+
 ## 주요 API
 
+- `POST /api/itineraries/:id/items/:itemId/progress` — 방문 도착·출발 실측 기록
+- `GET /api/itineraries/:id/pace?dayIndex=&now=` — 지연 예보
+- `POST /api/itineraries/:id/days/:dayIndex/replan` — 현재 시각·위치 기준 남은 일정 재계산
+- `GET /api/trips/:tripId/rhythm` — 학습된 개인 체류 리듬
 - `GET /api/festivals?from=&to=` / `POST /api/itineraries/:id/festivals/:placeId`
 - `GET /api/shops/souvenir?lat=&lng=&radius=`
 - `GET /api/weather?region=BUSAN&date=`

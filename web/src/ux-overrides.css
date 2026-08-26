@@ -590,3 +590,94 @@ button,input,select,textarea{max-width:100%}
 .reorder-move-btn{border:1px solid #e2e3e7;background:#fff;color:#5f6068;border-radius:6px;width:22px;height:22px;font-size:10px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center}
 .reorder-move-btn:disabled{opacity:.35;cursor:not-allowed}
 .reorder-handle:disabled{opacity:.35;cursor:not-allowed}
+.course-preset-notice{display:grid;gap:10px;border:1px solid #ddd8ea;border-radius:11px;background:#f7f5fb;padding:14px 16px}
+.course-preset-notice p{margin:0;color:#545061;font-size:12px;line-height:1.6}
+.course-preset-notice-actions{display:flex;gap:8px;flex-wrap:wrap}
+.course-preset-notice-actions button{border:1px solid #77708f;border-radius:7px;background:#fff;color:#4b4560;font-size:11px;font-weight:700;padding:7px 12px;cursor:pointer}
+.course-preset-notice-actions button.ghost{border-color:#dedfe3;color:#74757d}
+
+/* ── 페이스 러닝 ────────────────────────────────────────────────────────────── */
+.pace-panel{display:grid;gap:10px;margin-bottom:16px}
+.pace-bar{display:flex;align-items:center;gap:12px;border:1px solid #e2e3e7;border-left-width:4px;border-radius:11px;background:#fff;padding:13px 16px}
+.pace-bar.idle{border-left-color:#c3c4cb}
+.pace-bar.ok{border-left-color:#3f9e6a;background:#f5faf7}
+.pace-bar.warn{border-left-color:#d8a017;background:#fdfaf1}
+.pace-bar.late{border-left-color:#dd7a2f;background:#fdf6f0}
+.pace-bar.risk{border-left-color:#cf4b4b;background:#fdf3f3}
+.pace-bar.done{border-left-color:#6d63a8;background:#f7f5fb}
+.pace-icon{font-size:17px;line-height:1}
+.pace-copy{flex:1;min-width:0;display:grid;gap:3px}
+.pace-copy strong{color:#2b2c31;font-size:14px;letter-spacing:-.02em}
+.pace-copy small{color:#74757d;font-size:11px}
+.pace-progress{color:#74757d;font-size:11px;font-weight:800;letter-spacing:.04em;white-space:nowrap}
+.pace-replan-btn{border:1px solid #2b2c31;border-radius:8px;background:#2b2c31;color:#fff;font-size:11px;font-weight:750;padding:8px 13px;cursor:pointer;white-space:nowrap}
+.pace-replan-btn:disabled{opacity:.5;cursor:not-allowed}
+
+.pace-tracker{display:flex;align-items:center;gap:14px;border:1px dashed #d5d6dc;border-radius:11px;background:#fbfbfc;padding:13px 16px}
+.pace-tracker-info{flex:1;min-width:0;display:grid;gap:2px}
+.pace-tracker-label{color:#8b8c94;font-size:9px;font-weight:850;letter-spacing:.09em;text-transform:uppercase}
+.pace-tracker-info strong{color:#2b2c31;font-size:14px}
+.pace-tracker-info small{color:#74757d;font-size:11px}
+.pace-tracker button{white-space:nowrap}
+
+.replan-modal{max-width:520px;display:grid;gap:16px}
+.replan-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.replan-head h3{margin:0;font-size:19px;letter-spacing:-.03em}
+.replan-diagnosis{border-radius:9px;background:#fdf3f3;padding:12px 14px}
+.replan-diagnosis p{margin:0;color:#7a4b4b;font-size:12px}
+.replan-diagnosis ul{margin:0;padding:0;list-style:none;display:grid;gap:6px}
+.replan-diagnosis li{display:flex;align-items:baseline;gap:8px;font-size:12px}
+.replan-diagnosis li strong{color:#8c3b3b}
+.replan-diagnosis li span{color:#7a6a6a}
+.replan-options{display:grid;gap:8px}
+.replan-options button{display:grid;gap:3px;border:1px solid #dedfe3;border-radius:10px;background:#fff;padding:13px 15px;text-align:left;cursor:pointer}
+.replan-options button strong{color:#2b2c31;font-size:13px}
+.replan-options button small{color:#74757d;font-size:11px;line-height:1.5}
+.replan-options button.selected{border-color:#77708f;background:#f7f5fb;box-shadow:inset 0 0 0 1px #77708f}
+.replan-note{margin:0;color:#8b8c94;font-size:11px}
+.replan-actions{display:flex;justify-content:flex-end;gap:8px}
+
+.rhythm-briefing{display:grid;gap:14px;border:1px solid #ddd8ea;border-radius:13px;background:linear-gradient(180deg,#f9f7fd,#fff);padding:20px 22px;margin-bottom:16px}
+.rhythm-eyebrow{color:#7a7290;font-size:9px;font-weight:850;letter-spacing:.1em}
+.rhythm-head h3{margin:6px 0 0;color:#332e45;font-size:19px;letter-spacing:-.03em}
+.rhythm-head p{margin:6px 0 0;color:#6b6779;font-size:12px;line-height:1.6}
+.rhythm-list{margin:0;padding:0;list-style:none;display:grid;gap:8px}
+.rhythm-list li{display:grid;grid-template-columns:70px 1fr 58px;align-items:center;gap:10px}
+.rhythm-cat{color:#545061;font-size:11px;font-weight:700}
+.rhythm-bar-track{height:6px;border-radius:99px;background:#e7e3f0;overflow:hidden}
+.rhythm-bar-track>i{display:block;height:100%;border-radius:99px;background:#8478b0}
+.rhythm-delta{font-size:11px;font-weight:800;text-align:right}
+.rhythm-delta.up{color:#8c5a2b}
+.rhythm-delta.down{color:#3f7a9e}
+.rhythm-actions{display:flex;gap:8px;flex-wrap:wrap}
+
+/* ── 여행 무드 카드 (STEP 2 간소화) ────────────────────────────────────────── */
+.mood-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.mood-card{position:relative;display:flex;flex-direction:column;align-items:flex-start;min-height:138px;border:1px solid #dedfe3;border-radius:13px;background:#fff;padding:18px 17px;text-align:left;cursor:pointer;transition:border-color .12s,background .12s}
+.mood-card:hover{border-color:#b8b3c8}
+.mood-emoji{font-size:24px;line-height:1}
+.mood-card>strong{margin-top:13px;color:#2b2c31;font-size:15px;letter-spacing:-.02em;line-height:1.35}
+.mood-card>small{margin-top:6px;color:#74757d;font-size:11px;line-height:1.5}
+.mood-card.selected{border-color:#77708f;background:#f5f3f9;box-shadow:inset 0 0 0 1px #77708f}
+.mood-card.selected>strong{color:#3e394f}
+.mood-check{position:absolute;top:14px;right:15px;color:#625a7a;font-size:13px;font-weight:850}
+.mood-summary{margin:14px 0 0;color:#6b6c74;font-size:12px;text-align:center}
+
+.advanced-block{margin-top:16px;border:1px solid #e2e3e7;border-radius:11px;background:#fbfbfc;overflow:hidden}
+.advanced-block>summary{display:flex;align-items:baseline;gap:10px;padding:14px 17px;cursor:pointer;list-style:none;user-select:none}
+.advanced-block>summary::-webkit-details-marker{display:none}
+.advanced-block>summary::before{content:"▸";color:#9a9ba3;font-size:11px;transition:transform .12s}
+.advanced-block[open]>summary::before{transform:rotate(90deg)}
+.advanced-block>summary b{color:#3a3b41;font-size:13px;font-weight:750}
+.advanced-block>summary small{margin-left:auto;color:#8b8c94;font-size:11px}
+.advanced-body{border-top:1px solid #e9eaee;background:#fff;padding:18px 17px}
+.advanced-body .course-category-section{margin-top:22px;padding-top:20px}
+.advanced-body .desired-food-picker{margin:0}
+
+@media (max-width:900px){
+  .mood-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (max-width:560px){
+  .mood-grid{grid-template-columns:1fr}
+  .mood-card{min-height:0}
+}

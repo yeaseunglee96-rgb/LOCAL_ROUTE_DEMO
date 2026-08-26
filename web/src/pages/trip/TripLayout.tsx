@@ -149,6 +149,7 @@ export function TripLayout() {
         try { await undoItineraryChange(itinerary.itineraryId); await refresh(); }
         finally { setRegenerating(false); }
       },
+      reloadItinerary: async () => { await refresh(); },
       itemProps: {
         hasCar: itinerary.trip.hasCar,
         pinnedPlaceIds,

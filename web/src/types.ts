@@ -105,6 +105,53 @@ export interface ItineraryItemOutput {
   kakaoReviewKeywords: string[];
   kakaoReviewSource: string | null;
   kakaoReviewCollectedAt: string | null;
+  /** 페이스 러닝 실측값. 아직 방문하지 않았으면 null. */
+  actualArrival?: string | null;
+  actualDeparture?: string | null;
+  actualStayMinutes?: number | null;
+}
+
+/** 지연 예보 - 현재 페이스로 오늘이 어떻게 끝날지에 대한 추정. */
+export interface PaceForecast {
+  dayIndex: number;
+  visitDate: string;
+  now: string;
+  status: "NOT_STARTED" | "ON_TIME" | "SLIGHTLY_BEHIND" | "BEHIND" | "AT_RISK" | "DONE";
+  delayMinutes: number;
+  projectedEndTime: string | null;
+  plannedEndTime: string | null;
+  currentSeqOrder: number | null;
+  nextSeqOrder: number | null;
+  completedCount: number;
+  totalCount: number;
+  atRisk: { seqOrder: number; placeId: string; nameKo: string; projectedArrival: string; closeTime: string; marginMinutes: number }[];
+  projectedArrivals: { seqOrder: number; placeId: string; projectedArrival: string }[];
+  isEstimate: true;
+}
+
+/** 개인 체류 리듬 - 계획 대비 실제로 얼마나 오래 머무는지. */
+export interface RhythmProfile {
+  hasProfile: boolean;
+  scale: Record<string, number>;
+  totalSamples: number;
+  observations: {
+    category: string;
+    sampleCount: number;
+    scale: number;
+    averagePlannedMinutes: number;
+    averageActualMinutes: number;
+    deltaMinutes: number;
+  }[];
+}
+
+export interface ReplanResult {
+  changedDayIndex: number;
+  strategy: "KEEP_ALL" | "DROP_ONE" | "DEFER_LAST";
+  preservedCount: number;
+  replacedCount: number;
+  droppedCount: number;
+  rhythmApplied: boolean;
+  warnings: string[];
 }
 
 export interface ItineraryDayOutput {

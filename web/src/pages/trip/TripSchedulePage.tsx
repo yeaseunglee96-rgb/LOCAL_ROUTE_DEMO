@@ -3,6 +3,11 @@ import { Link, useParams } from "react-router-dom";
 import { DayTimeline } from "../../components/DayTimeline";
 import { MapPanel } from "../../components/MapPanel";
 import { ScheduleSummaryList } from "../../components/ScheduleSummaryList";
+import { PaceForecastBar } from "../../components/PaceForecastBar";
+import { PaceTracker } from "../../components/PaceTracker";
+import { ReplanModal } from "../../components/ReplanModal";
+import { RhythmBriefing } from "../../components/RhythmBriefing";
+import { usePaceLearning } from "../../hooks/usePaceLearning";
 import { paths } from "../../routes/paths";
 import { useTrip } from "./TripContext";
 
@@ -14,12 +19,21 @@ type ListMode = "summary" | "detail";
  */
 export function TripSchedulePage() {
   const { dayIndex: dayIndexParam } = useParams();
-  const { itinerary, regenerating, canEdit, pinnedPlaceIds, selectedPlaceId, itemProps, regenerate, editConditions, undo } = useTrip();
+  const { tripId, itinerary, regenerating, canEdit, pinnedPlaceIds, selectedPlaceId, itemProps, regenerate, editConditions, undo, reloadItinerary } = useTrip();
 
   const deepLinkedDay = dayIndexParam ? Number(dayIndexParam) : null;
   const [listMode, setListMode] = useState<ListMode>(deepLinkedDay ? "detail" : "summary");
   const [activeDayIndex, setActiveDayIndex] = useState(deepLinkedDay ?? itinerary.days[0]?.dayIndex ?? 1);
   const [mapDayIndex, setMapDayIndex] = useState<number | null>(deepLinkedDay);
+
+  const activeDay = itinerary.days.find((day) => day.dayIndex === activeDayIndex) ?? null;
+  const pace = usePaceLearning({
+    itineraryId: itinerary.itineraryId,
+    tripId,
+    day: activeDay,
+    canEdit,
+    onItineraryChanged: reloadItinerary,
+  });
 
   return (
     <div className="service-view">
@@ -34,6 +48,50 @@ export function TripSchedulePage() {
           <button type="button" className="primary-btn" onClick={() => void regenerate()} disabled={regenerating || !canEdit}>{regenerating ? "계산 중…" : "일정 재생성"}</button>
         </div>
       </header>
+
+      {/* 페이스 러닝 - 오늘 일정이거나 실측이 시작된 날에만 나타난다. */}
+      {pace.active && pace.forecast && activeDay && (
+        <section className="pace-panel" aria-label="오늘의 페이스">
+          <PaceForecastBar
+            forecast={pace.forecast}
+            language={itemProps.language}
+            onReplan={canEdit ? pace.openReplan : undefined}
+            replanning={pace.busy}
+          />
+          {canEdit && (
+            <PaceTracker
+              day={activeDay}
+              forecast={pace.forecast}
+              language={itemProps.language}
+              busy={pace.busy}
+              onArrive={(itemId) => void pace.markArrived(itemId)}
+              onDepart={(itemId) => void pace.markDeparted(itemId)}
+            />
+          )}
+          {pace.error && <div className="error-box" role="alert"><span>{pace.error}</span></div>}
+        </section>
+      )}
+
+      {pace.showRhythm && pace.rhythm && (
+        <RhythmBriefing
+          profile={pace.rhythm}
+          language={itemProps.language}
+          onApply={canEdit ? pace.openReplan : undefined}
+          applying={pace.busy}
+          onDismiss={pace.dismissRhythm}
+        />
+      )}
+
+      {pace.replanOpen && pace.forecast && (
+        <ReplanModal
+          forecast={pace.forecast}
+          language={itemProps.language}
+          busy={pace.busy}
+          errorMessage={pace.error}
+          onConfirm={(strategy) => void pace.applyReplan(strategy)}
+          onClose={pace.closeReplan}
+        />
+      )}
 
       {itinerary.warnings.length > 0 && (
         <details className="warnings">
