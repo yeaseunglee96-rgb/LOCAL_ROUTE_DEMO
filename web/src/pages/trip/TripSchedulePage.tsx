@@ -114,6 +114,7 @@ export function TripSchedulePage() {
               <button type="button" role="tab" aria-selected={listMode === "detail"} className={`tab-btn ${listMode === "detail" ? "active" : ""}`} onClick={() => setListMode("detail")}>날짜별 보기</button>
             </div>
             <span>{pinnedPlaceIds.length ? `고정 장소 ${pinnedPlaceIds.length}곳` : "장소를 고정하거나 제외해 다시 계산할 수 있어요"}</span>
+            <Link className="story-launch-btn" to={paths.tripTogether(itinerary.tripId)}>＋ 사진·기록 남기기</Link>
             <Link className="nav-launch-btn" to={paths.tripScheduleNavigate(itinerary.tripId, activeDayIndex)}>네비게이션</Link>
           </div>
           {listMode === "summary"

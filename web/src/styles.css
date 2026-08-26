@@ -197,6 +197,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .action-notice button { background: transparent; color: #fff; border: 0; font-size: 20px; }
 .schedule-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
 .schedule-toolbar > span { color: var(--muted); font-size: 12px; text-align: right; }
+.story-launch-btn { border: 1px solid #7565e6; border-radius: 999px; padding: 10px 14px; color: #5f50d1; background: #fff; font-size: 12px; font-weight: 800; text-decoration: none; white-space: nowrap; }
 .summary-item-list > div:last-child .travel-segment { display: none; }
 .place-card { display: grid; grid-template-columns: 58px 72px minmax(0, 1fr); gap: 14px; background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 15px; box-shadow: 0 5px 18px rgba(24,52,43,.045); transition: border-color .2s, transform .2s; }
 .place-card:hover { border-color: #b3cac0; transform: translateY(-1px); }
@@ -2501,6 +2502,12 @@ button {
 }
 
 /* Trip-linked travel stories */
+.story-quick-start { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-bottom: 24px; padding: 20px 22px; border: 1px solid #dcd7fb; border-radius: 18px; background: linear-gradient(135deg, #f3f0ff, #fff); }
+.story-quick-start > div { display: grid; gap: 4px; }
+.story-quick-start span { color: #6959dc; font-size: 10px; font-weight: 900; letter-spacing: .13em; }
+.story-quick-start strong { font-size: 18px; }
+.story-quick-start small { color: #6e7586; }
+.story-quick-start > button { border: 0; border-radius: 12px; padding: 13px 17px; background: #17171d; color: #fff; font-weight: 800; cursor: pointer; white-space: nowrap; }
 .story-preview-grid, .viewer-gallery {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -2593,5 +2600,6 @@ button {
   .story-edit-options, .story-edit-dialog > footer { align-items: stretch; flex-direction: column; }
   .story-edit-dialog > footer > div { width: 100%; }
   .story-edit-dialog > footer > div button { flex: 1; }
+  .story-quick-start { align-items: stretch; flex-direction: column; }
 }
 

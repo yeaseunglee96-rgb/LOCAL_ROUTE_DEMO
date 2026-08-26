@@ -74,6 +74,10 @@ export function SocialPanel({ itinerary }: { itinerary: ItineraryOutput }) {
   const removeStory = async () => { if (!editingStory || !window.confirm("이 여행 기록을 삭제할까요? 삭제하면 되돌릴 수 없어요.")) return; setSavingEdit(true); try { await deleteStory(editingStory.id); setEditingStory(null); setNotice("여행 기록을 삭제했습니다."); await load(); } catch (error) { setNotice(error instanceof Error ? error.message : "삭제하지 못했습니다."); } finally { setSavingEdit(false); } };
 
   return <section className="social-panel social-home" aria-label="함께 여행 피드">
+    <section className="story-quick-start" aria-label="내 여행 기록 작성">
+      <div><span>MY TRAVEL NOTE</span><strong>이 여행의 사진과 이야기를 남겨보세요</strong><small>일정 속 장소를 선택해 기록하면 나중에 여행별로 다시 볼 수 있어요.</small></div>
+      <button type="button" onClick={() => { setComposerOpen(true); window.setTimeout(() => document.getElementById("my-travel-note")?.scrollIntoView({ behavior: "smooth", block: "center" }), 0); }}>＋ 사진·기록 남기기</button>
+    </section>
     <section className="people-stories" aria-labelledby="story-tray-title">
       <div className="social-section-heading"><div><span>지금 여행 중</span><h2 id="story-tray-title">여행자 스토리</h2></div><small>최근 공유된 순간</small></div>
       <div className="story-rail" role="list">
@@ -95,7 +99,7 @@ export function SocialPanel({ itinerary }: { itinerary: ItineraryOutput }) {
       </div>}
     </section>
 
-    <section className="my-story-area" aria-labelledby="my-story-title">
+    <section id="my-travel-note" className="my-story-area" aria-labelledby="my-story-title">
       <div><span>MY TRAVEL NOTE</span><h2 id="my-story-title">내 여행 기록 남기기</h2><p>피드를 둘러본 뒤, 오늘의 기억을 한 장면으로 남겨보세요.</p></div>
       <button type="button" className="composer-toggle" aria-expanded={composerOpen} onClick={() => setComposerOpen((open) => !open)}>{composerOpen ? "작성 닫기" : "기록 작성"}</button>
       {composerOpen && <div className="story-composer">
