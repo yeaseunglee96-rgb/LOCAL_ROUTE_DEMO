@@ -63,11 +63,11 @@ export function WelcomePage() {
       </header>
 
       <section className="onboarding-lang-picker" aria-label={isEn ? "Choose your language" : "언어를 선택하세요"}>
-        <span className="onboarding-lang-label">{isEn ? "Choose your language" : "언어를 선택하세요"}</span>
+        <span className="section-eyebrow">{isEn ? "Choose your language" : "언어를 선택하세요"}</span>
         <div className="onboarding-lang-options">
           <button
             type="button"
-            className={`onboarding-lang-btn ${lang === "KO" ? "active" : ""}`}
+            className={`tag-chip onboarding-lang-chip ${lang === "KO" ? "selected" : ""}`}
             aria-pressed={lang === "KO"}
             onClick={() => chooseLanguage("KO")}
           >
@@ -75,7 +75,7 @@ export function WelcomePage() {
           </button>
           <button
             type="button"
-            className={`onboarding-lang-btn ${lang === "EN" ? "active" : ""}`}
+            className={`tag-chip onboarding-lang-chip ${lang === "EN" ? "selected" : ""}`}
             aria-pressed={lang === "EN"}
             onClick={() => chooseLanguage("EN")}
           >

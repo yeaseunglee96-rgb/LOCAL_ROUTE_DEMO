@@ -491,13 +491,10 @@ button,input,select,textarea{max-width:100%}
 .landing-footer{display:flex;flex-wrap:wrap;gap:16px;padding-top:24px;border-top:1px solid #ececef}
 .landing-footer a{color:#8e8f96;font-size:12px;text-decoration:none}
 
-/* /onboarding — 첫 방문 언어 선택 및 서비스 소개 */
+/* /welcome — 첫 방문 언어 선택 및 서비스 소개. 언어 칩은 기존 tag-chip/선택 스타일을 그대로 재사용한다. */
 .onboarding-lang-picker{display:flex;flex-direction:column;align-items:center;gap:10px;padding:28px 0 4px;text-align:center}
-.onboarding-lang-label{font-size:13px;font-weight:700;color:#8e8f96;letter-spacing:.02em}
 .onboarding-lang-options{display:flex;gap:10px}
-.onboarding-lang-btn{padding:10px 22px;border-radius:999px;border:1.5px solid #e2e2e8;background:#fff;font-size:14px;font-weight:700;color:#4b4c56;cursor:pointer;transition:all .15s ease}
-.onboarding-lang-btn:hover{border-color:#c9c8f2}
-.onboarding-lang-btn.active{border-color:#7867df;background:#f4f2ff;color:#4a3fb0}
+.onboarding-lang-chip{padding:11px 24px;font-size:14px}
 .onboarding-hero{align-items:center;text-align:center;padding:8px 0 4px}
 .onboarding-hero p{max-width:56ch}
 .onboarding-features{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px}
@@ -509,7 +506,7 @@ button,input,select,textarea{max-width:100%}
 .onboarding-cta .primary-btn{padding:14px 40px;font-size:15px}
 @media(max-width:640px){
   .onboarding-lang-options{flex-direction:column;width:100%;max-width:280px}
-  .onboarding-lang-btn{width:100%}
+  .onboarding-lang-chip{width:100%}
 }
 
 .route-placeholder{max-width:720px;margin:0 auto;padding:64px 24px;display:flex;flex-direction:column;align-items:flex-start;gap:16px}
