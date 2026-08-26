@@ -492,27 +492,28 @@ button,input,select,textarea{max-width:100%}
 .landing-footer a{color:#8e8f96;font-size:12px;text-decoration:none}
 
 /* /welcome — 첫 방문 언어 선택 및 서비스 소개. 언어 칩은 기존 tag-chip/선택 스타일을 그대로 재사용한다.
-   스크롤 없이 한 화면에 들어오도록 .landing 기본 여백보다 촘촘하게 잡는다. */
-.onboarding-view{padding:20px 24px 20px;gap:18px}
-.onboarding-lang-picker{display:flex;flex-direction:column;align-items:center;gap:8px;padding:0;text-align:center}
+   콘텐츠 전체를 뷰포트 높이에 맞춰 세로 중앙 정렬해, 화면 크기와 무관하게 한 화면 안에서
+   위아래로 고르게 채워지도록 한다(내용이 넘치면 자연스럽게 스크롤된다). */
+.onboarding-view{padding:24px;gap:26px;min-height:100vh;min-height:100dvh;justify-content:center}
+.onboarding-lang-picker{display:flex;flex-direction:column;align-items:center;gap:10px;padding:0;text-align:center}
 .onboarding-lang-options{display:flex;gap:10px}
-.onboarding-lang-chip{padding:9px 22px;font-size:14px}
+.onboarding-lang-chip{padding:10px 24px;font-size:14px}
 .onboarding-hero{
-  align-items:center;text-align:center;justify-content:center;gap:6px;
-  padding:32px 28px;border-radius:24px;min-height:180px;
+  align-items:center;text-align:center;justify-content:center;gap:10px;
+  padding:44px 32px;border-radius:24px;min-height:230px;
   background:
     linear-gradient(180deg,rgba(12,14,26,.25) 0%,rgba(10,12,24,.55) 55%,rgba(8,10,20,.82) 100%),
     url('http://tong.visitkorea.or.kr/cms2/website/61/2540061.jpg') center 72%/cover no-repeat;
 }
 .onboarding-hero .section-eyebrow{color:#d7ddff;font-size:14px}
-.onboarding-hero h1{margin:0;color:#fff;text-shadow:0 2px 18px rgba(0,0,0,.35);font-size:clamp(18px,2.7vw,32px);white-space:nowrap}
-.onboarding-hero p{margin:0;max-width:56ch;color:rgba(255,255,255,.88);font-size:14px}
+.onboarding-hero h1{margin:0;color:#fff;text-shadow:0 2px 18px rgba(0,0,0,.35);font-size:clamp(18px,2.9vw,34px);white-space:nowrap}
+.onboarding-hero p{margin:0;max-width:56ch;color:rgba(255,255,255,.88);font-size:15px}
 @media(max-width:640px){
-  .onboarding-hero{padding:28px 18px;min-height:0}
+  .onboarding-hero{padding:32px 18px;min-height:0}
   .onboarding-hero h1{font-size:clamp(14px,5vw,22px)}
 }
-.onboarding-features{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px}
-.onboarding-feature-card{display:flex;flex-direction:column;gap:4px;padding:13px 16px;border:1px solid #e8e8eb;border-radius:14px;background:#fff}
+.onboarding-features{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}
+.onboarding-feature-card{display:flex;flex-direction:column;gap:5px;padding:16px 18px;border:1px solid #e8e8eb;border-radius:14px;background:#fff}
 .onboarding-feature-card strong{font-size:14px;color:#232234}
 .onboarding-feature-card p{margin:0;color:#7c7d84;font-size:12px;line-height:1.5}
 .onboarding-cta{display:flex;justify-content:center;padding:0}
