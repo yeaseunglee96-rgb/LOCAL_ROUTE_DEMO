@@ -47,10 +47,16 @@ export function DesiredPlacesPicker({ numDays, value, onChange }: Props) {
     <div className="desired-places">
       <span>가고 싶은 곳 (선택)</span>
       <small>이미 정해둔 장소가 있으면 검색해서 며칠째 방문할지 골라두세요. 나머지 시간은 추천 모드가 자동으로 채웁니다.</small>
-      <form className="desired-places-search" onSubmit={(event) => void submit(event)}>
-        <input aria-label="가고 싶은 장소 검색" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="장소명으로 검색 (예: 감천문화마을)" />
+      <div className="desired-places-search">
+        <input
+          aria-label="가고 싶은 장소 검색"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          onKeyDown={(event) => { if (event.key === "Enter") void submit(event); }}
+          placeholder="장소명으로 검색 (예: 감천문화마을)"
+        />
         <button type="button" onClick={(event) => void submit(event)} disabled={searching}>{searching ? "검색 중" : "검색"}</button>
-      </form>
+      </div>
       {notice && <p className="desired-places-notice" role="status">{notice}</p>}
       {results.length > 0 && (
         <ul className="desired-places-results" aria-label="검색 결과">
