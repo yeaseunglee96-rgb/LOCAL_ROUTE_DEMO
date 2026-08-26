@@ -68,10 +68,17 @@ interface Props {
   /** 선택된 무드 id. 사용자가 세부 설정을 직접 건드렸다면 null 이 되어 "직접 설정"으로 표시된다. */
   value: string | null;
   onSelect: (mood: TravelMood) => void;
+  /**
+   * "직접 고를래요" 카드를 눌렀을 때. 세부 설정을 접힌 바로 두면 이것만 조작 방식이 달라
+   * 흐름이 끊긴다. 같은 카드로 두어 "고르면 넘어간다"는 규칙을 하나로 유지한다.
+   */
+  onCustom?: () => void;
+  /** 지금 직접 고르기 화면에 있는지 */
+  customActive?: boolean;
   language?: "KO" | "EN";
 }
 
-export function TravelMoodPicker({ value, onSelect, language = "KO" }: Props) {
+export function TravelMoodPicker({ value, onSelect, onCustom, customActive, language = "KO" }: Props) {
   const isEn = language === "EN";
   return (
     <div className="mood-grid" role="radiogroup" aria-label={isEn ? "Travel mood" : "여행 무드"}>
@@ -84,12 +91,27 @@ export function TravelMoodPicker({ value, onSelect, language = "KO" }: Props) {
             onClick={() => onSelect(mood)}
           >
             <span className="mood-emoji" aria-hidden="true">{mood.emoji}</span>
-            <strong>{isEn ? mood.titleEn : mood.titleKo}</strong>
-            <small>{isEn ? mood.descEn : mood.descKo}</small>
+            <div className="mood-info">
+              <strong>{isEn ? mood.titleEn : mood.titleKo}</strong>
+              <small>{isEn ? mood.descEn : mood.descKo}</small>
+            </div>
             {selected && <span className="mood-check" aria-hidden="true">✓</span>}
           </button>
         );
       })}
+      {onCustom && (
+        <button
+          type="button" role="radio" aria-checked={Boolean(customActive)}
+          className={`mood-card mood-card-custom ${customActive ? "selected" : ""}`}
+          onClick={onCustom}
+        >
+          <span className="mood-emoji" aria-hidden="true">🎛</span>
+          <div className="mood-info">
+            <strong>{isEn ? "I'll pick it myself" : "직접 고를래요"}</strong>
+            <small>{isEn ? "Mode, course theme and tags" : "추천 모드 · 코스 · 취향 태그"}</small>
+          </div>
+        </button>
+      )}
     </div>
   );
 }

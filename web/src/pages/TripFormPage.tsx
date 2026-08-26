@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { DashboardShell } from "../components/DashboardShell";
 import type { CourseCategory, CreateTripRequest, DietType, Pace, PlaceRecord, RecommendationMode } from "../types";
 import { getCourseCategories } from "../api/client";
@@ -28,6 +28,15 @@ const MODES: { value: RecommendationMode; title: string; description: string }[]
   { value: "LOCAL", title: "현지인 코스", description: "로컬 점수와 숨은 장소를 더 중요하게 봐요." },
 ];
 const STEPS = ["기본 정보", "취향·모드", "최종 확인"];
+/**
+ * STEP 2 안의 질문들. 한 화면에 하나씩 보여주고, 고르면 다음 질문으로 넘어간다.
+ * 33개 선택지를 한꺼번에 늘어놓는 것보다 결정 부담이 훨씬 적다.
+ */
+const TASTE_STEPS = [
+  { titleKo: "어떤 부산을 만나고 싶나요?", titleEn: "What kind of Busan do you want?", hintKo: "하나만 고르면 다음으로 넘어가요.", hintEn: "Pick one and we'll move on." },
+  { titleKo: "꼭 먹어보고 싶은 음식이 있나요?", titleEn: "Anything you must eat?", hintKo: "고른 음식을 파는 검증된 식당을 일정에 넣어드려요. 없으면 건너뛰어도 좋아요.", hintEn: "We'll slot in verified restaurants that serve them. Skipping is fine." },
+  { titleKo: "꼭 가고 싶은 장소가 있나요?", titleEn: "Any place you must visit?", hintKo: "추가해 두면 일정에 반드시 넣습니다. 어느 날짜에 넣을지는 자동으로 정해요. 없으면 건너뛰어도 좋아요.", hintEn: "We'll always include it and pick the day for you. Skipping is fine." },
+] as const;
 const PACE_LABEL_KO: Record<Pace, string> = { RELAXED: "여유롭게", NORMAL: "균형 있게", PACKED: "알차게" };
 const PACE_LABEL_EN: Record<Pace, string> = { RELAXED: "Relaxed", NORMAL: "Normal", PACKED: "Packed" };
 function paceLabel(value: Pace, language: "KO" | "EN") { return language === "EN" ? PACE_LABEL_EN[value] : PACE_LABEL_KO[value]; }
@@ -98,7 +107,12 @@ export function TripFormPage({ onSubmit, submitting, errorMessage, placeCount, i
   );
   // 무드 카드로 고른 값인지, 사용자가 세부 설정을 직접 만진 값인지 구분한다.
   const [selectedMoodId, setSelectedMoodId] = useState<string | null>(null);
-  const [advancedOpen, setAdvancedOpen] = useState(false);
+  // STEP 2 는 한 화면에 한 질문씩 보여준다. 카드를 고르면 다음 질문으로 넘어간다.
+  const [tasteStep, setTasteStep] = useState(0);
+  // 첫 질문에서 "직접 고를래요" 카드를 고르면 세부 설정 화면으로 바뀐다(같은 1/3 안에서).
+  const [tasteCustom, setTasteCustom] = useState(false);
+  const advanceTimer = useRef<number | null>(null);
+  useEffect(() => () => { if (advanceTimer.current !== null) window.clearTimeout(advanceTimer.current); }, []);
   const nights = Math.max(0, Math.round((new Date(`${endDate}T00:00:00`).getTime() - new Date(`${startDate}T00:00:00`).getTime()) / 86400000));
   const selectedMode = MODES.find((item) => item.value === mode)!;
   const recommendationRatios = mode === "ESSENTIAL"
@@ -112,7 +126,8 @@ export function TripFormPage({ onSubmit, submitting, errorMessage, placeCount, i
    * 코스마다 권장 페이스·이동수단이 있지만, STEP 1 에서 사용자가 직접 고른 값은 덮어쓰지 않는다.
    * 아직 손대지 않은 값에만 코스 권장값을 채우고, 직접 고른 값과 어긋나면 안내만 띄워 사용자가 정하게 한다.
    */
-  const selectCourseCategory = (category: CourseCategory) => {
+  /** @returns STEP 1 선택과 어긋나 안내를 띄웠는지. 띄웠다면 호출부는 사용자가 정할 때까지 기다려야 한다. */
+  const selectCourseCategory = (category: CourseCategory): boolean => {
     setCourseCategory(category.code);
     const suggestedPace = category.scheduleParams?.pace ?? null;
     const suggestedHasCar = courseSuggestedHasCar(category.scheduleParams?.transport);
@@ -123,7 +138,9 @@ export function TripFormPage({ onSubmit, submitting, errorMessage, placeCount, i
     if (suggestedHasCar !== null && suggestedHasCar !== hasCar) {
       if (transportTouched) conflict.hasCar = suggestedHasCar; else setHasCar(suggestedHasCar);
     }
-    setCoursePresetNotice(conflict.pace !== undefined || conflict.hasCar !== undefined ? conflict : null);
+    const hasConflict = conflict.pace !== undefined || conflict.hasCar !== undefined;
+    setCoursePresetNotice(hasConflict ? conflict : null);
+    return hasConflict;
   };
 
   const applyCoursePreset = () => {
@@ -131,19 +148,42 @@ export function TripFormPage({ onSubmit, submitting, errorMessage, placeCount, i
     if (coursePresetNotice.pace) setPace(coursePresetNotice.pace);
     if (coursePresetNotice.hasCar !== undefined) setHasCar(coursePresetNotice.hasCar);
     setCoursePresetNotice(null);
+    // 무드 카드로 들어와 안내 때문에 멈춰 있었다면, 결정을 내린 지금 원래대로 다음 질문으로 보낸다.
+    if (selectedMoodId && tasteStep === 0) advanceTasteStep();
+  };
+
+  const keepMyPreset = () => {
+    setCoursePresetNotice(null);
+    if (selectedMoodId && tasteStep === 0) advanceTasteStep();
   };
 
   /**
    * 무드 카드 한 장으로 모드·코스 카테고리·취향 태그를 한 번에 정한다.
    * 코스 카테고리에 딸린 페이스·이동수단 권장값은 기존 규칙(직접 고른 값은 안 덮어씀)을 그대로 탄다.
    */
+  /**
+   * 다음 질문으로 넘긴다.
+   * 곧바로 전환하면 방금 무엇을 골랐는지 확인할 틈이 없으므로, 선택 표시가 보일 만큼만 기다린다.
+   */
+  const advanceTasteStep = () => {
+    if (advanceTimer.current !== null) window.clearTimeout(advanceTimer.current);
+    advanceTimer.current = window.setTimeout(() => {
+      setTasteStep((current) => Math.min(current + 1, TASTE_STEPS.length - 1));
+      advanceTimer.current = null;
+    }, 220);
+  };
+
   const applyMood = (mood: TravelMood) => {
     setSelectedMoodId(mood.id);
     setMode(mood.mode);
     setSelectedTags(mood.tasteTags);
     const category = courseCategories.find((item) => item.code === mood.courseCategory);
-    if (category) selectCourseCategory(category);
+    let hasConflictNotice = false;
+    if (category) hasConflictNotice = selectCourseCategory(category);
     else { setCourseCategory(""); setCoursePresetNotice(null); }
+    setTasteCustom(false);
+    // STEP 1 선택과 충돌해 안내를 띄웠다면 사용자가 그 안내를 보고 정해야 하므로 머무른다.
+    if (!hasConflictNotice) advanceTasteStep();
   };
 
   /** 세부 설정을 직접 만지면 더 이상 특정 무드와 같다고 말할 수 없다. */
@@ -164,8 +204,30 @@ export function TripFormPage({ onSubmit, submitting, errorMessage, placeCount, i
 
   const submit = (event: React.FormEvent) => {
     event.preventDefault();
-    if (step < STEPS.length - 1) { if (canContinue) setStep((value) => value + 1); return; }
+    // STEP 2 안에서는 질문 단위로 먼저 진행하고, 마지막 질문을 넘겨야 다음 STEP 으로 간다.
+    if (step === 1 && tasteStep < TASTE_STEPS.length - 1) { setTasteStep(tasteStep + 1); return; }
+    if (step < STEPS.length - 1) {
+      if (!canContinue) return;
+      setStep(step + 1);
+      if (step === 0) setTasteStep(0); // STEP 1 → 2 진입은 항상 첫 질문부터
+      return;
+    }
     onSubmit(payload);
+  };
+
+  /** 이전 버튼. STEP 2 안에서는 질문 단위로, 직접 고르기 화면에서는 무드 카드로 되돌아간다. */
+  const goBack = () => {
+    if (step === 1 && tasteStep === 0 && tasteCustom) { setTasteCustom(false); return; }
+    if (step === 1 && tasteStep > 0) { setTasteStep(tasteStep - 1); return; }
+    if (step === 2) { setStep(1); setTasteStep(TASTE_STEPS.length - 1); return; }
+    setStep(step - 1);
+  };
+
+  const nextLabel = () => {
+    if (step === STEPS.length - 1) return submitting ? (language === "EN" ? "Calculating..." : "계산 중…") : (language === "EN" ? "Generate Itinerary" : "일정 생성");
+    if (step === 1 && tasteStep === 1 && desiredFoods.length === 0) return language === "EN" ? "Skip" : "건너뛰기";
+    if (step === 1 && tasteStep === 2 && desiredPlaces.length === 0) return language === "EN" ? "Skip" : "건너뛰기";
+    return language === "EN" ? "Next" : "다음";
   };
 
   return <DashboardShell placeCount={placeCount} language={language}>
@@ -253,11 +315,38 @@ export function TripFormPage({ onSubmit, submitting, errorMessage, placeCount, i
 
         {step === 1 && <section aria-labelledby="taste-title">
           <div className="section-heading">
-            <div><span>STEP 2</span><h2 id="taste-title">{language === "EN" ? "What kind of Busan do you want?" : "어떤 부산을 만나고 싶나요?"}</h2></div>
-            <p>{language === "EN" ? "Pick one — that's enough. Everything below is optional." : "하나만 고르면 충분해요. 아래는 모두 선택 사항입니다."}</p>
+            <div>
+              <span>STEP 2 · {tasteStep + 1}/{TASTE_STEPS.length}</span>
+              <h2 id="taste-title">
+                {tasteCustom
+                  ? (language === "EN" ? "Pick the details yourself" : "세부 취향을 직접 고를게요")
+                  : (language === "EN" ? TASTE_STEPS[tasteStep].titleEn : TASTE_STEPS[tasteStep].titleKo)}
+              </h2>
+            </div>
+            <p>
+              {tasteCustom
+                ? (language === "EN" ? "Mode, course theme and tags. Press Next when you're done." : "추천 모드·코스·태그를 고른 뒤 '다음'을 눌러주세요.")
+                : (language === "EN" ? TASTE_STEPS[tasteStep].hintEn : TASTE_STEPS[tasteStep].hintKo)}
+            </p>
           </div>
 
-          <TravelMoodPicker value={selectedMoodId} onSelect={applyMood} language={language} />
+          {/* 질문 사이 진행 표시. 지금 어디쯤인지 보여줘 갑작스러운 전환으로 느껴지지 않게 한다. */}
+          <div className="taste-progress" aria-hidden="true">
+            {TASTE_STEPS.map((_, index) => (
+              <i key={index} className={index === tasteStep ? "current" : index < tasteStep ? "done" : ""} />
+            ))}
+          </div>
+
+          {/* key 로 다시 마운트해 질문이 바뀔 때마다 진입 애니메이션이 돈다. */}
+          <div className="taste-panel" key={`${tasteStep}-${tasteCustom}`}>
+          {tasteStep === 0 && !tasteCustom && <>
+          <TravelMoodPicker
+            value={selectedMoodId}
+            onSelect={applyMood}
+            onCustom={() => { setTasteCustom(true); detachMood(); }}
+            customActive={tasteCustom}
+            language={language}
+          />
 
           <p className="mood-summary" role="status">
             {selectedMood
@@ -277,16 +366,17 @@ export function TripFormPage({ onSubmit, submitting, errorMessage, placeCount, i
             </p>
             <div className="course-preset-notice-actions">
               <button type="button" onClick={applyCoursePreset}>{language === "EN" ? "Use course setting" : "추천값으로 변경"}</button>
-              <button type="button" className="ghost" onClick={() => setCoursePresetNotice(null)}>{language === "EN" ? "Keep mine" : "내 선택 유지"}</button>
+              <button type="button" className="ghost" onClick={keepMyPreset}>{language === "EN" ? "Keep mine" : "내 선택 유지"}</button>
             </div>
           </div>}
 
-          {/* 세부 설정은 접어둔다. 고르고 싶은 사람은 열 수 있고, 고민되는 사람은 지나칠 수 있다. */}
-          <details className="advanced-block" open={advancedOpen} onToggle={(event) => setAdvancedOpen((event.target as HTMLDetailsElement).open)}>
-            <summary>
-              <b>{language === "EN" ? "Fine-tune it myself" : "세부 취향 직접 고르기"}</b>
-              <small>{language === "EN" ? "Mode, course theme and tags" : "추천 모드 · 코스 카테고리 · 취향 태그"}</small>
-            </summary>
+          </>}
+
+          {/* "직접 고를래요" 카드를 고른 사람만 오는 화면. 같은 1/3 질문의 다른 얼굴이다. */}
+          {tasteStep === 0 && tasteCustom && <>
+            <button type="button" className="taste-back-link" onClick={() => setTasteCustom(false)}>
+              ← {language === "EN" ? "Back to mood cards" : "무드 카드로 돌아가기"}
+            </button>
 
             <div className="advanced-body">
               <div className="mode-grid" role="radiogroup" aria-label={language === "EN" ? "Recommendation mode" : "추천 모드"}>
@@ -330,27 +420,13 @@ export function TripFormPage({ onSubmit, submitting, errorMessage, placeCount, i
                 </div>
               </div>
             </div>
-          </details>
+          </>}
 
-          <details className="advanced-block">
-            <summary>
-              <b>{language === "EN" ? "Dishes I want to try" : "꼭 먹고 싶은 음식"}</b>
-              <small>{desiredFoods.length ? (language === "EN" ? `${desiredFoods.length} selected` : `${desiredFoods.length}개 선택됨`) : (language === "EN" ? "Optional" : "선택 사항")}</small>
-            </summary>
-            <div className="advanced-body">
-              <DesiredFoodPicker selectedFoods={desiredFoods} onChange={setDesiredFoods} language={language} />
-            </div>
-          </details>
+          {tasteStep === 1 && <DesiredFoodPicker selectedFoods={desiredFoods} onChange={setDesiredFoods} language={language} />}
 
-          <details className="advanced-block">
-            <summary>
-              <b>{language === "EN" ? "Places I must visit" : "꼭 가고 싶은 장소"}</b>
-              <small>{desiredPlaces.length ? (language === "EN" ? `${desiredPlaces.length} added` : `${desiredPlaces.length}곳 추가됨`) : (language === "EN" ? "Optional" : "선택 사항")}</small>
-            </summary>
-            <div className="advanced-body">
-              <DesiredPlacesPicker value={desiredPlaces} onChange={setDesiredPlaces} />
-            </div>
-          </details>
+          {/* main 에서 장소별 날짜 지정(numDays/dayIndex)이 빠졌으므로 그 인자도 넘기지 않는다. */}
+          {tasteStep === 2 && <DesiredPlacesPicker value={desiredPlaces} onChange={setDesiredPlaces} />}
+          </div>
         </section>}
 
         {step === 2 && <section aria-labelledby="confirm-title">
@@ -374,15 +450,30 @@ export function TripFormPage({ onSubmit, submitting, errorMessage, placeCount, i
             <div><dt>{language === "EN" ? "Travel Pace" : "여행 스타일"}</dt><dd>{paceLabel(pace, language)}</dd></div>
             <div><dt>{language === "EN" ? "Primary Transport" : "주요 이동 수단"}</dt><dd>{transportLabel(hasCar, language)}</dd></div>
             <div><dt>{language === "EN" ? "Selected Tags" : "선택 취향"}</dt><dd>{selectedTags.length ? selectedTags.map((slug) => tagLabel(slug, language)).join(", ") : (language === "EN" ? "Default" : "기본값")}</dd></div>
+            <div>
+              <dt>{language === "EN" ? "Must-try dishes" : "꼭 먹고 싶은 음식"}</dt>
+              <dd>{desiredFoods.length
+                ? (language === "EN" ? `${desiredFoods.length} selected` : `${desiredFoods.length}개 선택`)
+                : (language === "EN" ? "Not set" : "선택 안 함")}</dd>
+            </div>
+            <div>
+              <dt>{language === "EN" ? "Must-visit places" : "꼭 가고 싶은 장소"}</dt>
+              <dd>{desiredPlaces.length
+                ? (language === "EN" ? `${desiredPlaces.length} added` : `${desiredPlaces.length}곳`)
+                : (language === "EN" ? "Not set" : "선택 안 함")}</dd>
+            </div>
           </dl>
+          {/* 무드 카드가 STEP 2 를 건너뛰게 하므로, 선택 항목으로 되돌아갈 길을 여기서 열어둔다. */}
+          <p className="confirm-tweak">
+            {language === "EN" ? "Want to add dishes, must-visit places, or fine-tune tags?" : "먹고 싶은 음식이나 꼭 가고 싶은 장소를 더하고 싶으신가요?"}
+            <button type="button" onClick={() => { setStep(1); setTasteStep(1); }}>{language === "EN" ? "Go back and adjust" : "취향 더 고르기"}</button>
+          </p>
         </section>}
 
         {errorMessage && <div className="error-box" role="alert"><strong>{language === "EN" ? "Could not generate schedule." : "일정을 만들지 못했어요."}</strong><span>{errorMessage}</span></div>}
         <div className="form-actions">
-          {step > 0 && <button type="button" className="secondary-btn" onClick={() => setStep((value) => value - 1)}>{language === "EN" ? "Back" : "이전"}</button>}
-          <button type="submit" className="primary-btn" disabled={submitting || !canContinue}>
-            {step === STEPS.length - 1 ? (submitting ? (language === "EN" ? "Calculating..." : "계산 중…") : (language === "EN" ? "Generate Itinerary" : "일정 생성")) : (language === "EN" ? "Next" : "다음")}
-          </button>
+          {(step > 0 || tasteStep > 0) && <button type="button" className="secondary-btn" onClick={goBack}>{language === "EN" ? "Back" : "이전"}</button>}
+          <button type="submit" className="primary-btn" disabled={submitting || !canContinue}>{nextLabel()}</button>
         </div>
       </form>
     </div>
