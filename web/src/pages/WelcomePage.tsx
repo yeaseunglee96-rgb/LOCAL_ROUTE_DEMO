@@ -7,46 +7,40 @@ import { paths } from "../routes/paths";
 
 const FEATURES = [
   {
-    icon: "🗺️",
     titleKo: "운영시간·이동시간까지 계산한 일정",
-    titleEn: "Itineraries that account for hours & travel time",
-    bodyKo: "장소만 나열하지 않고 영업시간, 이동 거리, 예산과 동반 조건을 함께 계산해 실제로 따라갈 수 있는 일정을 만들어요.",
-    bodyEn: "We don't just list places — opening hours, travel time, budget, and accessibility are calculated together into a plan you can actually follow.",
+    titleEn: "Itineraries built around hours & travel time",
+    bodyKo: "예산과 이동 시간을 고려해 실제로 따라갈 수 있는 일정을 짜요.",
+    bodyEn: "A realistic plan that accounts for hours, travel time, and budget.",
   },
   {
-    icon: "📍",
     titleKo: "현지인이 다시 가는 로컬 장소",
     titleEn: "Local spots Busan residents return to",
-    bodyKo: "관광 필수 코스와 숨은 로컬 명소 중 원하는 스타일을 골라 나만의 부산을 만나보세요.",
-    bodyEn: "Choose between essential tourist sights and hidden local favorites to explore Busan your way.",
+    bodyKo: "관광 코스와 로컬 코스 중 원하는 스타일을 선택하세요.",
+    bodyEn: "Choose essential sights or hidden local favorites.",
   },
   {
-    icon: "🌐",
     titleKo: "외국인 여행자를 위한 도구",
     titleEn: "Built-in tools for foreign travelers",
-    bodyKo: "📷 메뉴판 사진 번역, 🎙️ 양방향 음성 통역, 🗣️ 부산 사투리 학습까지 여행 중 바로 사용할 수 있어요.",
-    bodyEn: "Translate menu photos, get bi-directional voice interpretation, and even learn local Busan dialect — all built in.",
+    bodyKo: "메뉴판 번역, 음성 통역, 사투리 학습을 지원해요.",
+    bodyEn: "Menu translation, voice interpretation, and dialect help.",
   },
   {
-    icon: "🧭",
     titleKo: "실시간 길찾기 내비게이션",
     titleEn: "Real-time turn-by-turn navigation",
-    bodyKo: "구글맵이 잘 안내하지 못하는 국내 대중교통·도보 경로를 실시간 GPS로 안내하고, 택시 기사님께 보여줄 한글 목적지 카드도 만들어드려요.",
-    bodyEn: "Get real-time GPS-guided transit and walking directions where Google Maps falls short in Korea, plus a Korean destination card to show taxi drivers.",
+    bodyKo: "실시간 GPS 안내와 택시 기사용 목적지 카드를 제공해요.",
+    bodyEn: "Real-time GPS directions and a taxi destination card.",
   },
   {
-    icon: "🤝",
     titleKo: "동행자와 함께 계획하고 기록",
     titleEn: "Plan and record memories together",
-    bodyKo: "일정을 링크로 공유하고 동행자를 초대해 함께 편집하며, 방문 후 기록도 남길 수 있어요.",
-    bodyEn: "Share your itinerary by link, invite companions to co-edit, and record memories after your visit.",
+    bodyKo: "일정을 공유하고 함께 편집하며 기록을 남겨요.",
+    bodyEn: "Share, co-edit, and record your trip together.",
   },
   {
-    icon: "🧳",
     titleKo: "여행 준비까지 한 번에",
     titleEn: "Everything you need to prepare",
-    bodyKo: "날씨별 준비물 안내, 예상 경비 상세, 숙박·렌터카·eSIM 등 필수 서비스 예약까지 한 곳에서 확인해요.",
-    bodyEn: "Check weather-based packing tips, a detailed cost breakdown, and book essentials like lodging, rental cars, and eSIM — all in one place.",
+    bodyKo: "날씨, 경비, 필수 서비스 예약을 확인하세요.",
+    bodyEn: "Check weather, costs, and essential bookings.",
   },
 ];
 
@@ -85,7 +79,7 @@ export function WelcomePage() {
             aria-pressed={lang === "KO"}
             onClick={() => chooseLanguage("KO")}
           >
-            🇰🇷 한국어
+            한국어
           </button>
           <button
             type="button"
@@ -93,23 +87,22 @@ export function WelcomePage() {
             aria-pressed={lang === "EN"}
             onClick={() => chooseLanguage("EN")}
           >
-            🇺🇸 English
+            English
           </button>
         </div>
       </section>
 
       <section className="landing-hero onboarding-hero">
         <span className="section-eyebrow">{isEn ? "LOCAL-RECOMMENDED TRAVEL" : "현지인 추천 기반 여행"}</span>
-        <h1>{isEn ? "Explore Busan like a local, without the guesswork" : "가이드북 없이도, 현지인처럼 부산을 즐기세요"}</h1>
+        <h1>{isEn ? "Enjoy Busan, recommended by locals" : "현지인이 추천해주는 부산을 즐기세요"}</h1>
         <p>{isEn
-          ? "LOCAL ROUTE builds a Busan itinerary around your schedule, budget, and needs — then helps you communicate once you're there."
-          : "로컬 루트는 여행 일정과 예산, 이용 조건에 맞춰 부산 일정을 짜드리고, 현지에서 소통까지 도와드려요."}</p>
+          ? "From planning to communicating on the ground — all in one place."
+          : "일정 계산부터 현지 소통까지, 한 번에 도와드려요."}</p>
       </section>
 
       <section className="onboarding-features">
         {FEATURES.map((feature) => (
           <article key={feature.titleKo} className="onboarding-feature-card">
-            <span className="onboarding-feature-icon" aria-hidden="true">{feature.icon}</span>
             <strong>{isEn ? feature.titleEn : feature.titleKo}</strong>
             <p>{isEn ? feature.bodyEn : feature.bodyKo}</p>
           </article>

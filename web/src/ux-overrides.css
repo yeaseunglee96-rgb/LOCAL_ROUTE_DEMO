@@ -499,7 +499,6 @@ button,input,select,textarea{max-width:100%}
 .onboarding-hero p{max-width:56ch}
 .onboarding-features{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px}
 .onboarding-feature-card{display:flex;flex-direction:column;gap:8px;padding:20px;border:1px solid #e8e8eb;border-radius:16px;background:#fff}
-.onboarding-feature-icon{font-size:26px}
 .onboarding-feature-card strong{font-size:15px;color:#232234}
 .onboarding-feature-card p{margin:0;color:#7c7d84;font-size:13px;line-height:1.55}
 .onboarding-cta{display:flex;justify-content:center;padding:8px 0 24px}
