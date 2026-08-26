@@ -2508,6 +2508,17 @@ button {
 .story-quick-start strong { font-size: 18px; }
 .story-quick-start small { color: #6e7586; }
 .story-quick-start > button { border: 0; border-radius: 12px; padding: 13px 17px; background: #17171d; color: #fff; font-weight: 800; cursor: pointer; white-space: nowrap; }
+.my-story-manager { margin-bottom: 28px; padding: 22px; border: 1px solid #e0e2e8; border-radius: 18px; background: #fff; }
+.my-story-manager-empty { padding: 22px; border-radius: 12px; background: #f7f7f9; color: #707787; text-align: center; }
+.my-story-records { display: grid; gap: 10px; }
+.my-story-records > button { display: grid; grid-template-columns: 58px minmax(0, 1fr) auto; align-items: center; gap: 14px; width: 100%; padding: 10px; border: 1px solid #e5e7ed; border-radius: 14px; background: #fff; color: inherit; text-align: left; cursor: pointer; }
+.my-story-records > button:hover { border-color: #7666e6; background: #faf9ff; }
+.my-story-records img, .my-story-record-placeholder { width: 58px; height: 58px; border-radius: 10px; object-fit: cover; }
+.my-story-record-placeholder { display: grid; place-items: center; background: #ece9fd; color: #5f50d1; font-size: 22px; font-weight: 900; }
+.my-story-records > button > span:nth-child(2) { display: grid; min-width: 0; gap: 3px; }
+.my-story-records small { color: #737a8b; }
+.my-story-records em { overflow: hidden; color: #515867; font-style: normal; text-overflow: ellipsis; white-space: nowrap; }
+.my-story-records b { color: #6554d9; font-size: 12px; }
 .story-preview-grid, .viewer-gallery {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -2601,5 +2612,8 @@ button {
   .story-edit-dialog > footer > div { width: 100%; }
   .story-edit-dialog > footer > div button { flex: 1; }
   .story-quick-start { align-items: stretch; flex-direction: column; }
+  .my-story-records > button { grid-template-columns: 50px minmax(0, 1fr); }
+  .my-story-records img, .my-story-record-placeholder { width: 50px; height: 50px; }
+  .my-story-records b { display: none; }
 }
 

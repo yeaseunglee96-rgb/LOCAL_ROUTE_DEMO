@@ -22,6 +22,7 @@ export function SocialPanel({ itinerary }: { itinerary: ItineraryOutput }) {
   const items = itinerary.days.flatMap((day) => day.items);
   const [publicStories, setPublicStories] = useState<StoryRecord[]>([]);
   const [followingPosts, setFollowingPosts] = useState<StoryRecord[]>([]);
+  const [myStories, setMyStories] = useState<StoryRecord[]>([]);
   const [selectedStory, setSelectedStory] = useState<StoryRecord | null>(null);
   const [composerOpen, setComposerOpen] = useState(false);
   const [placeId, setPlaceId] = useState(items[0]?.placeId ?? "");
@@ -38,8 +39,8 @@ export function SocialPanel({ itinerary }: { itinerary: ItineraryOutput }) {
 
   const load = async () => {
     try {
-      const [all, followed] = await Promise.all([getStories(false), getStories({ following: true })]);
-      setPublicStories(all); setFollowingPosts(followed);
+      const [all, followed, mine] = await Promise.all([getStories(false), getStories({ following: true }), getStories({ mine: true })]);
+      setPublicStories(all); setFollowingPosts(followed); setMyStories(mine);
       setSelectedStory((current) => current ? all.find((story) => story.id === current.id) ?? null : null);
     } catch { setPublicStories([]); setFollowingPosts([]); }
   };
@@ -77,6 +78,17 @@ export function SocialPanel({ itinerary }: { itinerary: ItineraryOutput }) {
     <section className="story-quick-start" aria-label="내 여행 기록 작성">
       <div><span>MY TRAVEL NOTE</span><strong>이 여행의 사진과 이야기를 남겨보세요</strong><small>일정 속 장소를 선택해 기록하면 나중에 여행별로 다시 볼 수 있어요.</small></div>
       <button type="button" onClick={() => { setComposerOpen(true); window.setTimeout(() => document.getElementById("my-travel-note")?.scrollIntoView({ behavior: "smooth", block: "center" }), 0); }}>＋ 사진·기록 남기기</button>
+    </section>
+
+    <section className="my-story-manager" aria-labelledby="my-story-manager-title">
+      <div className="social-section-heading"><div><span>MY ARCHIVE</span><h2 id="my-story-manager-title">내 기록 관리</h2></div><small>{myStories.length}개의 기록</small></div>
+      {myStories.length === 0 ? <div className="my-story-manager-empty">아직 작성한 기록이 없어요. 위 버튼으로 첫 기록을 남겨보세요.</div> : <div className="my-story-records">
+        {myStories.map((story) => <button type="button" key={story.id} onClick={() => startEdit(story)}>
+          {story.images[0] ? <img src={story.images[0]} alt="" /> : <span className="my-story-record-placeholder">{story.placeName.slice(0, 1)}</span>}
+          <span><strong>{story.placeName}</strong><small>{new Date(story.publishAt).toLocaleDateString("ko-KR")} · {story.visibility === "PRIVATE" ? "나만 보기" : story.visibility === "FOLLOWERS" ? "팔로워 공개" : "전체 공개"}</small><em>{story.content}</em></span>
+          <b>수정 →</b>
+        </button>)}
+      </div>}
     </section>
     <section className="people-stories" aria-labelledby="story-tray-title">
       <div className="social-section-heading"><div><span>지금 여행 중</span><h2 id="story-tray-title">여행자 스토리</h2></div><small>최근 공유된 순간</small></div>
