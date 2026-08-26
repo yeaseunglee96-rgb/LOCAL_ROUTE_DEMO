@@ -59,6 +59,37 @@ export function estimatePlaceCost(place: { category?: string; priceTier: number 
   }
 }
 
+// 카카오 후기 베이지안 사전값. 후기 30건·평균 4.0점을 가정하고 실제 관측치를 그쪽으로 끌어당긴다.
+const KAKAO_REVIEW_PRIOR_COUNT = 30;
+const KAKAO_REVIEW_PRIOR_RATING = 4.0;
+/** 권한이 확인된 출처만 추천에 반영한다. 임의 크롤링 데이터는 점수에서 완전히 배제한다. */
+const APPROVED_KAKAO_REVIEW_SOURCES = new Set(["LICENSED_IMPORT", "MANUAL_VERIFIED"]);
+
+/**
+ * 검증된 출처의 카카오 후기를 0~1 신호로 환산한다. 반영할 수 없으면 null 을 돌려준다.
+ *
+ * 후기 1건짜리 5.0점이 후기 500건 4.6점을 이기면 안 되므로 베이지안 보정을 적용하고,
+ * 후기·평점 필드가 없는 카카오 로컬 API 특성상 승인되지 않은 출처는 아예 쓰지 않는다.
+ * 평점 데이터는 식당 후보에만 적용한다(README "카카오 식당 리뷰 추천" 절).
+ */
+export function kakaoRestaurantReviewSignal(place: {
+  category?: string;
+  kakaoRating: number | null;
+  kakaoReviewCount: number | null;
+  kakaoPositiveReviewRate?: number | null;
+  kakaoReviewSource: string | null;
+}): number | null {
+  if (place.category && place.category !== "RESTAURANT") return null;
+  if (!place.kakaoReviewSource || !APPROVED_KAKAO_REVIEW_SOURCES.has(place.kakaoReviewSource)) return null;
+  if (place.kakaoRating === null || place.kakaoReviewCount === null) return null;
+  const count = Math.max(0, place.kakaoReviewCount);
+  const adjustedRating = (place.kakaoRating * count + KAKAO_REVIEW_PRIOR_RATING * KAKAO_REVIEW_PRIOR_COUNT) / (count + KAKAO_REVIEW_PRIOR_COUNT);
+  const ratingSignal = Math.max(0, Math.min(1, adjustedRating / 5));
+  const positiveRate = place.kakaoPositiveReviewRate;
+  if (positiveRate === null || positiveRate === undefined) return ratingSignal;
+  return ratingSignal * 0.8 + Math.max(0, Math.min(1, positiveRate)) * 0.2;
+}
+
 function preferenceSimilarity(a: string[], b: string[]): number {
   if (a.length === 0 || b.length === 0) return 0;
   const setA = new Set(a);
@@ -142,6 +173,13 @@ export function scorePlaces(
       const known = JSON.parse(p.dietOptions) as string[];
       return known.length === 0 || known.includes(options.dietType);
     })
+    // 외국인 편의 조건은 선호가 아니라 요구사항이다. 해외카드가 안 되는 가게는
+    // "덜 좋은 후보"가 아니라 결제 자체가 불가능하므로 후보에서 제외한다.
+    .filter((p) => {
+      if (options.needsEnglishMenu && !p.hasEnglishMenu) return false;
+      if (options.needsForeignCard && !p.foreignCardPayment) return false;
+      return true;
+    })
     .map((p) => {
       const placeTasteTags: string[] = JSON.parse(p.tasteTags);
       const tasteMatch = preferenceSimilarity(tasteTags, placeTasteTags);
@@ -163,11 +201,12 @@ export function scorePlaces(
         }
       }
 
-      // 카카오 평점 (1~5점) 및 후기 수를 반영한 과학적 로컬 점수 도출
-      const kakaoRatingScore = p.kakaoRating ? (p.kakaoRating / 5.0) : 0.75;
-      const reviewCountConfidence = p.kakaoReviewCount ? Math.min(1.0, Math.log10(p.kakaoReviewCount + 1) / 3.5) : 0.4;
-      const kakaoCombined = kakaoRatingScore * 0.7 + reviewCountConfidence * 0.3;
-      const effectiveLocalScore = Math.min(1.0, p.localScore * 0.5 + kakaoCombined * 0.5);
+      // 검증된 출처의 카카오 후기가 있는 식당만 로컬 점수를 후기 신호와 합성한다.
+      // 후기를 못 쓰는 장소는 기존 로컬 점수를 그대로 사용해, 데이터 없음이 감점으로 둔갑하지 않게 한다.
+      const reviewSignal = kakaoRestaurantReviewSignal(p);
+      const effectiveLocalScore = reviewSignal === null
+        ? p.localScore
+        : Math.min(1.0, p.localScore * 0.5 + reviewSignal * 0.5);
 
       const presetModeFit = options.mode === "ESSENTIAL"
         ? (placeTasteTags.includes("landmark") ? 1 : 0)
@@ -196,15 +235,15 @@ export function scorePlaces(
       );
       let personalizedScore = options.courseCategory ? baseScore * 0.88 + courseFit * 0.12 : baseScore;
       if (category?.landmarkPenalty && placeTasteTags.includes("landmark")) personalizedScore *= category.landmarkPenalty;
-      const kakaoSignal = p.kakaoRating ? (p.kakaoRating / 5.0) : null;
-      const score = (kakaoSignal === null ? personalizedScore : personalizedScore * 0.85 + kakaoSignal * 0.15) + desiredFoodMatchBonus;
+      const score = (reviewSignal === null ? personalizedScore : personalizedScore * 0.85 + reviewSignal * 0.15) + desiredFoodMatchBonus;
 
       const reasons: string[] = [];
       if (matchedFoodName) reasons.push(`선택한 음식: ${matchedFoodName}`);
       if (tasteMatch > 0) reasons.push("선택 취향 일치");
       if (placeTasteTags.includes("landmark")) reasons.push("대표 관광지");
       if (placeTasteTags.includes("hidden_local")) reasons.push("현지인 추천 숨은 명소");
-      if (p.kakaoRating && p.kakaoReviewCount) {
+      // 신호로 못 쓴 후기는 근거로도 보여주지 않는다(미승인 출처를 화면에 노출하지 않기 위함).
+      if (reviewSignal !== null && p.kakaoRating && p.kakaoReviewCount) {
         reasons.push(`카카오 평점 ${p.kakaoRating.toFixed(1)} · 후기 ${p.kakaoReviewCount.toLocaleString()}개`);
       }
       const scored: ScoredPlace = {
