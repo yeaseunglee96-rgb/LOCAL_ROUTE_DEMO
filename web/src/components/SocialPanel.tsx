@@ -36,6 +36,7 @@ export function SocialPanel({ itinerary }: { itinerary: ItineraryOutput }) {
   const [editImages, setEditImages] = useState<string[]>([]);
   const [editVisibility, setEditVisibility] = useState("PRIVATE");
   const [savingEdit, setSavingEdit] = useState(false);
+  const [section, setSection] = useState<"book" | "community">("book");
 
   const load = async () => {
     try {
@@ -51,6 +52,7 @@ export function SocialPanel({ itinerary }: { itinerary: ItineraryOutput }) {
     publicStories.forEach((story) => { if (!latestByAuthor.has(story.authorId)) latestByAuthor.set(story.authorId, story); });
     return [...latestByAuthor.values()].slice(0, 14);
   }, [publicStories]);
+  const tripStories = useMemo(() => myStories.filter((story) => story.tripId === itinerary.tripId).sort((a, b) => (a.dayIndex ?? 999) - (b.dayIndex ?? 999) || String(a.plannedArrival ?? "").localeCompare(String(b.plannedArrival ?? ""))), [myStories, itinerary.tripId]);
 
   const selected = items.find((item) => item.placeId === placeId);
   const chooseImages = async (files: FileList | null, target: "create" | "edit") => {
@@ -80,17 +82,22 @@ export function SocialPanel({ itinerary }: { itinerary: ItineraryOutput }) {
       <button type="button" onClick={() => { setComposerOpen(true); window.setTimeout(() => document.getElementById("my-travel-note")?.scrollIntoView({ behavior: "smooth", block: "center" }), 0); }}>＋ 사진·기록 남기기</button>
     </section>
 
-    <section className="my-story-manager" aria-labelledby="my-story-manager-title">
-      <div className="social-section-heading"><div><span>MY ARCHIVE</span><h2 id="my-story-manager-title">내 기록 관리</h2></div><small>{myStories.length}개의 기록</small></div>
-      {myStories.length === 0 ? <div className="my-story-manager-empty">아직 작성한 기록이 없어요. 위 버튼으로 첫 기록을 남겨보세요.</div> : <div className="my-story-records">
-        {myStories.map((story) => <button type="button" key={story.id} onClick={() => startEdit(story)}>
+    <nav className="story-section-tabs" aria-label="여행 기록 메뉴">
+      <button type="button" className={section === "book" ? "active" : ""} onClick={() => setSection("book")}>내 여행책</button>
+      <button type="button" className={section === "community" ? "active" : ""} onClick={() => setSection("community")}>여행자 피드</button>
+    </nav>
+
+    {section === "book" && <section className="my-story-manager" aria-labelledby="my-story-manager-title">
+      <div className="travel-book-cover" style={tripStories[0]?.images[0] ? { backgroundImage: `linear-gradient(90deg, rgba(16,16,22,.8), rgba(16,16,22,.2)), url(${tripStories[0].images[0]})` } : undefined}><span>LOCAL ROUTE · TRAVEL BOOK</span><h2>부산에서의 {itinerary.days.length}일</h2><p>{itinerary.trip.startDate} — {itinerary.trip.endDate} · {new Set(tripStories.map((story) => story.placeId)).size}곳의 기록</p></div>
+      <div className="social-section-heading"><div><span>MY TRAVEL BOOK</span><h2 id="my-story-manager-title">이 여행의 기록</h2></div><small>{tripStories.length}개의 장면</small></div>
+      {tripStories.length === 0 ? <div className="my-story-manager-empty">이 여행에는 아직 기록이 없어요. 위 버튼으로 첫 장면을 남겨보세요.</div> : <div className="travel-book-strip">
+        {tripStories.map((story) => <button type="button" key={story.id} onClick={() => startEdit(story)}>
           {story.images[0] ? <img src={story.images[0]} alt="" /> : <span className="my-story-record-placeholder">{story.placeName.slice(0, 1)}</span>}
-          <span><strong>{story.placeName}</strong><small>{new Date(story.publishAt) > new Date() ? `${new Date(story.publishAt).toLocaleDateString("ko-KR")} 공개 예정` : story.visibility === "PRIVATE" ? "나만 보기" : story.visibility === "FOLLOWERS" ? "팔로워 공개" : "전체 공개"}</small><em>{story.content}</em></span>
-          <b>수정 →</b>
+          <span><small>{story.dayIndex ? `DAY ${story.dayIndex}` : "TRAVEL NOTE"}{story.plannedArrival ? ` · ${story.plannedArrival}` : ""}</small><strong>{story.placeName}</strong><em>{story.content}</em><b>{new Date(story.publishAt) > new Date() ? "공개 예정 · 수정 →" : "기록 수정 →"}</b></span>
         </button>)}
       </div>}
-    </section>
-    <section className="people-stories" aria-labelledby="story-tray-title">
+    </section>}
+    {section === "community" && <><section className="people-stories" aria-labelledby="story-tray-title">
       <div className="social-section-heading"><div><span>지금 여행 중</span><h2 id="story-tray-title">여행자 스토리</h2></div><small>최근 공유된 순간</small></div>
       <div className="story-rail" role="list">
         {storyTray.length === 0 && <div className="story-rail-empty"><strong>첫 번째 여행 순간을 기다리고 있어요</strong><span>공개된 스토리가 생기면 여기에 먼저 보여드릴게요.</span></div>}
@@ -109,9 +116,9 @@ export function SocialPanel({ itinerary }: { itinerary: ItineraryOutput }) {
           <div className="post-body">{story.images[0] && <p><strong>{story.authorLabel}</strong> {story.content}</p>}<div className="post-meta"><span>{story.visitVerified ? "방문 확인" : "여행 기록"} · {new Date(story.publishAt).toLocaleDateString("ko-KR")}</span>{story.moderationStatus === "REVIEW" ? <em>검토 중</em> : <button type="button" onClick={async () => { await reportStory(story.id); await load(); }}>신고</button>}</div></div>
         </article>)}
       </div>}
-    </section>
+    </section></>}
 
-    <section id="my-travel-note" className="my-story-area" aria-labelledby="my-story-title">
+    {section === "book" && <section id="my-travel-note" className="my-story-area" aria-labelledby="my-story-title">
       <div><span>MY TRAVEL NOTE</span><h2 id="my-story-title">내 여행 기록 남기기</h2><p>피드를 둘러본 뒤, 오늘의 기억을 한 장면으로 남겨보세요.</p></div>
       <button type="button" className="composer-toggle" aria-expanded={composerOpen} onClick={() => setComposerOpen((open) => !open)}>{composerOpen ? "작성 닫기" : "기록 작성"}</button>
       {composerOpen && <div className="story-composer">
@@ -121,7 +128,7 @@ export function SocialPanel({ itinerary }: { itinerary: ItineraryOutput }) {
         {!publishNow && visibility !== "PRIVATE" && <p className="publish-schedule-note">체크하지 않으면 여행 종료 후 자동으로 공개돼요.</p>}
         {publishNow && <p className="privacy-warning">여행 중 공개할 때는 현재 위치가 드러나지 않도록 지역 단위로만 표시합니다.</p>}{images.length > 0 && <div className="story-preview-grid">{images.map((image, index) => <figure key={`${image.slice(-20)}-${index}`}><img src={image} alt={`업로드할 사진 ${index + 1}`} /><button type="button" onClick={() => setImages(images.filter((_, itemIndex) => itemIndex !== index))} aria-label={`사진 ${index + 1} 삭제`}>×</button></figure>)}</div>}
       </div>}
-    </section>
+    </section>}
     {notice && <p className="feature-notice" role="status">{notice}</p>}
 
     {selectedStory && <div className="story-viewer-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setSelectedStory(null); }}>

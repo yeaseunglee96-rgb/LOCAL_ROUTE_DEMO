@@ -12,6 +12,10 @@ export class ApiUnavailableError extends Error {
   }
 }
 
+export class ApiResponseError extends Error {
+  constructor(message: string, public readonly status: number) { super(message); this.name = "ApiResponseError"; }
+}
+
 const rawFetch = globalThis.fetch.bind(globalThis);
 // 아래 fetch 는 이 모듈 스코프에서 전역 fetch 를 가린다(호출부 수정 불필요).
 async function fetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
@@ -25,7 +29,7 @@ async function fetch(input: RequestInfo | URL, init?: RequestInit): Promise<Resp
 async function handle<T>(res: Response): Promise<T> {
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(body.message ?? `요청 실패 (${res.status})`);
+    throw new ApiResponseError(body.message ?? `요청 실패 (${res.status})`, res.status);
   }
   return res.json() as Promise<T>;
 }
@@ -40,7 +44,7 @@ export async function createTrip(payload: CreateTripRequest): Promise<{ tripId: 
   return handle(res);
 }
 
-export interface MyTripSummary { id: string; origin: string; startDate: string; endDate: string; partySize: number; pace: "RELAXED" | "NORMAL" | "PACKED"; status: string; itineraryId: string | null; placeCount: number; coverImage: string | null; highlights: string[]; createdAt: string }
+export interface MyTripSummary { id: string; origin: string; startDate: string; endDate: string; partySize: number; pace: "RELAXED" | "NORMAL" | "PACKED"; status: string; itineraryId: string | null; placeCount: number; storyCount: number; coverImage: string | null; highlights: string[]; createdAt: string }
 export async function getMyTrips() { return (await handle<{ trips: MyTripSummary[] }>(await fetch("/api/trips", { headers: await authHeaders() }))).trips; }
 
 export async function generateItinerary(tripId: string, onProgress?: (job: ItineraryJob) => void, mode?: string): Promise<ItineraryOutput> {
