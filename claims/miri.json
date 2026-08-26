@@ -1,0 +1,11 @@
+{
+  "agent": "miri",
+  "task": null,
+  "intent": "프론트 UX 수정",
+  "actor": null,
+  "since": "2026-08-26T08:09:10.203Z",
+  "ttlMs": 1800000,
+  "paths": [
+    "web/src"
+  ]
+}
