@@ -2519,6 +2519,15 @@ button {
 .my-story-records small { color: #737a8b; }
 .my-story-records em { overflow: hidden; color: #515867; font-style: normal; text-overflow: ellipsis; white-space: nowrap; }
 .my-story-records b { color: #6554d9; font-size: 12px; }
+.travel-book-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; }
+.travel-book-strip > button { overflow: hidden; padding: 0; border: 1px solid #e1e2e8; border-radius: 15px; background: #fff; color: inherit; text-align: left; cursor: pointer; }
+.travel-book-strip > button:hover { border-color: #7565e6; transform: translateY(-2px); }
+.travel-book-strip > button > img, .travel-book-strip > button > .my-story-record-placeholder { width: 100%; height: 155px; border-radius: 0; object-fit: cover; }
+.travel-book-strip > button > span:last-child { display: grid; gap: 5px; padding: 14px; }
+.travel-book-strip small { color: #6959dc; font-size: 10px; font-weight: 900; letter-spacing: .08em; }
+.travel-book-strip strong { font-size: 17px; }
+.travel-book-strip em { overflow: hidden; color: #596071; font-style: normal; line-height: 1.5; text-overflow: ellipsis; white-space: nowrap; }
+.travel-book-strip b { margin-top: 5px; color: #6554d9; font-size: 11px; }
 .my-trip-actions { display: flex; align-items: center; gap: 8px; }
 .my-trip-actions button:first-child:not(:last-child) { border: 1px solid #cbc5f7; background: #f7f5ff; color: #5f50d1; }
 .story-preview-grid, .viewer-gallery {

@@ -51,6 +51,7 @@ export function SocialPanel({ itinerary }: { itinerary: ItineraryOutput }) {
     publicStories.forEach((story) => { if (!latestByAuthor.has(story.authorId)) latestByAuthor.set(story.authorId, story); });
     return [...latestByAuthor.values()].slice(0, 14);
   }, [publicStories]);
+  const tripStories = useMemo(() => myStories.filter((story) => story.tripId === itinerary.tripId).sort((a, b) => (a.dayIndex ?? 999) - (b.dayIndex ?? 999) || String(a.plannedArrival ?? "").localeCompare(String(b.plannedArrival ?? ""))), [myStories, itinerary.tripId]);
 
   const selected = items.find((item) => item.placeId === placeId);
   const chooseImages = async (files: FileList | null, target: "create" | "edit") => {
@@ -81,12 +82,11 @@ export function SocialPanel({ itinerary }: { itinerary: ItineraryOutput }) {
     </section>
 
     <section className="my-story-manager" aria-labelledby="my-story-manager-title">
-      <div className="social-section-heading"><div><span>MY ARCHIVE</span><h2 id="my-story-manager-title">내 기록 관리</h2></div><small>{myStories.length}개의 기록</small></div>
-      {myStories.length === 0 ? <div className="my-story-manager-empty">아직 작성한 기록이 없어요. 위 버튼으로 첫 기록을 남겨보세요.</div> : <div className="my-story-records">
-        {myStories.map((story) => <button type="button" key={story.id} onClick={() => startEdit(story)}>
+      <div className="social-section-heading"><div><span>MY TRAVEL BOOK</span><h2 id="my-story-manager-title">이 여행의 기록</h2></div><small>{tripStories.length}개의 장면</small></div>
+      {tripStories.length === 0 ? <div className="my-story-manager-empty">이 여행에는 아직 기록이 없어요. 위 버튼으로 첫 장면을 남겨보세요.</div> : <div className="travel-book-strip">
+        {tripStories.map((story) => <button type="button" key={story.id} onClick={() => startEdit(story)}>
           {story.images[0] ? <img src={story.images[0]} alt="" /> : <span className="my-story-record-placeholder">{story.placeName.slice(0, 1)}</span>}
-          <span><strong>{story.placeName}</strong><small>{new Date(story.publishAt) > new Date() ? `${new Date(story.publishAt).toLocaleDateString("ko-KR")} 공개 예정` : story.visibility === "PRIVATE" ? "나만 보기" : story.visibility === "FOLLOWERS" ? "팔로워 공개" : "전체 공개"}</small><em>{story.content}</em></span>
-          <b>수정 →</b>
+          <span><small>{story.dayIndex ? `DAY ${story.dayIndex}` : "TRAVEL NOTE"}{story.plannedArrival ? ` · ${story.plannedArrival}` : ""}</small><strong>{story.placeName}</strong><em>{story.content}</em><b>{new Date(story.publishAt) > new Date() ? "공개 예정 · 수정 →" : "기록 수정 →"}</b></span>
         </button>)}
       </div>}
     </section>
