@@ -2500,3 +2500,98 @@ button {
   opacity: 0.8;
 }
 
+/* Trip-linked travel stories */
+.story-preview-grid, .viewer-gallery {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.story-preview-grid { margin-top: 14px; }
+.story-preview-grid figure { position: relative; margin: 0; }
+.story-preview-grid img, .viewer-gallery img {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  border-radius: 12px;
+}
+.story-preview-grid figure > button {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(15, 23, 42, .8);
+  color: #fff;
+  cursor: pointer;
+}
+.viewer-gallery { padding: 0 20px; }
+.story-edit-dialog {
+  width: min(620px, calc(100vw - 32px));
+  max-height: calc(100vh - 40px);
+  overflow: auto;
+  border-radius: 22px;
+  background: #fff;
+  padding: 24px;
+  box-shadow: 0 24px 80px rgba(15, 23, 42, .28);
+}
+.story-edit-dialog > header, .story-edit-dialog > footer, .story-edit-dialog > footer > div,
+.story-edit-options { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.story-edit-dialog header span, .stories-page header > span, .story-start-page header > span {
+  color: #6d5ce7;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .14em;
+}
+.story-edit-dialog header h2 { margin: 5px 0; }
+.story-edit-dialog header p { margin: 0 0 16px; color: #64748b; }
+.story-edit-dialog header > button { align-self: flex-start; border: 0; background: transparent; font-size: 28px; cursor: pointer; }
+.story-edit-dialog > label { display: grid; gap: 8px; font-weight: 700; }
+.story-edit-dialog textarea { min-height: 130px; resize: vertical; padding: 14px; border: 1px solid #d8dce5; border-radius: 12px; font: inherit; }
+.story-edit-options { margin: 16px 0 20px; }
+.story-edit-options select { padding: 10px 12px; border: 1px solid #d8dce5; border-radius: 10px; background: #fff; }
+.story-edit-dialog footer { border-top: 1px solid #e5e7eb; padding-top: 18px; }
+.story-edit-dialog footer button { border: 1px solid #d8dce5; border-radius: 10px; padding: 10px 16px; background: #fff; cursor: pointer; }
+.story-edit-dialog footer div button:last-child { background: #17171d; color: #fff; border-color: #17171d; }
+.story-edit-dialog .story-delete-button { color: #c53b3b; border-color: #f0caca; }
+
+.stories-page, .story-start-page { min-height: 100vh; padding: 56px max(24px, calc((100vw - 1120px) / 2)); background: #f7f7f9; color: #17171d; }
+.stories-page > header, .story-start-page > header { margin-bottom: 26px; }
+.stories-page header > button, .story-start-page header > button { border: 0; background: transparent; padding: 0 0 26px; color: #596174; cursor: pointer; }
+.stories-page header > div { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+.stories-page h1, .story-start-page h1 { margin: 8px 0; font-size: clamp(32px, 5vw, 52px); letter-spacing: -.04em; }
+.stories-page header p, .story-start-page header p { color: #687083; }
+.stories-page header div > button, .stories-empty button { border: 0; border-radius: 12px; padding: 13px 18px; background: #17171d; color: #fff; font-weight: 700; cursor: pointer; }
+.stories-page > nav { display: flex; gap: 8px; margin-bottom: 24px; }
+.stories-page > nav button { border: 1px solid #dfe1e8; border-radius: 999px; padding: 10px 16px; background: #fff; cursor: pointer; }
+.stories-page > nav button.active { background: #7162e5; border-color: #7162e5; color: #fff; }
+.stories-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+.stories-grid article { overflow: hidden; border: 1px solid #e0e2e8; border-radius: 18px; background: #fff; }
+.stories-grid article > img, .story-card-placeholder { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; }
+.story-card-placeholder { display: grid; place-items: center; background: linear-gradient(135deg, #eeeafd, #f6f1eb); font-size: 24px; font-weight: 800; }
+.stories-grid article > div { padding: 16px; }
+.stories-grid small { color: #6d5ce7; font-weight: 700; }
+.stories-grid p { min-height: 48px; line-height: 1.55; }
+.stories-grid footer { display: flex; align-items: center; justify-content: space-between; color: #767d8f; font-size: 12px; }
+.stories-grid footer button { border: 0; background: transparent; color: #6554d9; font-weight: 700; cursor: pointer; }
+.stories-grid footer em { font-style: normal; }
+.stories-empty { padding: 72px 24px; text-align: center; border: 1px dashed #d5d7df; border-radius: 20px; background: #fff; }
+.stories-empty strong { display: block; margin-bottom: 8px; font-size: 22px; }
+.stories-empty p { margin-bottom: 20px; color: #747b8b; }
+.story-trip-picker { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.story-trip-picker > button { display: grid; gap: 8px; text-align: left; padding: 24px; border: 1px solid #dedfe6; border-radius: 18px; background: #fff; cursor: pointer; }
+.story-trip-picker > button:hover { border-color: #7565e6; transform: translateY(-2px); }
+.story-trip-picker span, .story-trip-picker small { color: #737a8b; }
+.story-trip-picker strong { font-size: 24px; }
+.story-trip-picker em { margin-top: 16px; color: #6554d9; font-style: normal; font-weight: 700; }
+
+@media (max-width: 760px) {
+  .stories-page, .story-start-page { padding: 30px 18px; }
+  .stories-page header > div { align-items: flex-start; flex-direction: column; }
+  .stories-grid, .story-trip-picker { grid-template-columns: 1fr; }
+  .story-edit-options, .story-edit-dialog > footer { align-items: stretch; flex-direction: column; }
+  .story-edit-dialog > footer > div { width: 100%; }
+  .story-edit-dialog > footer > div button { flex: 1; }
+}
+

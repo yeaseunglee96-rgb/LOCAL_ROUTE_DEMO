@@ -1,9 +1,22 @@
 import { useEffect, useMemo, useState } from "react";
-import { createStory, followUser, getStories, reportStory } from "../api/client";
+import { createStory, deleteStory, followUser, getStories, reportStory, updateStory } from "../api/client";
 import type { ItineraryOutput, StoryRecord } from "../types";
 
 const shortAuthor = (label: string) => label.replace(/^여행자\s*/, "");
 const storyInitial = (story: StoryRecord) => shortAuthor(story.authorLabel).slice(0, 1) || "L";
+
+async function prepareStoryImage(file: File) {
+  if (!file.type.startsWith("image/")) throw new Error("이미지 파일만 선택할 수 있어요.");
+  if (file.size > 8 * 1024 * 1024) throw new Error("사진은 장당 8MB 이하로 선택해주세요.");
+  const source = await new Promise<string>((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result)); reader.onerror = () => reject(new Error("사진을 읽지 못했습니다.")); reader.readAsDataURL(file); });
+  const image = await new Promise<HTMLImageElement>((resolve, reject) => { const element = new Image(); element.onload = () => resolve(element); element.onerror = () => reject(new Error("사진을 읽지 못했습니다.")); element.src = source; });
+  const scale = Math.min(1, 1280 / Math.max(image.naturalWidth, image.naturalHeight));
+  const canvas = document.createElement("canvas"); canvas.width = Math.round(image.naturalWidth * scale); canvas.height = Math.round(image.naturalHeight * scale);
+  canvas.getContext("2d")?.drawImage(image, 0, 0, canvas.width, canvas.height);
+  const output = canvas.toDataURL("image/jpeg", .76);
+  if (output.length > 1_000_000) throw new Error("사진을 압축할 수 없어요. 더 작은 사진을 선택해주세요.");
+  return output;
+}
 
 export function SocialPanel({ itinerary }: { itinerary: ItineraryOutput }) {
   const items = itinerary.days.flatMap((day) => day.items);
@@ -13,10 +26,15 @@ export function SocialPanel({ itinerary }: { itinerary: ItineraryOutput }) {
   const [composerOpen, setComposerOpen] = useState(false);
   const [placeId, setPlaceId] = useState(items[0]?.placeId ?? "");
   const [content, setContent] = useState("");
-  const [image, setImage] = useState<string | null>(null);
+  const [images, setImages] = useState<string[]>([]);
   const [visibility, setVisibility] = useState("PUBLIC");
   const [publishNow, setPublishNow] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [editingStory, setEditingStory] = useState<StoryRecord | null>(null);
+  const [editContent, setEditContent] = useState("");
+  const [editImages, setEditImages] = useState<string[]>([]);
+  const [editVisibility, setEditVisibility] = useState("PRIVATE");
+  const [savingEdit, setSavingEdit] = useState(false);
 
   const load = async () => {
     try {
@@ -34,21 +52,26 @@ export function SocialPanel({ itinerary }: { itinerary: ItineraryOutput }) {
   }, [publicStories]);
 
   const selected = items.find((item) => item.placeId === placeId);
-  const chooseImage = (file?: File) => {
-    if (!file) return;
-    if (file.size > 750_000) { setNotice("이미지는 750KB 이하만 올릴 수 있습니다."); return; }
-    const reader = new FileReader(); reader.onload = () => setImage(String(reader.result)); reader.readAsDataURL(file);
+  const chooseImages = async (files: FileList | null, target: "create" | "edit") => {
+    if (!files?.length) return;
+    const current = target === "create" ? images : editImages;
+    if (current.length + files.length > 3) { setNotice("사진은 최대 3장까지 올릴 수 있어요."); return; }
+    try { const prepared = await Promise.all([...files].map(prepareStoryImage)); target === "create" ? setImages([...current, ...prepared]) : setEditImages([...current, ...prepared]); }
+    catch (error) { setNotice(error instanceof Error ? error.message : "사진을 불러오지 못했습니다."); }
   };
   const submit = async () => {
     if (!selected || !content.trim()) return;
     try {
-      const result = await createStory({ placeId, itineraryItemId: selected.itemId, content: content.trim(), images: image ? [image] : [], visibility, publishMode: publishNow ? "NOW" : "AFTER_TRIP" });
-      setContent(""); setImage(null); setComposerOpen(false);
+      const result = await createStory({ placeId, itineraryItemId: selected.itemId, content: content.trim(), images, visibility, publishMode: publishNow ? "NOW" : "AFTER_TRIP" });
+      setContent(""); setImages([]); setComposerOpen(false);
       setNotice(result.delayed ? "여행 종료 후 공개되도록 저장했습니다. 사진의 위치정보는 제거됩니다." : "여행 기록을 공개했습니다.");
       await load();
     } catch (error) { setNotice(error instanceof Error ? error.message : "여행 기록을 저장하지 못했습니다."); }
   };
   const toggleFollow = async (story: StoryRecord) => { await followUser(story.authorId, story.isFollowing); await load(); };
+  const startEdit = (story: StoryRecord) => { setEditingStory(story); setEditContent(story.content); setEditImages(story.images); setEditVisibility(story.visibility); setSelectedStory(null); };
+  const saveEdit = async () => { if (!editingStory || !editContent.trim()) return; setSavingEdit(true); try { await updateStory(editingStory.id, { content: editContent.trim(), images: editImages, visibility: editVisibility }); setEditingStory(null); setNotice("여행 기록을 수정했습니다."); await load(); } catch (error) { setNotice(error instanceof Error ? error.message : "수정하지 못했습니다."); } finally { setSavingEdit(false); } };
+  const removeStory = async () => { if (!editingStory || !window.confirm("이 여행 기록을 삭제할까요? 삭제하면 되돌릴 수 없어요.")) return; setSavingEdit(true); try { await deleteStory(editingStory.id); setEditingStory(null); setNotice("여행 기록을 삭제했습니다."); await load(); } catch (error) { setNotice(error instanceof Error ? error.message : "삭제하지 못했습니다."); } finally { setSavingEdit(false); } };
 
   return <section className="social-panel social-home" aria-label="함께 여행 피드">
     <section className="people-stories" aria-labelledby="story-tray-title">
@@ -78,8 +101,8 @@ export function SocialPanel({ itinerary }: { itinerary: ItineraryOutput }) {
       {composerOpen && <div className="story-composer">
         <label><span>장소</span><select aria-label="스토리 장소" value={placeId} onChange={(event) => setPlaceId(event.target.value)}>{items.map((item) => <option key={item.itemId} value={item.placeId}>{item.nameKo}</option>)}</select></label>
         <label><span>기록</span><textarea value={content} maxLength={500} placeholder="이 장소에서 오래 기억하고 싶은 순간은 무엇인가요?" onChange={(event) => setContent(event.target.value)} /></label>
-        <div className="story-options"><label className="image-picker">사진 선택<input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => chooseImage(event.target.files?.[0])} /></label><select aria-label="공개 범위" value={visibility} onChange={(event) => setVisibility(event.target.value)}><option value="PUBLIC">전체 공개</option><option value="FOLLOWERS">팔로워 공개</option><option value="PRIVATE">나만 보기</option></select><label className="publish-check"><input type="checkbox" checked={publishNow} onChange={(event) => setPublishNow(event.target.checked)} /> 지금 공개</label><button type="button" onClick={() => void submit()}>저장하기</button></div>
-        {publishNow && <p className="privacy-warning">여행 중 공개할 때는 현재 위치가 드러나지 않도록 지역 단위로만 표시합니다.</p>}{image && <img className="story-preview" src={image} alt="업로드할 스토리 미리보기" />}
+        <div className="story-options"><label className="image-picker">사진 선택 ({images.length}/3)<input type="file" multiple accept="image/jpeg,image/png,image/webp" onChange={(event) => void chooseImages(event.target.files, "create")} /></label><select aria-label="공개 범위" value={visibility} onChange={(event) => setVisibility(event.target.value)}><option value="PUBLIC">전체 공개</option><option value="FOLLOWERS">팔로워 공개</option><option value="PRIVATE">나만 보기</option></select><label className="publish-check"><input type="checkbox" checked={publishNow} onChange={(event) => setPublishNow(event.target.checked)} /> 지금 공개</label><button type="button" disabled={!content.trim()} onClick={() => void submit()}>저장하기</button></div>
+        {publishNow && <p className="privacy-warning">여행 중 공개할 때는 현재 위치가 드러나지 않도록 지역 단위로만 표시합니다.</p>}{images.length > 0 && <div className="story-preview-grid">{images.map((image, index) => <figure key={`${image.slice(-20)}-${index}`}><img src={image} alt={`업로드할 사진 ${index + 1}`} /><button type="button" onClick={() => setImages(images.filter((_, itemIndex) => itemIndex !== index))} aria-label={`사진 ${index + 1} 삭제`}>×</button></figure>)}</div>}
       </div>}
     </section>
     {notice && <p className="feature-notice" role="status">{notice}</p>}
@@ -87,9 +110,10 @@ export function SocialPanel({ itinerary }: { itinerary: ItineraryOutput }) {
     {selectedStory && <div className="story-viewer-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setSelectedStory(null); }}>
       <article className="story-viewer" role="dialog" aria-modal="true" aria-labelledby="story-viewer-title">
         <header><div className="post-author"><span>{storyInitial(selectedStory)}</span><div><strong id="story-viewer-title">{selectedStory.authorLabel}</strong><small>{selectedStory.areaLabel} · {selectedStory.placeName}</small></div></div><button type="button" className="viewer-close" onClick={() => setSelectedStory(null)} aria-label="스토리 닫기">닫기</button></header>
-        {selectedStory.images[0] ? <img src={selectedStory.images[0]} alt={`${selectedStory.placeName}에서 공유한 여행 사진`} /> : <div className="viewer-text"><span>{selectedStory.placeName}</span><p>{selectedStory.content}</p></div>}
-        <div className="viewer-copy">{selectedStory.images[0] && <p>{selectedStory.content}</p>}<div><span>{new Date(selectedStory.publishAt).toLocaleDateString("ko-KR")}</span>{!selectedStory.mine && <button type="button" onClick={() => void toggleFollow(selectedStory)}>{selectedStory.isFollowing ? "팔로잉 취소" : "팔로우"}</button>}</div></div>
+        {selectedStory.images.length > 0 ? <div className="viewer-gallery">{selectedStory.images.map((image, index) => <img key={`${image.slice(-20)}-${index}`} src={image} alt={`${selectedStory.placeName} 여행 사진 ${index + 1}`} />)}</div> : <div className="viewer-text"><span>{selectedStory.placeName}</span><p>{selectedStory.content}</p></div>}
+        <div className="viewer-copy">{selectedStory.images[0] && <p>{selectedStory.content}</p>}<div><span>{new Date(selectedStory.publishAt).toLocaleDateString("ko-KR")}</span>{selectedStory.mine ? <button type="button" onClick={() => startEdit(selectedStory)}>수정</button> : <button type="button" onClick={() => void toggleFollow(selectedStory)}>{selectedStory.isFollowing ? "팔로잉 취소" : "팔로우"}</button>}</div></div>
       </article>
     </div>}
+    {editingStory && <div className="story-viewer-backdrop"><section className="story-edit-dialog" role="dialog" aria-modal="true" aria-labelledby="story-edit-title"><header><div><span>MY TRAVEL NOTE</span><h2 id="story-edit-title">여행 기록 수정</h2><p>{editingStory.placeName} · {new Date(editingStory.publishAt).toLocaleDateString("ko-KR")}</p></div><button type="button" onClick={() => setEditingStory(null)} aria-label="수정 닫기">×</button></header><label>기록<textarea value={editContent} maxLength={500} onChange={(event) => setEditContent(event.target.value)} /></label><div className="story-preview-grid">{editImages.map((image, index) => <figure key={`${image.slice(-20)}-${index}`}><img src={image} alt={`사진 ${index + 1}`} /><button type="button" onClick={() => setEditImages(editImages.filter((_, itemIndex) => itemIndex !== index))} aria-label={`사진 ${index + 1} 삭제`}>×</button></figure>)}</div><div className="story-edit-options"><label className="image-picker">사진 추가 ({editImages.length}/3)<input type="file" multiple accept="image/jpeg,image/png,image/webp" onChange={(event) => void chooseImages(event.target.files, "edit")} /></label><select aria-label="수정 공개 범위" value={editVisibility} onChange={(event) => setEditVisibility(event.target.value)}><option value="PUBLIC">전체 공개</option><option value="FOLLOWERS">팔로워 공개</option><option value="PRIVATE">나만 보기</option></select></div><footer><button type="button" className="story-delete-button" onClick={() => void removeStory()}>기록 삭제</button><div><button type="button" onClick={() => setEditingStory(null)}>취소</button><button type="button" disabled={savingEdit || !editContent.trim()} onClick={() => void saveEdit()}>{savingEdit ? "저장 중…" : "수정 저장"}</button></div></footer></section></div>}
   </section>;
 }
