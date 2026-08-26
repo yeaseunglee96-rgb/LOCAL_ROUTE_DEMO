@@ -7,6 +7,8 @@ export const paths = {
   home: () => "/",
   welcome: () => "/welcome",
   onboarding: () => "/onboarding",
+  login: () => "/login",
+  signup: () => "/signup",
 
   plan: (step: "basic" | "taste" | "confirm" = "basic") => `/plan/${step}`,
   generating: (tripId: string) => `/generating/${tripId}`,

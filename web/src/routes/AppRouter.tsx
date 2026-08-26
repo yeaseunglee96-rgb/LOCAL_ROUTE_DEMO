@@ -4,6 +4,7 @@ import { AppShell } from "./AppShell";
 import { HomePage } from "../pages/HomePage";
 import { OnboardingPage } from "../pages/OnboardingPage";
 import { WelcomePage } from "../pages/WelcomePage";
+import { AuthPage } from "../pages/auth/AuthPage";
 import { PlanWizardPage } from "../pages/PlanWizardPage";
 import { GeneratingPage } from "../pages/GeneratingPage";
 import { InviteAcceptPage } from "../pages/InviteAcceptPage";
@@ -99,6 +100,8 @@ export function AppRouter() {
         <Route path="/" element={<LegacyQueryRedirect />} />
         <Route path="/welcome" element={<WelcomePage />} />
         <Route path="/onboarding" element={<OnboardingPage />} />
+        <Route path="/login" element={<AuthPage mode="login" />} />
+        <Route path="/signup" element={<AuthPage mode="signup" />} />
 
         <Route path="/plan" element={<Navigate to={paths.plan("basic")} replace />} />
         <Route path="/plan/:step" element={<PlanWizardPage />} />
