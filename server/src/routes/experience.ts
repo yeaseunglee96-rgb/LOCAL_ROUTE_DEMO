@@ -18,7 +18,10 @@ experienceRouter.get("/events", async (req, res, next) => {
       prisma.place.findMany({ where: { category: "FESTIVAL", eventStartDate: { lte: to }, eventEndDate: { gte: from } }, orderBy: [{ eventStartDate: "asc" }, { localScore: "desc" }] }),
       // Visit Busan에서 상설 야시장 운영 정보를 확인할 수 있는 장소만 노출한다.
       prisma.place.findMany({ where: { nameKo: { in: ["부평깡통시장", "부평깡통야시장"] } }, orderBy: { localScore: "desc" } }),
-      prisma.place.findMany({ where: { nameKo: { in: ["자갈치시장", "국제시장", "부전시장", "동래시장", "초량전통시장", "해운대전통시장", "수영팔도시장", "구포시장"] } }, orderBy: { localScore: "desc" } }),
+      // 시드된 전통/재래시장 이름을 하드코딩 목록으로만 걸러내면 실제로 존재하는 시장 대부분이
+      // 철자 불일치로 빠진다("부전시장" 등은 시드에 아예 없고, "초량전통시장"은 "초량시장"으로
+      // 시드돼 있는 식). 이름에 "시장"이 들어간 관광 장소를 폭넓게 노출한다.
+      prisma.place.findMany({ where: { category: "TOURIST", nameKo: { contains: "시장" } }, orderBy: { localScore: "desc" } }),
     ]);
     const festivalEvents = festivals.map((place) => ({ placeId: place.id, eventType: "FESTIVAL", title: place.nameKo, titleEn: place.nameEn, address: place.address, lat: place.lat, lng: place.lng, startDate: place.eventStartDate, endDate: place.eventEndDate, playTime: place.playTime, imageUrl: place.imageUrl, localScore: place.localScore }));
     const nightMarketEvents = nightMarkets.map((place) => ({ placeId: place.id, eventType: "NIGHT_MARKET", title: "부평깡통야시장", titleEn: "Bupyeong Kkangtong Night Market", address: place.address, lat: place.lat, lng: place.lng, startDate: from, endDate: to, playTime: "매일 19:30–24:00 · 방문 전 운영 확인", imageUrl: place.imageUrl, localScore: place.localScore, officialUrl: "https://www.visitbusan.net/kr/index.do?lang_cd=ko&menuCd=DOM_000000202003001000&uc_seq=1861" }));
@@ -72,22 +75,42 @@ experienceRouter.get("/shops/souvenir", async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
+async function findNearbySpots(tag: string, lat: number, lng: number, radius: number) {
+  return (await prisma.place.findMany({ where: { tasteTags: { contains: tag } } }))
+    .map((place) => ({ ...place, distanceM: haversineDistanceM(lat, lng, place.lat, place.lng) }))
+    .filter((place) => place.distanceM <= radius)
+    .sort((a, b) => (b.localScore - a.localScore) || (a.distanceM - b.distanceM));
+}
+
+function serializeSpot(place: { id: string; nameKo: string; nameEn: string | null; address: string; lat: number; lng: number; distanceM: number; openTime: string; closeTime: string; priceTier: number; localScore: number; imageUrl: string | null; recommendedStayMin: number }) {
+  return {
+    id: place.id, nameKo: place.nameKo, nameEn: place.nameEn, address: place.address, lat: place.lat, lng: place.lng,
+    distanceM: Math.round(place.distanceM), openTime: place.openTime, closeTime: place.closeTime,
+    priceTier: place.priceTier, localScore: place.localScore, imageUrl: place.imageUrl,
+    recommendedStayMin: place.recommendedStayMin,
+  };
+}
+
+// "activity" 취향 태그는 일정 추천 엔진이 그대로 쓰고 있어 손대지 않았다. 로컬 탭에서는 그 안에서
+// 성격이 다른 두 묶음 — 예약/체험형 액티비티(adventure_activity)와 산책·자연 스팟(nature_walk) —
+// 을 구분해서 보여주기 위해 prisma/ensure-discover-tags.ts 로 얹어둔 세부 태그를 사용한다.
 experienceRouter.get("/activities", async (req, res, next) => {
   try {
     const lat = Number(req.query.lat); const lng = Number(req.query.lng); const radius = Math.min(30_000, Math.max(100, Number(req.query.radius ?? 15_000)));
     if (![lat, lng, radius].every(Number.isFinite)) return res.status(400).json({ error_code: "INVALID_LOCATION" });
-    // FESTIVAL/SOUVENIR 카테고리는 각자 전용 탭이 있으니 액티비티 탭에서는 중복 노출하지 않는다.
-    const activities = (await prisma.place.findMany({ where: { tasteTags: { contains: "activity" }, category: { notIn: ["FESTIVAL", "SOUVENIR"] } } }))
-      .map((place) => ({ ...place, distanceM: haversineDistanceM(lat, lng, place.lat, place.lng) }))
-      .filter((place) => place.distanceM <= radius)
-      .sort((a, b) => (b.localScore - a.localScore) || (a.distanceM - b.distanceM));
+    const activities = await findNearbySpots("adventure_activity", lat, lng, radius);
     await recordEventBestEffort({ eventType: "activity_layer_viewed", entityType: "map_area", entityId: `${lat.toFixed(2)}:${lng.toFixed(2)}`, payload: { count: activities.length, radius } });
-    res.json(activities.map((place) => ({
-      id: place.id, nameKo: place.nameKo, nameEn: place.nameEn, address: place.address, lat: place.lat, lng: place.lng,
-      distanceM: Math.round(place.distanceM), openTime: place.openTime, closeTime: place.closeTime,
-      priceTier: place.priceTier, localScore: place.localScore, imageUrl: place.imageUrl,
-      recommendedStayMin: place.recommendedStayMin,
-    })));
+    res.json(activities.map(serializeSpot));
+  } catch (error) { next(error); }
+});
+
+experienceRouter.get("/nature-spots", async (req, res, next) => {
+  try {
+    const lat = Number(req.query.lat); const lng = Number(req.query.lng); const radius = Math.min(30_000, Math.max(100, Number(req.query.radius ?? 15_000)));
+    if (![lat, lng, radius].every(Number.isFinite)) return res.status(400).json({ error_code: "INVALID_LOCATION" });
+    const spots = await findNearbySpots("nature_walk", lat, lng, radius);
+    await recordEventBestEffort({ eventType: "nature_spot_layer_viewed", entityType: "map_area", entityId: `${lat.toFixed(2)}:${lng.toFixed(2)}`, payload: { count: spots.length, radius } });
+    res.json(spots.map(serializeSpot));
   } catch (error) { next(error); }
 });
 
