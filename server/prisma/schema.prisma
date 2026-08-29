@@ -60,6 +60,7 @@ model Place {
   souvenirItems      String    @default("[]")
   foreignAssistance  Boolean   @default(false)
   stories            Story[]
+  dexTag             String?
 }
 
 model AnonymousSession {
@@ -77,6 +78,7 @@ model AnonymousSession {
   ownedShares        ItineraryShare[]
   stories            Story[]
   storyReports       StoryReport[]
+  storyComments      StoryComment[]
   following          Follow[]          @relation("Follower")
   followers          Follow[]          @relation("Followee")
   accountOwner       User?             @relation("UserOwnerSession")
@@ -315,6 +317,7 @@ model Trip {
   itineraries   Itinerary[]
   jobs          ItineraryJob[]
   members       TripMember[]
+  partyCode     String?            @unique
 }
 
 model ItineraryJob {
@@ -442,6 +445,8 @@ model TripMember {
   expiresAt   DateTime?
   joinedAt    DateTime?
   revokedAt   DateTime?
+  lastSeenGridCell String?
+  lastSeenAt  DateTime?
 
   @@unique([tripId, sessionId])
   @@index([tripId, role, revokedAt])
@@ -485,9 +490,29 @@ model Story {
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
   reports         StoryReport[]
+  comments        StoryComment[]
+  gridCell        String?
+  factsJson       String           @default("{}")
+  language        String           @default("KO")
 
   @@index([authorSessionId, publishAt])
   @@index([placeId, moderationStatus, publishAt])
+  @@index([gridCell, moderationStatus, publishAt])
+}
+
+model StoryComment {
+  id              String           @id @default(cuid())
+  story           Story            @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  storyId         String
+  author          AnonymousSession @relation(fields: [authorSessionId], references: [id])
+  authorSessionId String
+  body            String
+  language        String           @default("KO")
+  status          String           @default("PUBLISHED")
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@index([storyId, status, createdAt])
 }
 
 model StoryReport {

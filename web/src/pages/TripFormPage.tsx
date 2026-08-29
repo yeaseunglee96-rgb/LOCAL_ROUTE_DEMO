@@ -188,7 +188,9 @@ export function TripFormPage({ onSubmit, submitting, errorMessage, placeCount, i
 
   /** 세부 설정을 직접 만지면 더 이상 특정 무드와 같다고 말할 수 없다. */
   const detachMood = () => setSelectedMoodId(null);
-  const canContinue = step !== 0 || (Boolean(origin.address && startDate && endDate) && endDate >= startDate && partySize > 0 && totalBudget >= 10000 && dayEnd > dayStart);
+  const basicInfoValid = Boolean(origin.address && startDate && endDate) && endDate >= startDate && partySize > 0 && totalBudget >= 10000 && dayEnd > dayStart;
+  const canContinue = step !== 0 || basicInfoValid;
+  const canOpenStep = (index: number) => index <= step || basicInfoValid;
 
   const payload = useMemo<CreateTripRequest>(() => ({
     origin: origin.name, originLat: origin.lat, originLng: origin.lng, startDate, endDate, partySize, adultCount: partySize, childCount: 0, totalBudget,
@@ -233,7 +235,7 @@ export function TripFormPage({ onSubmit, submitting, errorMessage, placeCount, i
   return <DashboardShell placeCount={placeCount} language={language}>
     <div className="planner-page">
       <header className="planner-hero"><span className="eyebrow">현지인 추천 기반 여행</span><h1>부산을 마음껏 즐기세요</h1><p>장소를 나열하는 대신 운영시간, 이동시간, 예산과 동반 조건을 함께 계산합니다.</p></header>
-      <ol className="stepper" aria-label="여행 계획 입력 단계">{STEPS.map((label, index) => <li key={label} className={index === step ? "active" : index < step ? "done" : ""}><button type="button" onClick={() => index <= step && setStep(index)} aria-current={index === step ? "step" : undefined}><span>{index + 1}</span><b>{label}</b><small>{index < step ? "완료" : index === step ? "작성 중" : "대기"}</small></button></li>)}</ol>
+      <ol className="stepper" aria-label="여행 계획 입력 단계">{STEPS.map((label, index) => <li key={label} className={index === step ? "active" : index < step ? "done" : ""}><button type="button" disabled={!canOpenStep(index)} onClick={() => canOpenStep(index) && setStep(index)} aria-current={index === step ? "step" : undefined}><span>{index + 1}</span><b>{label}</b><small>{index < step ? "완료" : index === step ? "작성 중" : canOpenStep(index) ? "이동 가능" : "대기"}</small></button></li>)}</ol>
       <form className="planner-card" onSubmit={submit}>
         {step === 0 && <section aria-labelledby="basic-title">
           <div className="section-heading">

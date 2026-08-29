@@ -15,6 +15,7 @@
     "seed:commerce": "tsx prisma/ensure-commerce.ts",
     "seed:v2": "tsx prisma/ensure-v2-features.ts",
     "seed:discover-tags": "tsx prisma/ensure-discover-tags.ts",
+    "seed:social-map": "tsx prisma/ensure-social-map.ts",
     "events:dispatch": "tsx src/workers/event-dispatcher.ts",
     "privacy:cleanup": "tsx src/workers/privacy-cleanup.ts",
     "load:test": "tsx scripts/load-test.ts",

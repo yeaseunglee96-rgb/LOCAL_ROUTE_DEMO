@@ -87,7 +87,7 @@ communityRouter.post("/places/:id/visits/verify", async (req, res, next) => {
   try {
     const session = await requireSession(req, res);
     if (!session) return;
-    const place = await prisma.place.findUnique({ where: { id: req.params.id }, select: { id: true, lat: true, lng: true } });
+    const place = await prisma.place.findUnique({ where: { id: req.params.id }, select: { id: true, nameKo: true, lat: true, lng: true, dexTag: true } });
     if (!place) return res.status(404).json({ error_code: "PLACE_NOT_FOUND", message: "장소를 찾을 수 없습니다." });
     const latitude = Number(req.body?.latitude);
     const longitude = Number(req.body?.longitude);
@@ -109,8 +109,11 @@ communityRouter.post("/places/:id/visits/verify", async (req, res, next) => {
         data: { sessionId: session.id, placeId: place.id, visitDate, arrivedAt, departedAt, latitude: gridLatitude, longitude: gridLongitude, gridCell: `${gridLatitude.toFixed(3)}:${gridLongitude.toFixed(3)}`, coordinatesSanitizedAt: new Date(), distanceM: decision.distanceM, dwellMinutes: decision.dwellMinutes },
       });
       const [profile, placeScore] = await Promise.all([refreshLocalProfile(session.id), refreshPlaceLocalScore(place.id)]);
+      await prisma.tripMember.updateMany({ where: { sessionId: session.id, revokedAt: null }, data: { lastSeenGridCell: verification.gridCell, lastSeenAt: new Date() } });
+      const clearedCells = await prisma.visitVerification.count({ where: { sessionId: session.id, status: "VERIFIED", gridCell: { not: null } } });
+      const dexUnlocked = place.dexTag ? { tag: place.dexTag, placeId: place.id, placeName: place.nameKo } : null;
       await recordEvent({ eventType: profile.repeatVisitCount > 0 ? "place_revisited" : "place_visit_verified", actorId: pseudonymize(session.id), entityType: "place", entityId: place.id, payload: { distanceBandM: Math.ceil(decision.distanceM / 50) * 50, dwellMinutes: decision.dwellMinutes } });
-      return res.status(201).json({ ...verification, profile, placeScore });
+      return res.status(201).json({ ...verification, profile, placeScore, fog: { clearedCells, totalCells: 3000, percent: Number(((clearedCells / 3000) * 100).toFixed(2)) }, dexUnlocked });
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
         return res.status(409).json({ error_code: "VISIT_ALREADY_VERIFIED", message: "같은 장소는 하루에 한 번만 인증할 수 있습니다." });

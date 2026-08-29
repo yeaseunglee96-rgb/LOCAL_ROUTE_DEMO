@@ -50,7 +50,9 @@ socialRouter.post("/stories", async (req, res, next) => {
     const afterTrip = req.body?.publishMode !== "NOW";
     const tripEnd = item?.day.itinerary.trip.endDate;
     const publishAt = afterTrip && tripEnd ? new Date(`${tripEnd}T15:00:00.000Z`) : new Date();
-    const story = await prisma.story.create({ data: { authorSessionId: session.id, placeId: place.id, itineraryId: item?.day.itineraryId ?? null, itineraryItemId: item?.id ?? null, content, imageDataJson: JSON.stringify(sanitizedImages), rating: Number.isInteger(req.body?.rating) && req.body.rating >= 1 && req.body.rating <= 5 ? req.body.rating : null, visibility, visitVerified: !!verified, areaLabel: place.address.split(" ").slice(0, 2).join(" "), publishAt, moderationStatus: "PUBLISHED" } });
+    const facts = typeof req.body?.facts === "object" && req.body.facts ? req.body.facts : {};
+    const language = req.body?.language === "EN" ? "EN" : "KO";
+    const story = await prisma.story.create({ data: { authorSessionId: session.id, placeId: place.id, itineraryId: item?.day.itineraryId ?? null, itineraryItemId: item?.id ?? null, content, imageDataJson: JSON.stringify(sanitizedImages), rating: Number.isInteger(req.body?.rating) && req.body.rating >= 1 && req.body.rating <= 5 ? req.body.rating : null, visibility, visitVerified: !!verified, gridCell: verified?.gridCell ?? null, factsJson: JSON.stringify(facts), language, areaLabel: place.address.split(" ").slice(0, 2).join(" "), publishAt, moderationStatus: "PUBLISHED" } });
     await recordEvent({ eventType: "story_created", actorId: pseudonymize(session.id), entityType: "story", entityId: story.id, payload: { placeId: place.id, visibility, delayed: publishAt > new Date() } });
     res.status(201).json({ storyId: story.id, publishAt: story.publishAt, moderationStatus: story.moderationStatus, exifRemoved: true, delayed: story.publishAt > new Date() });
   } catch (error) { next(error); }
@@ -64,8 +66,38 @@ socialRouter.get("/stories", async (req, res, next) => {
     const following = session ? (await prisma.follow.findMany({ where: { followerSessionId: session.id, status: "ACTIVE" }, select: { followeeSessionId: true } })).map((row) => row.followeeSessionId) : [];
     const where: Prisma.StoryWhereInput = mine ? { authorSessionId: session!.id } : followingOnly ? { authorSessionId: { in: following }, publishAt: { lte: new Date() }, moderationStatus: "PUBLISHED", visibility: { in: ["PUBLIC", "FOLLOWERS"] } } : { publishAt: { lte: new Date() }, moderationStatus: "PUBLISHED", OR: [{ visibility: "PUBLIC" }, ...(session ? [{ authorSessionId: session.id }, { visibility: "FOLLOWERS", authorSessionId: { in: following } }] : [])] };
     if (typeof req.query.placeId === "string") where.placeId = req.query.placeId;
-    const stories = await prisma.story.findMany({ where, include: { place: { select: { nameKo: true, nameEn: true } }, itinerary: { select: { tripId: true } }, itineraryItem: { select: { plannedArrival: true, day: { select: { dayIndex: true, visitDate: true } } } }, _count: { select: { reports: true } } }, orderBy: { createdAt: "desc" }, take: 50 });
-    res.json(stories.map((story) => ({ id: story.id, authorId: story.authorSessionId, authorLabel: `여행자 ${story.authorSessionId.slice(-4)}`, placeId: story.placeId, placeName: story.place.nameKo, placeNameEn: story.place.nameEn, tripId: story.itinerary?.tripId ?? null, dayIndex: story.itineraryItem?.day.dayIndex ?? null, visitDate: story.itineraryItem?.day.visitDate ?? null, plannedArrival: story.itineraryItem?.plannedArrival ?? null, content: story.content, images: JSON.parse(story.imageDataJson), rating: story.rating, visibility: story.visibility, visitVerified: story.visitVerified, areaLabel: story.areaLabel, publishAt: story.publishAt, moderationStatus: story.moderationStatus, createdAt: story.createdAt, reportCount: story._count.reports, isFollowing: following.includes(story.authorSessionId), mine: session?.id === story.authorSessionId })));
+    const stories = await prisma.story.findMany({ where, include: { place: { select: { nameKo: true, nameEn: true } }, itinerary: { select: { tripId: true } }, itineraryItem: { select: { plannedArrival: true, day: { select: { dayIndex: true, visitDate: true } } } }, _count: { select: { reports: true, comments: true } } }, orderBy: { createdAt: "desc" }, take: 50 });
+    res.json(stories.map((story) => ({ id: story.id, authorId: story.authorSessionId, authorLabel: `여행자 ${story.authorSessionId.slice(-4)}`, placeId: story.placeId, placeName: story.place.nameKo, placeNameEn: story.place.nameEn, tripId: story.itinerary?.tripId ?? null, dayIndex: story.itineraryItem?.day.dayIndex ?? null, visitDate: story.itineraryItem?.day.visitDate ?? null, plannedArrival: story.itineraryItem?.plannedArrival ?? null, content: story.content, images: JSON.parse(story.imageDataJson), rating: story.rating, visibility: story.visibility, visitVerified: story.visitVerified, gridCell: story.gridCell, facts: JSON.parse(story.factsJson || "{}"), language: story.language, areaLabel: story.areaLabel, publishAt: story.publishAt, moderationStatus: story.moderationStatus, createdAt: story.createdAt, reportCount: story._count.reports, commentCount: story._count.comments, isFollowing: following.includes(story.authorSessionId), mine: session?.id === story.authorSessionId })));
+  } catch (error) { next(error); }
+});
+
+socialRouter.get("/stories/:id", async (req, res, next) => {
+  try {
+    const session = await optionalSession(req);
+    const story = await prisma.story.findFirst({ where: { id: req.params.id, moderationStatus: "PUBLISHED", publishAt: { lte: new Date() } }, include: { place: { select: { nameKo: true, nameEn: true, address: true, imageUrl: true } }, _count: { select: { comments: true } } } });
+    if (!story) return res.status(404).json({ error_code: "STORY_NOT_FOUND", message: "기록을 찾을 수 없습니다." });
+    if (story.visibility === "PRIVATE" && story.authorSessionId !== session?.id) return res.status(403).json({ error_code: "STORY_PRIVATE" });
+    res.json({ id: story.id, authorId: story.authorSessionId, authorLabel: `여행자 ${story.authorSessionId.slice(-4)}`, placeId: story.placeId, placeName: story.place.nameKo, placeNameEn: story.place.nameEn, address: story.place.address, imageUrl: story.place.imageUrl, content: story.content, images: JSON.parse(story.imageDataJson), facts: JSON.parse(story.factsJson || "{}"), language: story.language, visitVerified: story.visitVerified, gridCell: story.gridCell, areaLabel: story.areaLabel, publishAt: story.publishAt, commentCount: story._count.comments, mine: story.authorSessionId === session?.id });
+  } catch (error) { next(error); }
+});
+
+socialRouter.get("/stories/:id/comments", async (req, res, next) => {
+  try {
+    const story = await prisma.story.findFirst({ where: { id: req.params.id, moderationStatus: "PUBLISHED", publishAt: { lte: new Date() } }, select: { id: true } });
+    if (!story) return res.status(404).json({ error_code: "STORY_NOT_FOUND" });
+    const comments = await prisma.storyComment.findMany({ where: { storyId: story.id, status: "PUBLISHED" }, orderBy: { createdAt: "asc" }, take: 100 });
+    res.json({ comments: comments.map((comment) => ({ id: comment.id, authorId: comment.authorSessionId, authorLabel: `여행자 ${comment.authorSessionId.slice(-4)}`, body: comment.body, language: comment.language, createdAt: comment.createdAt })) });
+  } catch (error) { next(error); }
+});
+
+socialRouter.post("/stories/:id/comments", async (req, res, next) => {
+  try {
+    const session = await requireSession(req, res); if (!session) return;
+    const body = String(req.body?.body ?? "").trim();
+    if (!body || body.length > 500) return res.status(400).json({ error_code: "INVALID_COMMENT", message: "댓글은 1~500자로 입력해 주세요." });
+    if (!await prisma.story.findFirst({ where: { id: req.params.id, moderationStatus: "PUBLISHED" } })) return res.status(404).json({ error_code: "STORY_NOT_FOUND" });
+    const comment = await prisma.storyComment.create({ data: { storyId: req.params.id, authorSessionId: session.id, body, language: req.body?.language === "EN" ? "EN" : "KO" } });
+    res.status(201).json({ id: comment.id, authorId: session.id, authorLabel: `여행자 ${session.id.slice(-4)}`, body: comment.body, language: comment.language, createdAt: comment.createdAt });
   } catch (error) { next(error); }
 });
 

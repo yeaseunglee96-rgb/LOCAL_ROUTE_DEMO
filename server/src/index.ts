@@ -12,6 +12,7 @@ import { experienceRouter } from "./routes/experience.js";
 import { collaborationRouter } from "./routes/collaboration.js";
 import { socialRouter } from "./routes/social.js";
 import { accountRouter } from "./routes/account.js";
+import { mapRouter } from "./routes/map.js";
 
 const app = express();
 export { app };
@@ -52,6 +53,7 @@ app.use("/api", commerceRouter);
 app.use("/api", experienceRouter);
 app.use("/api", collaborationRouter);
 app.use("/api", socialRouter);
+app.use("/api", mapRouter);
 
 app.use((_req, res) => res.status(404).json({ error_code: "NOT_FOUND", message: "요청한 API를 찾을 수 없습니다.", traceId: res.locals.traceId }));
 app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {

@@ -9,6 +9,17 @@ import { pseudonymize, recordEvent, recordEventBestEffort } from "../services/ev
 export const collaborationRouter = Router();
 const hash = (value: string) => createHash("sha256").update(value).digest("hex");
 const token = () => randomBytes(18).toString("base64url");
+const shortCode = () => randomBytes(4).toString("hex").slice(0, 6).toUpperCase();
+
+async function ensurePartyCode(tripId: string) {
+  const current = await prisma.trip.findUnique({ where: { id: tripId }, select: { partyCode: true } });
+  if (current?.partyCode) return current.partyCode;
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    try { return (await prisma.trip.update({ where: { id: tripId }, data: { partyCode: shortCode() }, select: { partyCode: true } })).partyCode!; }
+    catch (error) { if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== "P2002") throw error; }
+  }
+  throw new Error("PARTY_CODE_GENERATION_FAILED");
+}
 
 async function roleFor(itineraryId: string, sessionId: string) {
   const itinerary = await prisma.itinerary.findUnique({ where: { id: itineraryId }, select: { trip: { select: { id: true, ownerSessionId: true } } } });
@@ -72,10 +83,27 @@ collaborationRouter.post("/trips/:tripId/members/invite", async (req, res, next)
     if (!trip.ownerSessionId) await prisma.trip.update({ where: { id: trip.id }, data: { ownerSessionId: session.id } });
     else if (trip.ownerSessionId !== session.id) return res.status(403).json({ error_code: "NOT_OWNER" });
     const role = req.body?.role === "EDITOR" ? "EDITOR" : "VIEWER";
+    const partyCode = await ensurePartyCode(trip.id);
     const raw = token(); const days = Math.min(30, Math.max(1, Number(req.body?.expiresInDays ?? 7)));
     const member = await prisma.tripMember.create({ data: { tripId: trip.id, role, inviteTokenHash: hash(raw), expiresAt: new Date(Date.now() + days * 86_400_000) } });
     await recordEvent({ eventType: "companion_invited", actorId: pseudonymize(session.id), entityType: "trip", entityId: trip.id, payload: { role } });
-    res.status(201).json({ inviteId: member.id, role, inviteToken: raw, inviteUrl: `${req.protocol}://${req.get("host")}/?invite=${raw}`, expiresAt: member.expiresAt });
+    res.status(201).json({ inviteId: member.id, role, inviteToken: raw, inviteUrl: `${req.protocol}://${req.get("host")}/?invite=${raw}`, expiresAt: member.expiresAt, partyCode });
+  } catch (error) { next(error); }
+});
+
+collaborationRouter.post("/party/:code/join", async (req, res, next) => {
+  try {
+    const session = await requireSession(req, res); if (!session) return;
+    const code = req.params.code.trim().toUpperCase();
+    const trip = await prisma.trip.findUnique({ where: { partyCode: code } });
+    if (!trip) return res.status(404).json({ error_code: "PARTY_NOT_FOUND", message: "동행 코드를 다시 확인해 주세요." });
+    if (trip.ownerSessionId === session.id) return res.json({ tripId: trip.id, role: "OWNER", joined: false });
+    const member = await prisma.tripMember.upsert({
+      where: { tripId_sessionId: { tripId: trip.id, sessionId: session.id } },
+      create: { tripId: trip.id, sessionId: session.id, role: "EDITOR", joinedAt: new Date() },
+      update: { role: "EDITOR", joinedAt: new Date(), revokedAt: null },
+    });
+    res.json({ tripId: trip.id, role: member.role, joined: true });
   } catch (error) { next(error); }
 });
 
