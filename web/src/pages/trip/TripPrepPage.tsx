@@ -1,15 +1,12 @@
 import { useEffect, useState } from "react";
 import { InfoCards } from "../../components/InfoCards";
-import { RegionalTipCard } from "../../components/RegionalTipCard";
 import { ShareBar } from "../../components/ShareBar";
-import { WeatherPrepWidget } from "../../components/WeatherPrepWidget";
-import { TripMemorySummary } from "../../components/TripMemorySummary";
 import { BusanDialectWidget } from "../../components/BusanDialectWidget";
 import { getBookingOptions, getSponsoredPlacements, startBooking, trackAd } from "../../api/client";
 import type { BookingOption, SponsoredPlacement } from "../../types";
 import { useTrip } from "./TripContext";
 
-/** /trips/:tripId/prep — 예산·여행 팁·필수 서비스 광고·예약 제휴·공유 */
+/** /trips/:tripId/prep — 예산·동행·필수 서비스 광고·예약 제휴·사투리 */
 export function TripPrepPage() {
   const { itinerary, itemProps } = useTrip();
   const [sponsored, setSponsored] = useState<SponsoredPlacement[]>([]);
@@ -36,7 +33,7 @@ export function TripPrepPage() {
         <div>
           <span className="section-eyebrow">READY TO GO</span>
           <h1>{lang === "EN" ? "Travel Prep & Local Expressions" : "여행 준비 & 사투리 표현"}</h1>
-          <p>{lang === "EN" ? "Check budget, travel tips, and master local Busan dialect expressions!" : "예산과 지역 여행 팁을 확인하고, 부산 사투리를 함께 익혀보세요."}</p>
+          <p>{lang === "EN" ? "Check your budget, plan with companions, and learn useful Busan expressions." : "예상 경비를 확인하고 동행자와 준비한 뒤, 유용한 부산 사투리를 익혀보세요."}</p>
         </div>
       </header>
 
@@ -56,14 +53,10 @@ export function TripPrepPage() {
         </section>
       )}
 
-      <RegionalTipCard language={lang} />
-
       <InfoCards
         itinerary={itinerary}
         collaboration={<ShareBar itineraryId={itinerary.itineraryId} tripId={itinerary.tripId} language={itinerary.trip.language} />}
       />
-
-      <TripMemorySummary language={lang} daysCount={itinerary.days.length} />
 
       {bookingOptions.length > 0 && (
         <section className="booking-strip" aria-label="숙소 예약 제휴">
@@ -81,7 +74,6 @@ export function TripPrepPage() {
       )}
 
       <BusanDialectWidget language={lang} />
-      <WeatherPrepWidget language={lang} />
 
       <div className="data-honesty-bar">
         <strong>데이터 안내</strong>
