@@ -39,6 +39,9 @@ export function SocialExplorationMap({ tripId, itinerary }: Props) {
     loadKakaoSdk(key).then(() => {
       if (disposed || !mapNode.current) return;
       const kakao = window.kakao;
+      // 해무·핀 데이터가 순차 도착해 effect가 다시 실행될 때 카카오맵이 기존 DOM에
+      // 컨트롤을 덧붙이지 않도록 이전 인스턴스의 노드를 먼저 비운다.
+      mapNode.current.replaceChildren();
       const map = new kakao.maps.Map(mapNode.current, { center: new kakao.maps.LatLng(itinerary.trip.originLat, itinerary.trip.originLng), level: 8 });
       const bounds = new kakao.maps.LatLngBounds();
       itinerary.days.flatMap((day) => day.items).forEach((item) => bounds.extend(new kakao.maps.LatLng(item.lat, item.lng)));
