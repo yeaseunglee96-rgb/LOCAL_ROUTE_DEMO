@@ -56,6 +56,7 @@ export const TAB_TO_PATH = {
   home: paths.tripOverview,
   schedule: paths.tripSchedule,
   discover: paths.tripDiscover,
+  footprints: paths.tripMap,
   together: paths.tripTogether,
   prep: paths.tripPrep,
 } as const;
@@ -64,7 +65,8 @@ export const TAB_TO_PATH = {
 export function tabFromPathname(pathname: string): keyof typeof TAB_TO_PATH {
   if (pathname.includes("/schedule")) return "schedule";
   if (pathname.includes("/discover")) return "discover";
-  if (pathname.includes("/together") || pathname.includes("/map")) return "together";
+  if (pathname.includes("/map")) return "footprints";
+  if (pathname.includes("/together")) return "together";
   if (pathname.includes("/prep") || pathname.includes("/collaborate")) return "prep";
   return "home";
 }

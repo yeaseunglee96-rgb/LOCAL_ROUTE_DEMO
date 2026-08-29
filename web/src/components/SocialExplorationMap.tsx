@@ -39,6 +39,7 @@ export function SocialExplorationMap({ tripId, itinerary }: Props) {
   const [storyPlaceId, setStoryPlaceId] = useState<string | null>(null);
   const [activity, setActivity] = useState(activityState);
   const [showDex, setShowDex] = useState(false);
+  const [surpriseIndex, setSurpriseIndex] = useState<number | null>(null);
   const defaultBounds = useMemo(() => ({ south: 34.98, west: 128.75, north: 35.40, east: 129.32 }), []);
   const allItems = useMemo(() => itinerary.days.flatMap((day) => day.items.map((item) => ({ ...item, dayIndex: day.dayIndex }))), [itinerary.days]);
   const cleared = fog?.progress.clearedCellCount ?? 0;
@@ -114,6 +115,11 @@ export function SocialExplorationMap({ tripId, itinerary }: Props) {
 
   const selectedItem = allItems.find((item) => item.placeId === checkingPlaceId) ?? null;
   const firstItem = allItems[0] ?? null;
+  const surpriseItem = surpriseIndex === null ? null : allItems[surpriseIndex] ?? null;
+  const pickSurprise = () => {
+    if (!allItems.length) return;
+    setSurpriseIndex((current) => allItems.length === 1 ? 0 : ((current ?? -1) + 1 + Math.floor(Math.random() * (allItems.length - 1))) % allItems.length);
+  };
   const handleVisit = async () => {
     if (!selectedItem) return;
     const starts = visitStarts(); const started = starts[selectedItem.placeId];
@@ -152,6 +158,10 @@ export function SocialExplorationMap({ tripId, itinerary }: Props) {
     </section>
     {cleared === 0 && firstItem && <section className="fog-onboarding"><div><span>처음 오셨나요?</span><strong>일정 속 장소에서 첫 해무를 걷어보세요</strong><p>실시간 위치는 공유하지 않고, 인증 뒤 약 500m 격자만 발자국으로 남습니다.</p></div><button type="button" className="primary-btn" onClick={() => setCheckingPlaceId(firstItem.placeId)}>첫 장소에서 시작</button></section>}
     <section className="fog-missions" aria-label="오늘의 탐험 미션"><header><div><span>TODAY'S TRAIL</span><strong>오늘의 탐험</strong></div><small>{missions.filter((mission) => mission.done).length}/{missions.length} 완료</small></header><div>{missions.map((mission) => <article key={mission.title} className={mission.done ? "done" : ""}><i>{mission.done ? "✓" : ""}</i><div><strong>{mission.title}</strong><span>{mission.detail}</span></div><b>{mission.done ? "완료" : mission.progress}</b></article>)}</div></section>
+    <section className={`fog-surprise ${surpriseItem ? "revealed" : ""}`} aria-live="polite">
+      <div><span>오늘 어디로 가볼까요?</span>{surpriseItem ? <><strong>DAY {surpriseItem.dayIndex} · {surpriseItem.nameKo}</strong><p>{surpriseItem.address}</p></> : <><strong>내 일정에서 탐험 장소 하나를 뽑아보세요</strong><p>고민 없이 출발할 수 있도록 실제 일정 장소 중 하나를 골라드려요.</p></>}</div>
+      <div>{surpriseItem && <button type="button" className="secondary-btn" onClick={() => setCheckingPlaceId(surpriseItem.placeId)}>이곳에서 발자국 시작</button>}<button type="button" className="surprise-pick-btn" onClick={pickSurprise}>{surpriseItem ? "다시 뽑기" : "오늘의 장소 뽑기"}</button></div>
+    </section>
     <div className="social-map-toolbar"><div role="group" aria-label="지도 핀 레이어">{(Object.keys(LAYER_LABELS) as Array<keyof typeof LAYER_LABELS>).map((layer) => <button type="button" key={layer} className={layers.includes(layer) ? "active" : ""} aria-pressed={layers.includes(layer)} onClick={() => setLayers((values) => values.includes(layer) ? values.filter((value) => value !== layer) : [...values, layer])}><i style={{ background: LAYER_COLORS[layer] }} />{LAYER_LABELS[layer]}</button>)}</div><button type="button" className={scope === "party" ? "active" : ""} onClick={() => setScope((value) => value === "me" ? "party" : "me")}>{scope === "me" ? "내 해무 보기" : "동행 해무 보기"}</button></div>
     <div className="social-map-stage" ref={stageNode}><div ref={mapNode} className="social-map-canvas" /><svg ref={fogLayer} className="social-fog-overlay" aria-hidden="true" />{cleared === 0 && <div className="fog-map-label"><span>아직 해무 속이에요</span><b>검은 일정 핀을 눌러 탐험을 시작하세요</b></div>}{!import.meta.env.VITE_KAKAO_JS_KEY && <div className="social-map-empty"><strong>지도를 불러오려면 카카오 JavaScript 키가 필요합니다.</strong><span>web/.env의 VITE_KAKAO_JS_KEY를 확인해 주세요.</span></div>}</div>
     <p className="social-map-help">숫자 핀은 내 일정입니다. 장소에서 방문을 시작하고 10분 뒤 인증하면 그 주변의 해무가 걷힙니다.</p>

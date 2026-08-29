@@ -1,27 +1,19 @@
-import { Link } from "react-router-dom";
 import { SocialExplorationMap } from "../../components/SocialExplorationMap";
-import { paths } from "../../routes/paths";
 import { useTrip } from "./TripContext";
 
-/**
- * /trips/:tripId/map — 지도 전체보기
- * 목록 없이 지도만 확대해 전체 동선과 기념품샵 레이어를 함께 본다.
- */
+/** /trips/:tripId/map — 독립 발자국 탭: 해무 탐험·도감·방문 기록 */
 export function TripMapPage() {
   const { itinerary, tripId } = useTrip();
 
   return (
     <div className="service-view map-view">
-      <nav className="together-section-nav" aria-label="함께 탭 화면">
-        <Link to={paths.tripTogether(tripId)}>여행자 피드</Link>
-        <Link className="active" aria-current="page" to={paths.tripMap(tripId)}>발자국 지도</Link>
-      </nav>
-      <header className="service-heading">
+      <header className="service-heading footprint-page-heading">
         <div>
-          <span className="section-eyebrow">LOCAL FOOTPRINTS</span>
-          <h1>발자국 지도</h1>
-          <p>내가 걸은 곳의 해무를 걷고, 동행과 여행자들이 남긴 검증된 팁을 발견하세요.</p>
+          <span className="section-eyebrow">EXPLORE BUSAN · LEAVE A TRACE</span>
+          <h1>부산을 걸을수록 나만의 지도가 열려요</h1>
+          <p>직접 방문해 해무를 걷고, 부산 도감을 채우고, 다음 여행자를 위한 발자국을 남겨보세요.</p>
         </div>
+        <ol className="footprint-steps" aria-label="발자국 지도 이용 방법"><li><b>01</b><span>일정 장소 방문</span></li><li><b>02</b><span>해무 해제</span></li><li><b>03</b><span>도감·메모 수집</span></li></ol>
       </header>
       <SocialExplorationMap tripId={tripId} itinerary={itinerary} />
     </div>

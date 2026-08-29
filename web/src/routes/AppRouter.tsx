@@ -72,6 +72,7 @@ function LegacyQueryRedirect() {
     const mode = searchParams.get("mode");
     const target = view === "schedule" ? paths.tripSchedule(trip)
       : view === "discover" ? paths.tripDiscover(trip)
+      : view === "footprints" ? paths.tripMap(trip)
       : view === "together" ? paths.tripTogether(trip)
       : view === "prep" ? paths.tripPrep(trip)
       : paths.tripOverview(trip);
