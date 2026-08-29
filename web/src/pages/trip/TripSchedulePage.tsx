@@ -44,6 +44,7 @@ export function TripSchedulePage() {
           <p>날짜별 경로를 보고 장소를 고정하거나 교체할 수 있어요.</p>
         </div>
         <div className="service-heading-actions">
+          <Link className="secondary-btn" to={paths.tripMap(tripId)}>발자국 지도</Link>
           {canEdit && <button type="button" className="secondary-btn" onClick={editConditions}>여행 조건 수정</button>}
           <button type="button" className="primary-btn" onClick={() => void regenerate()} disabled={regenerating || !canEdit}>{regenerating ? "계산 중…" : "일정 재생성"}</button>
         </div>

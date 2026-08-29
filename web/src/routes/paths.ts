@@ -62,9 +62,9 @@ export const TAB_TO_PATH = {
 
 /** 현재 경로에서 활성 탭을 역산한다. */
 export function tabFromPathname(pathname: string): keyof typeof TAB_TO_PATH {
-  if (pathname.includes("/schedule") || pathname.includes("/map")) return "schedule";
+  if (pathname.includes("/schedule")) return "schedule";
   if (pathname.includes("/discover")) return "discover";
-  if (pathname.includes("/together")) return "together";
+  if (pathname.includes("/together") || pathname.includes("/map")) return "together";
   if (pathname.includes("/prep") || pathname.includes("/collaborate")) return "prep";
   return "home";
 }

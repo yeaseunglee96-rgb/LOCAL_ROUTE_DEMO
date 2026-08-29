@@ -6,7 +6,7 @@ import type { DashboardTab } from "./Sidebar";
 const TAB_CARDS: { id: Exclude<DashboardTab, "home">; number: string; title: string; titleEn: string; description: string; descriptionEn: string }[] = [
   { id: "schedule", number: "01", title: "일정과 동선", titleEn: "Itinerary & Route", description: "지도와 날짜별 일정을 함께 확인하고 장소를 교체합니다.", descriptionEn: "Explore map and daily schedule, and swap locations easily." },
   { id: "discover", number: "02", title: "부산 로컬", titleEn: "Busan Local", description: "축제, 야시장, 전통시장과 기념품샵을 여행 기간에 맞춰 확인합니다.", descriptionEn: "Discover festivals, night markets, traditional markets, and souvenir shops." },
-  { id: "together", number: "03", title: "동행과 기록", titleEn: "Share & Moments", description: "일정을 공유하고 여행 중 발견한 장면을 기록합니다.", descriptionEn: "Share your trip schedule and record travel memories together." },
+  { id: "together", number: "03", title: "동행과 발자국", titleEn: "People & Footprints", description: "여행자 피드를 보고, 부산 해무 지도에서 인증된 발자국을 발견합니다.", descriptionEn: "Browse traveler stories and verified footprints on the Busan fog map." },
   { id: "prep", number: "04", title: "여행 준비", titleEn: "Travel Prep", description: "예산, 편의정보와 꼭 필요한 예약 서비스를 확인합니다.", descriptionEn: "Check budget, travel tips, and essential booking options." },
 ];
 

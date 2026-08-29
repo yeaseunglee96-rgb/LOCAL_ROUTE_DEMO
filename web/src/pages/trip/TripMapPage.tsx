@@ -1,4 +1,6 @@
+import { Link } from "react-router-dom";
 import { SocialExplorationMap } from "../../components/SocialExplorationMap";
+import { paths } from "../../routes/paths";
 import { useTrip } from "./TripContext";
 
 /**
@@ -10,10 +12,14 @@ export function TripMapPage() {
 
   return (
     <div className="service-view map-view">
+      <nav className="together-section-nav" aria-label="함께 탭 화면">
+        <Link to={paths.tripTogether(tripId)}>여행자 피드</Link>
+        <Link className="active" aria-current="page" to={paths.tripMap(tripId)}>발자국 지도</Link>
+      </nav>
       <header className="service-heading">
         <div>
           <span className="section-eyebrow">LOCAL FOOTPRINTS</span>
-          <h1>부산의 발자국을 만나요</h1>
+          <h1>발자국 지도</h1>
           <p>내가 걸은 곳의 해무를 걷고, 동행과 여행자들이 남긴 검증된 팁을 발견하세요.</p>
         </div>
       </header>
