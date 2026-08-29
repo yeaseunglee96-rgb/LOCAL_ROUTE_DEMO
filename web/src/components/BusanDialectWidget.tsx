@@ -87,6 +87,7 @@ export const BUSAN_DIALECTS: DialectItem[] = [
 
 export function BusanDialectWidget({ language = "KO" }: { language?: "KO" | "EN" }) {
   const isEn = language === "EN";
+  const [expanded, setExpanded] = useState(false);
   const [activeItem, setActiveItem] = useState<DialectItem | null>(null);
 
   const playAudio = (text: string) => {
@@ -102,78 +103,42 @@ export function BusanDialectWidget({ language = "KO" }: { language?: "KO" | "EN"
   };
 
   return (
-    <section className="busan-dialect-widget">
-      <div className="busan-dialect-header">
+    <section className={`busan-dialect-widget dialect-compact ${expanded ? "expanded" : ""}`}>
+      <button
+        type="button"
+        className="dialect-toggle"
+        aria-expanded={expanded}
+        aria-controls="busan-dialect-list"
+        onClick={() => setExpanded((value) => !value)}
+      >
         <div>
-          <span className="section-eyebrow">LOCAL EXPRESSIONS · BUSAN DIALECT</span>
-          <h2>🗣️ {isEn ? "Master Busan Local Dialect" : "부산 사투리 표현 익히기"}</h2>
-          <p>{isEn ? "Learn authentic Busan phrases to connect with friendly locals!" : "현지인과 더 친근하게 소통할 수 있는 대표 부산 사투리를 익혀보세요."}</p>
+          <span>{isEn ? "LOCAL EXPRESSIONS" : "여행 중 한마디"}</span>
+          <strong>{isEn ? "Learn Busan dialect" : "부산 사투리 배우기"}</strong>
+          <small>{isEn ? "8 useful phrases for your trip" : "여행에서 쓰기 좋은 표현 8개"}</small>
         </div>
-      </div>
+        <span className="dialect-toggle-mark" aria-hidden="true">{expanded ? "−" : "+"}</span>
+      </button>
 
-      <div className="busan-dialect-grid">
-        {BUSAN_DIALECTS.map((item) => (
-          <div key={item.id} className="dialect-card">
-            <div className="dialect-card-top">
-              <span className="dialect-badge">BUSAN</span>
-              <button
-                type="button"
-                className="audio-btn"
-                onClick={() => playAudio(item.audioText)}
-                title={isEn ? "Listen audio" : "음성 듣기"}
-              >
-                🔊 {isEn ? "Listen" : "듣기"}
-              </button>
-            </div>
-            <strong className="dialect-title">{item.dialect}</strong>
-            <p className="dialect-standard">
-              <b>{isEn ? "Standard" : "표준어"}:</b> {item.standard}
-            </p>
-            <p className="dialect-english">
-              <b>{isEn ? "English" : "영문"}:</b> {item.english}
-            </p>
-            <small className="dialect-context">{isEn ? item.meaningEn : item.contextKo}</small>
+      {expanded && <div className="dialect-browser" id="busan-dialect-list">
+        <div className="dialect-list" role="list" aria-label={isEn ? "Busan dialect phrases" : "부산 사투리 목록"}>
+          {BUSAN_DIALECTS.map((item) => <button key={item.id} type="button" role="listitem" className={activeItem?.id === item.id ? "active" : ""} onClick={() => setActiveItem(item)}><strong>{item.dialect}</strong><span>{isEn ? item.english : item.standard}</span></button>)}
+        </div>
+
+        <div className={`dialect-study ${activeItem ? "selected" : "empty"}`} aria-live="polite">
+          {!activeItem ? <><span>{isEn ? "CHOOSE A PHRASE" : "표현 선택"}</span><strong>{isEn ? "Select a phrase to study" : "궁금한 사투리를 눌러보세요"}</strong><p>{isEn ? "Its meaning, context, and pronunciation will appear here." : "뜻과 사용 상황, 부산식 발음을 간단히 확인할 수 있어요."}</p></> : <>
+            <span>BUSAN DIALECT</span>
+            <h3>{activeItem.dialect}</h3>
             <button
               type="button"
-              className="view-large-btn"
-              onClick={() => setActiveItem(item)}
-            >
-              {isEn ? "View Card 🔍" : "크게 보기 🔍"}
-            </button>
-          </div>
-        ))}
-      </div>
-
-      {activeItem && (
-        <div className="modal-backdrop" role="presentation" onClick={() => setActiveItem(null)}>
-          <div className="dialect-modal" role="dialog" onClick={(e) => e.stopPropagation()}>
-            <button type="button" className="close-btn" onClick={() => setActiveItem(null)}>✕</button>
-            <span className="dialect-badge">BUSAN DIALECT FLASHCARD</span>
-            <h2 className="large-dialect">{activeItem.dialect}</h2>
-            <button
-              type="button"
-              className="modal-audio-btn"
+              className="dialect-listen-btn"
               onClick={() => playAudio(activeItem.audioText)}
             >
-              🔊 {isEn ? "Play Busan Pronunciation" : "부산 사투리 발음 들려주기"}
+              {isEn ? "Listen to pronunciation" : "발음 들어보기"}
             </button>
-            <div className="dialect-modal-info">
-              <div>
-                <dt>{isEn ? "Standard Korean" : "표준어 의미"}</dt>
-                <dd>{activeItem.standard}</dd>
-              </div>
-              <div>
-                <dt>{isEn ? "English Translation" : "영어 번역"}</dt>
-                <dd>{activeItem.english}</dd>
-              </div>
-              <div>
-                <dt>{isEn ? "Usage & Context" : "사용 상황 & 팁"}</dt>
-                <dd>{isEn ? activeItem.meaningEn : activeItem.contextKo}</dd>
-              </div>
-            </div>
-          </div>
+            <dl><div><dt>{isEn ? "Meaning" : "뜻"}</dt><dd>{isEn ? activeItem.english : activeItem.standard}</dd></div><div><dt>{isEn ? "When to use" : "언제 쓰나요"}</dt><dd>{isEn ? activeItem.meaningEn : activeItem.contextKo}</dd></div></dl>
+          </>}
         </div>
-      )}
+      </div>}
     </section>
   );
 }
