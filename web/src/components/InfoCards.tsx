@@ -17,9 +17,8 @@ export function InfoCards({ itinerary }: Props) {
 
   return (
     <div className="info-cards">
-      <details className="info-card prep-fold">
-        <summary><div><strong>{en ? "Estimated cost" : "예상 경비"}</strong><span>{en ? "Food · transport · activities" : "식비 · 교통비 · 입장료"}</span></div><b>{en ? `₩${estimatedTotal.toLocaleString()}` : `${estimatedTotal.toLocaleString()}원`}</b></summary>
-        <div className="prep-fold-content">
+      <section className="info-card prep-cost-card">
+        <header className="prep-card-heading"><div><span>{en ? "BUDGET" : "예산"}</span><strong>{en ? "Estimated cost" : "예상 경비 상세"}</strong><small>{en ? `${trip.partySize} traveler basis` : `${trip.partySize}인 기준 · 숙박비 제외`}</small></div><b>{en ? `₩${estimatedTotal.toLocaleString()}` : `${estimatedTotal.toLocaleString()}원`}</b></header>
         <ul className="cost-list">
           <li>
             <span>{en ? "Food" : "식비"}</span>
@@ -44,8 +43,7 @@ export function InfoCards({ itinerary }: Props) {
           <span className="cost-total-sub"> {en ? `(${trip.partySize} traveler basis)` : `(${trip.partySize}인 기준)`}</span>
         </div>
         <p className="data-note">{en ? "Price-tier estimate; lodging, actual parking, and tolls are not included." : "가격대 기반 추정이며 숙박비와 실제 주차·통행료는 포함되지 않습니다."}</p>
-        </div>
-      </details>
+      </section>
     </div>
   );
 }

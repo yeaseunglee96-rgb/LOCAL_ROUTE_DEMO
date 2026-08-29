@@ -29,25 +29,24 @@ export function TripPrepPage() {
         </div>
       </header>
 
-      <section className="prep-checklist" aria-label="여행 준비 체크리스트">
+      <section className="prep-primary-grid" aria-label="핵심 여행 준비">
         <ShareBar itineraryId={itinerary.itineraryId} tripId={itinerary.tripId} language={itinerary.trip.language} />
-
         <InfoCards itinerary={itinerary} />
+      </section>
 
       {bookingOptions.length > 0 && (
-        <details className="prep-fold booking-fold">
-          <summary><div><strong>숙소 예약 확인</strong><span>가격과 객실 조건 최종 확인</span></div><b>{bookingOptions.length}개 제휴사</b></summary>
-          <div className="prep-fold-content booking-fold-content">{bookingOptions.map((option) => (
+        <section className="booking-strip prep-booking-strip" aria-label="숙소 예약 제휴">
+          <div><strong>숙소 예약 확인</strong><span>가격과 객실 조건을 제휴사에서 최종 확인하세요.</span></div>
+          <div className="booking-fold-content">{bookingOptions.map((option) => (
             <button type="button" key={option.id} onClick={async () => {
               const booking = await startBooking(option.id, itinerary.tripId);
               window.open(booking.bookingUrl, "_blank", "noopener,noreferrer");
             }}>{option.provider}에서 예약 확인 <small>제휴 링크</small></button>
           ))}</div>
-        </details>
+        </section>
       )}
 
-        <BusanDialectWidget language={lang} />
-      </section>
+      <BusanDialectWidget language={lang} />
 
       <details className="prep-data-note"><summary>추천·비용 데이터 안내</summary><p>식당은 승인된 카카오 평점·후기 집계가 있을 때만 추천 점수에 반영하며, 비용과 실시간 교통 미연동 구간은 추정값으로 구분합니다.</p></details>
     </div>

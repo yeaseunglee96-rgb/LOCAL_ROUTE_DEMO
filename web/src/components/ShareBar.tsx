@@ -23,15 +23,14 @@ export function ShareBar({ itineraryId, tripId, language = "KO" }: { itineraryId
     catch (error) { setNotice(error instanceof Error ? error.message : "초대 링크를 만들지 못했습니다."); }
     finally { setBusy(false); }
   };
-  return <details className="share-bar prep-fold">
-    <summary><div><strong>{en ? "Plan together" : "동행자와 함께 계획하기"}</strong><span>{en ? `${members} participant(s)` : `${members}명 참여 중`}</span></div><b>{en ? "Share & invite" : "공유·초대"}</b></summary>
-    <div className="prep-fold-content share-fold-content"><p>{en ? "Choose whether companions can edit the itinerary or only view it." : "동행자가 일정을 함께 수정할지, 보기만 할지 선택해 초대하세요."}</p><div className="share-buttons">
+  return <section className="share-bar prep-collab-card" aria-label="일정 공유와 공동 편집">
+    <header className="prep-card-heading"><div><span>{en ? "TOGETHER" : "동행"}</span><strong>{en ? "Plan together" : "동행자와 함께 계획하기"}</strong><small>{en ? "Invite companions with the right permission." : "편집 또는 열람 권한으로 동행자를 초대하세요."}</small></div><b>{en ? `${members} joined` : `${members}명 참여`}</b></header>
+    <div className="share-buttons">
       {role === "OWNER" && <button type="button" className="share-btn" disabled={busy} onClick={share}>{en ? "Read-only link" : "읽기 전용 공유"}</button>}
       {role === "OWNER" && <button type="button" className="share-btn" disabled={busy} onClick={() => invite("EDITOR")}>{en ? "Invite editor" : "편집자 초대"}</button>}
       {role === "OWNER" && <button type="button" className="share-btn" disabled={busy} onClick={() => invite("VIEWER")}>{en ? "Invite viewer" : "열람자 초대"}</button>}
       {role !== "OWNER" && <span className="viewer-badge">{role === "EDITOR" ? (en ? "Editor" : "편집자") : (en ? "View only" : "열람 전용")}</span>}
     </div>
     {notice && <div className="share-notice" role="status">{notice}</div>}
-    </div>
-  </details>;
+  </section>;
 }
