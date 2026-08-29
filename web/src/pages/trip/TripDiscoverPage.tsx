@@ -1,12 +1,14 @@
 import { ExperiencePanel } from "../../components/ExperiencePanel";
+import { PrepSectionNav } from "../../components/PrepSectionNav";
 import { useTrip } from "./TripContext";
 
 /** /trips/:tripId/discover — 지역 축제·행사와 기념품샵 */
 export function TripDiscoverPage() {
-  const { itinerary, canEdit } = useTrip();
+  const { itinerary, canEdit, tripId } = useTrip();
 
   return (
-    <div className="service-view">
+    <div className="service-view prep-local-view">
+      <PrepSectionNav tripId={tripId} active="local" />
       <header className="service-heading">
         <div>
           <span className="section-eyebrow">LOCAL BUSAN</span>

@@ -2,13 +2,14 @@ import { useEffect, useState } from "react";
 import { InfoCards } from "../../components/InfoCards";
 import { ShareBar } from "../../components/ShareBar";
 import { BusanDialectWidget } from "../../components/BusanDialectWidget";
+import { PrepSectionNav } from "../../components/PrepSectionNav";
 import { getBookingOptions, getSponsoredPlacements, startBooking, trackAd } from "../../api/client";
 import type { BookingOption, SponsoredPlacement } from "../../types";
 import { useTrip } from "./TripContext";
 
 /** /trips/:tripId/prep — 예산·동행·필수 서비스 광고·예약 제휴·사투리 */
 export function TripPrepPage() {
-  const { itinerary, itemProps } = useTrip();
+  const { itinerary, itemProps, tripId } = useTrip();
   const [sponsored, setSponsored] = useState<SponsoredPlacement[]>([]);
   const [bookingOptions, setBookingOptions] = useState<BookingOption[]>([]);
   const lang = itemProps.language;
@@ -29,6 +30,7 @@ export function TripPrepPage() {
 
   return (
     <div className="service-view prep-view">
+      <PrepSectionNav tripId={tripId} active="prep" />
       <header className="service-heading">
         <div>
           <span className="section-eyebrow">READY TO GO</span>

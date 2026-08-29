@@ -2,12 +2,11 @@ import { Link } from "react-router-dom";
 import { BrandLogo } from "./BrandLogo";
 import { paths } from "../routes/paths";
 
-export type DashboardTab = "home" | "schedule" | "discover" | "footprints" | "together" | "prep";
+export type DashboardTab = "home" | "schedule" | "footprints" | "together" | "prep";
 
 const NAV_ITEMS: { id: DashboardTab; label: string; labelEn: string }[] = [
   { id: "home", label: "홈", labelEn: "Home" },
   { id: "schedule", label: "일정", labelEn: "Plan" },
-  { id: "discover", label: "로컬", labelEn: "Local" },
   { id: "footprints", label: "발자국", labelEn: "Footprints" },
   { id: "together", label: "함께", labelEn: "Together" },
   { id: "prep", label: "여행 준비", labelEn: "Prepare" },
